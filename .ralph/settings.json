@@ -5,8 +5,30 @@
   "streamAgentOutput": true,
   "includeIterationCountInPrompt": false,
   "agent": {
-    "command": "codex",
-    "flags": []
+    "command": "claude",
+    "flags": [
+      "--model",
+      "claude-opus-4-5",
+      "--permission-mode",
+      "acceptEdits"
+    ]
   },
-  "guardrails": null
+  "guardrails": [
+    {
+      "command": "make fmt",
+      "failAction": "APPEND"
+    },
+    {
+      "command": "make lint",
+      "failAction": "APPEND"
+    },
+    {
+      "command": "make build",
+      "failAction": "APPEND"
+    },
+    {
+      "command": "make test",
+      "failAction": "APPEND"
+    }
+  ]
 }

@@ -136,12 +136,25 @@ Feature: CLI parsing and exit codes
     And the exit code is 1
 ```
 
-**Status: IN PROGRESS**
+**Status: DONE**
 
 **Progress Notes**
 
 * 2026-01-20 10:21:32 -0500
   * Changes: added global flags and centralized exit code handling in `cmd/tfc/main.go`; introduced `internal/cmd` runtime error type.
+
+* 2026-01-20 11:00:00 -0500
+  * Commands run: `make fmt`, `make lint`, `make build`, `make test`
+  * Changes:
+    * Added `VersionCmd` subcommand to use the `version/commit/date` build vars (fixes unused var lint errors)
+    * Added `DoctorCmd` placeholder (returns RuntimeError to test exit code 2)
+    * Fixed output-format enum to include empty string as default
+  * Verified Gherkin scenarios:
+    * `tfc no-such-command` → exit 1, stderr shows "unexpected argument"
+    * `tfc --output-format=xml doctor` → exit 1, stderr shows must be one of table/json
+    * `tfc version` → exit 0, prints version/commit/date
+    * `tfc doctor` → exit 2 (runtime error)
+  * All feedback loops pass
 
 ---
 

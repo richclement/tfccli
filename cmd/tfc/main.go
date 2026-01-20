@@ -24,9 +24,30 @@ type CLI struct {
 	Context      string `help:"Select a named context from settings."`
 	Address      string `help:"Override the API address for this invocation."`
 	Org          string `help:"Override the default organization for this invocation."`
-	OutputFormat string `name:"output-format" enum:"table,json" help:"Output format: table or json."`
+	OutputFormat string `name:"output-format" enum:"table,json," default:"" help:"Output format: table or json."`
 	Debug        bool   `help:"Enable debug logging for this invocation."`
 	Force        bool   `help:"Bypass confirmation prompts for destructive operations."`
+
+	Version VersionCmd `cmd:"" help:"Print version information."`
+	Doctor  DoctorCmd  `cmd:"" help:"Validate settings, token discovery, and connectivity."`
+}
+
+// VersionCmd prints the CLI version info.
+type VersionCmd struct{}
+
+func (v *VersionCmd) Run() error {
+	fmt.Printf("version: %s\n", version)
+	fmt.Printf("commit:  %s\n", commit)
+	fmt.Printf("date:    %s\n", date)
+	return nil
+}
+
+// DoctorCmd is a placeholder for the full doctor implementation.
+type DoctorCmd struct{}
+
+func (d *DoctorCmd) Run() error {
+	// Placeholder - full implementation in Task 14
+	return internalcmd.NewRuntimeError(errors.New("doctor not yet implemented"))
 }
 
 type exitError struct {
