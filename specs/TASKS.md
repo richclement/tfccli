@@ -663,6 +663,59 @@ Feature: Output format defaults
     And stdout.meta.status = 204
 ```
 
+**Status: DONE**
+
+**Plan (acceptance + verification + steps)**
+
+* Acceptance criteria:
+  * `TTYDetector` interface with `IsTTY(io.Writer) bool` method
+  * Real implementation using `term.IsTerminal` from `golang.org/x/term`
+  * `ResolveOutputFormat(flagValue, isTTY)` returns `"json"` or `"table"`
+  * Default: json when not TTY, table when TTY
+  * Flag override: explicit `--output-format=json|table` takes precedence
+  * `WriteJSON(w, data)` emits raw JSON (JSON:API passthrough)
+  * `WriteEmptySuccess(w, statusCode)` emits `{"meta":{"status":N}}` for 204/empty responses
+* Verification: `go test ./internal/output/...`; all Gherkin scenarios pass as unit tests
+* Steps:
+  1. Add `golang.org/x/term` dependency
+  2. Create `internal/output/tty.go` with TTYDetector interface and real implementation
+  3. Create `internal/output/format.go` with ResolveOutputFormat function
+  4. Create `internal/output/json.go` with JSON emitter functions
+  5. Create `internal/output/output_test.go` with tests for all Gherkin scenarios
+  6. Wire up output format resolution in CLI (prepare for command usage)
+
+**Progress Notes**
+
+* 2026-01-20
+  * Changes:
+    * Added `golang.org/x/term` dependency to go.mod
+    * Created `internal/output/tty.go` with:
+      * `TTYDetector` interface with `IsTTY(io.Writer) bool` method
+      * `RealTTYDetector` using `term.IsTerminal` from golang.org/x/term
+      * `FakeTTYDetector` for testing (returns pre-configured value)
+    * Created `internal/output/format.go` with:
+      * `Format` type constants (`FormatJSON`, `FormatTable`)
+      * `ResolveOutputFormat(flagValue, isTTY)` function implementing default logic
+    * Created `internal/output/json.go` with:
+      * `WriteJSON(w, data)` for raw JSON:API passthrough
+      * `WriteEmptySuccess(w, statusCode)` for 204/empty-body responses
+      * `EmptySuccessResponse` and `EmptyMeta` types
+    * Created `internal/output/output_test.go` with 14 unit tests:
+      * TTY detection tests (RealTTYDetector, FakeTTYDetector)
+      * ResolveOutputFormat tests (default on TTY/non-TTY, flag override)
+      * WriteJSON tests (valid JSON, JSON:API passthrough)
+      * WriteEmptySuccess tests (204 No Content, various status codes)
+    * Ran `go mod tidy` to fix indirect dependency markers
+  * Files changed: `go.mod`, `go.sum`, `internal/output/tty.go`, `internal/output/format.go`, `internal/output/json.go`, `internal/output/output_test.go`
+  * Commands run: `make fmt`, `make lint`, `make build`, `make test` - all pass
+  * Test results: `ok github.com/richclement/tfccli/internal/output 0.761s`
+  * Gherkin scenarios verified:
+    * "Defaults to table on TTY": TestResolveOutputFormat_DefaultsToTableOnTTY passes
+    * "Defaults to json when stdout is not a TTY": TestResolveOutputFormat_DefaultsToJSONWhenNotTTY passes
+    * "Empty-body success emits meta JSON": TestWriteEmptySuccess_204NoContent passes
+  * Note: CLI wiring deferred to Task 10+ when commands actually use output formatting
+  * Task complete
+
 ---
 
 ### Task 10 — Table renderer with termenv
