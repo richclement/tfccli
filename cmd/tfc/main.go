@@ -40,6 +40,7 @@ type CLI struct {
 	Contexts      ContextsCmd      `cmd:"" help:"Manage named contexts."`
 	Organizations OrganizationsCmd `cmd:"" help:"Manage organizations."`
 	Projects      ProjectsCmd      `cmd:"" help:"Manage projects."`
+	Workspaces    WorkspacesCmd    `cmd:"" help:"Manage workspaces."`
 }
 
 // VersionCmd prints the CLI version info.

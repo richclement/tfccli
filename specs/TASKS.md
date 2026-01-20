@@ -1367,6 +1367,36 @@ Feature: projects CRUD by id
 * `workspaces update <workspace-id> ...`
 * `workspaces delete <workspace-id> [--force]`
 
+**Status: DONE**
+
+**Plan (acceptance + verification + steps)**
+
+* Acceptance criteria:
+  * `tfc workspaces list` calls GET /api/v2/organizations/<org>/workspaces with auto-pagination
+  * `tfc workspaces list` uses `--org` flag or falls back to `default_org` from context
+  * `tfc workspaces list` fails with exit 1 if no org available (error: "organization is required")
+  * `tfc workspaces get <id>` calls GET /api/v2/workspaces/<id>
+  * `tfc workspaces create --name <name>` posts to /api/v2/organizations/<org>/workspaces
+  * `tfc workspaces create` supports optional `--project-id` flag
+  * `tfc workspaces update <id> --name <name>` patches /api/v2/workspaces/<id>
+  * `tfc workspaces delete <id>` prompts for confirmation (bypass with --force)
+  * JSON output wraps result in `{"data": ...}` for JSON:API-like format
+  * Table output shows ID, NAME, EXECUTION-MODE, PROJECT-ID columns for list
+  * Delete returns `{"meta":{"status":204}}` on success in JSON mode
+* Verification: `go test ./cmd/tfc/...`; all Gherkin scenarios pass as unit tests
+* Steps:
+  1. Create `cmd/tfc/workspaces.go` with WorkspacesCmd group struct
+  2. Define `workspacesClient` interface abstracting go-tfe workspaces API for testing
+  3. Create `realWorkspacesClient` wrapping go-tfe client with `CollectAllWorkspaces` pagination
+  4. Implement WorkspacesListCmd using org resolution (--org flag or default_org)
+  5. Implement WorkspacesGetCmd using client.Workspaces.ReadByID
+  6. Implement WorkspacesCreateCmd with --name required, optional --project-id
+  7. Implement WorkspacesUpdateCmd with optional --name, --description flags
+  8. Implement WorkspacesDeleteCmd with confirmation + --force support
+  9. Add injectable dependencies for testing (baseDir, ttyDetector, stdout, clientFactory, prompter)
+  10. Create `cmd/tfc/workspaces_test.go` with unit tests for all Gherkin scenarios
+  11. Wire up WorkspacesCmd in CLI struct in main.go
+
 **Gherkin**
 
 ```gherkin
@@ -1391,6 +1421,51 @@ Feature: workspaces update/delete by id
     When I run "tfc workspaces delete ws-1" and answer "yes"
     Then the server receives "DELETE /api/v2/workspaces/ws-1"
 ```
+
+**Progress Notes**
+
+* 2026-01-20
+  * Changes:
+    * Created `cmd/tfc/workspaces.go` with:
+      * `WorkspacesCmd` group with List, Get, Create, Update, Delete subcommands
+      * `workspacesClient` interface abstracting go-tfe workspaces API for testing
+      * `realWorkspacesClient` wrapping go-tfe client with `CollectAllWorkspaces` pagination
+      * `workspaceJSON` type and conversion helpers for JSON serialization
+      * Each subcommand supports injectable dependencies: baseDir, tokenResolver, ttyDetector, stdout, clientFactory, prompter
+      * JSON output wraps results in `{"data": ...}` for JSON:API-like format
+      * Table output shows ID, NAME, EXECUTION-MODE, PROJECT-ID columns for list
+      * Delete returns `{"meta":{"status":204}}` on success in JSON mode
+      * Delete prompts for confirmation unless --force is set
+      * List/Create require org (uses --org flag or default_org from context, errors if neither available)
+      * Create supports optional `--project-id` flag
+    * Updated `cmd/tfc/main.go` to wire WorkspacesCmd to CLI struct
+    * Created `cmd/tfc/workspaces_test.go` with 20 unit tests:
+      * TestWorkspacesList_UsesDefaultOrg - list uses default_org when --org not provided
+      * TestWorkspacesList_UsesOrgFlag - --org flag overrides default_org
+      * TestWorkspacesList_FailsWhenNoOrg - fails with "organization is required"
+      * TestWorkspacesList_JSON - list returns workspaces as JSON
+      * TestWorkspacesList_Table - list returns table with headers
+      * TestWorkspacesGet_JSON - get workspace by ID
+      * TestWorkspacesCreate_JSON - creates workspace with name
+      * TestWorkspacesCreate_WithProjectID - creates workspace with --project-id
+      * TestWorkspacesCreate_FailsWhenNoOrg - create fails without org
+      * TestWorkspacesUpdate_JSON - updates workspace name/description
+      * TestWorkspacesDelete_PromptsWithoutForce - confirms without --force
+      * TestWorkspacesDelete_WithForce - bypasses prompt with --force
+      * TestWorkspacesDelete_JSON - returns {"meta":{"status":204}}
+      * TestWorkspacesList_APIError - API errors surfaced
+      * TestWorkspacesGet_NotFound - 404 handling
+      * TestWorkspacesList_FailsWhenSettingsMissing - suggests tfc init
+      * TestWorkspacesDelete_ConfirmYes - delete proceeds on confirm
+      * TestWorkspacesCreate_Table - success message in table mode
+  * Files changed: `cmd/tfc/main.go`, `cmd/tfc/workspaces.go`, `cmd/tfc/workspaces_test.go`, `specs/TASKS.md`
+  * Commands run: `make fmt`, `make lint`, `make build`, `make test` - all pass
+  * Gherkin scenarios verified:
+    * "List uses default_org" - TestWorkspacesList_UsesDefaultOrg passes
+    * "Create requires org (default or flag)" - TestWorkspacesCreate_FailsWhenNoOrg passes
+    * "Update workspace sends PATCH by id" - TestWorkspacesUpdate_JSON passes
+    * "Delete prompts unless forced" - TestWorkspacesDelete_PromptsWithoutForce/ConfirmYes passes
+  * Task complete
 
 ---
 
