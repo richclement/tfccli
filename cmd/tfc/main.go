@@ -42,6 +42,7 @@ type CLI struct {
 	Projects           ProjectsCmd           `cmd:"" help:"Manage projects."`
 	Workspaces         WorkspacesCmd         `cmd:"" help:"Manage workspaces."`
 	WorkspaceVariables WorkspaceVariablesCmd `cmd:"" name:"workspace-variables" help:"Manage workspace variables."`
+	WorkspaceResources WorkspaceResourcesCmd `cmd:"" name:"workspace-resources" help:"List workspace resources."`
 }
 
 // VersionCmd prints the CLI version info.

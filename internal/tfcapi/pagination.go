@@ -194,3 +194,34 @@ func CollectAllVariables(
 	}
 	return all, nil
 }
+
+// CollectAllWorkspaceResources fetches all pages of workspace resources for a workspace.
+func CollectAllWorkspaceResources(
+	ctx context.Context,
+	client *tfe.Client,
+	workspaceID string,
+	opts *tfe.WorkspaceResourceListOptions,
+) ([]*tfe.WorkspaceResource, error) {
+	if opts == nil {
+		opts = &tfe.WorkspaceResourceListOptions{}
+	}
+	if opts.PageSize == 0 {
+		opts.PageSize = DefaultPageSize
+	}
+	opts.PageNumber = 1
+
+	var all []*tfe.WorkspaceResource
+	for {
+		list, err := client.WorkspaceResources.List(ctx, workspaceID, opts)
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, list.Items...)
+
+		if len(list.Items) == 0 || list.Pagination == nil || list.Pagination.NextPage == 0 {
+			break
+		}
+		opts.PageNumber = list.Pagination.NextPage
+	}
+	return all, nil
+}

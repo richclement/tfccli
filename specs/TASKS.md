@@ -1580,6 +1580,26 @@ Feature: workspace variables
 * `workspace-resources list --workspace-id <ws-id>`
 * Table columns: resource id/type/name/provider (where available)
 
+**Plan (acceptance + verification + steps)**
+
+* Acceptance criteria:
+  * `tfc workspace-resources list --workspace-id <ws-id>` calls GET /api/v2/workspaces/<ws-id>/resources
+  * `tfc workspace-resources list` fails with exit 1 if `--workspace-id` not provided (Kong required flag)
+  * JSON output wraps result in `{"data": ...}` for JSON:API-like format
+  * Table output shows ID, TYPE, NAME, PROVIDER-TYPE columns (go-tfe WorkspaceResource fields)
+  * Auto-pagination for large resource lists
+  * Read-only command (no confirmation needed)
+* Verification: `go test ./cmd/tfc/...`; all Gherkin scenarios pass as unit tests
+* Steps:
+  1. Add `CollectAllWorkspaceResources` pagination helper to `internal/tfcapi/pagination.go`
+  2. Create `cmd/tfc/workspace_resources.go` with WorkspaceResourcesCmd group struct
+  3. Define `workspaceResourcesClient` interface abstracting go-tfe workspace resources API for testing
+  4. Implement WorkspaceResourcesListCmd requiring --workspace-id flag
+  5. Support both JSON and table output formats
+  6. Add injectable dependencies for testing (baseDir, tokenResolver, ttyDetector, stdout, clientFactory)
+  7. Create `cmd/tfc/workspace_resources_test.go` with unit tests for all Gherkin scenarios
+  8. Wire up WorkspaceResourcesCmd in CLI struct in main.go
+
 **Gherkin**
 
 ```gherkin
@@ -1592,6 +1612,38 @@ Feature: workspace resources
     When I run "tfc workspace-resources list --workspace-id ws-1 --output-format=json"
     Then stdout has a top-level "data" field
 ```
+
+**Status: DONE**
+
+**Progress Notes**
+
+* 2026-01-20
+  * Changes:
+    * Added `CollectAllWorkspaceResources` pagination helper to `internal/tfcapi/pagination.go`
+    * Created `cmd/tfc/workspace_resources.go` with:
+      * `WorkspaceResourcesCmd` group with List subcommand
+      * `workspaceResourcesClient` interface abstracting go-tfe workspace resources API for testing
+      * `realWorkspaceResourcesClient` wrapping go-tfe client with `CollectAllWorkspaceResources` pagination
+      * `workspaceResourceJSON` type for JSON serialization
+      * `WorkspaceResourcesListCmd` requiring `--workspace-id` flag
+      * Each subcommand supports injectable dependencies: baseDir, tokenResolver, ttyDetector, stdout, clientFactory
+      * JSON output wraps results in `{"data": ...}` for JSON:API-like format
+      * Table output shows ID, TYPE, NAME, PROVIDER-TYPE columns
+    * Updated `cmd/tfc/main.go` to wire WorkspaceResourcesCmd to CLI struct
+    * Created `cmd/tfc/workspace_resources_test.go` with 8 unit tests:
+      * TestWorkspaceResourcesList_JSON - list returns resources as JSON with top-level "data" field
+      * TestWorkspaceResourcesList_Table - list returns table with headers
+      * TestWorkspaceResourcesList_FailsWhenSettingsMissing - suggests tfc init
+      * TestWorkspaceResourcesList_APIError - API errors surfaced
+      * TestWorkspaceResourcesList_EmptyResources - handles empty resources list
+      * TestWorkspaceResourcesList_ContextOverride - --context flag works
+      * TestWorkspaceResourcesList_AddressOverride - --address flag works
+  * Files changed: `cmd/tfc/main.go`, `cmd/tfc/workspace_resources.go`, `cmd/tfc/workspace_resources_test.go`, `internal/tfcapi/pagination.go`
+  * Commands run: `make fmt`, `make lint`, `make build`, `make test` - all pass
+  * Gherkin scenarios verified:
+    * "List resources hits correct endpoint" - TestWorkspaceResourcesList_JSON verifies request flow
+    * "Output JSON is raw JSON:API" - TestWorkspaceResourcesList_JSON verifies top-level "data" field
+  * Task complete
 
 ---
 
