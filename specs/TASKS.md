@@ -972,6 +972,25 @@ Feature: JSON:API error mapping
 * List helper that fetches all pages and aggregates `data[]` into one JSON:API output document
 * Supports `--page-size` override (default 100), but always fetch all pages
 
+**Plan (acceptance + verification + steps)**
+
+* Acceptance criteria:
+  * `PageIterator[T]` generic type that wraps go-tfe list calls with automatic pagination
+  * `CollectAll[T]` function that fetches all pages and aggregates results
+  * Uses go-tfe's built-in pagination via `NextPage` field in list options
+  * Stops on empty page or when `NextPage == 0` to avoid infinite loops
+  * Default page size of 100 (go-tfe default) with configurable override
+  * Returns aggregated results as slice that can be wrapped in JSON:API structure
+* Verification: `go test ./internal/tfcapi/...`; all Gherkin scenarios pass as unit tests
+* Steps:
+  1. Create `internal/tfcapi/pagination.go` with PageIterator and CollectAll
+  2. Define generic ListFunc type for go-tfe list methods
+  3. Implement pagination loop with NextPage tracking
+  4. Create `internal/tfcapi/pagination_test.go` with tests using httptest
+  5. Test aggregation across multiple pages
+  6. Test stopping on empty page
+  7. Run feedback loops
+
 **Gherkin**
 
 ```gherkin
@@ -986,6 +1005,44 @@ Feature: Auto pagination
     When I run a list command
     Then requests stop after the empty page
 ```
+
+**Status: DONE**
+
+**Progress Notes**
+
+* 2026-01-20
+  * Changes:
+    * Created `internal/tfcapi/pagination.go` with:
+      * `DefaultPageSize` constant (100)
+      * `CollectAllOrganizations` - fetches all pages of organizations
+      * `CollectAllWorkspaces` - fetches all pages of workspaces for an org
+      * `CollectAllProjects` - fetches all pages of projects for an org
+      * `CollectAllRuns` - fetches all pages of runs for a workspace
+      * `CollectAllConfigurationVersions` - fetches all pages of configuration versions
+      * `CollectAllVariables` - fetches all pages of variables for a workspace
+    * Each function:
+      * Uses go-tfe's built-in pagination via `PageNumber` and `NextPage`
+      * Sets default page size of 100 if not specified
+      * Stops on empty page or when `NextPage == 0` to avoid infinite loops
+      * Aggregates all items across pages into a single slice
+    * Created `internal/tfcapi/pagination_test.go` with 6 unit tests:
+      * `TestCollectAllOrganizations_AggregatesMultiplePages` - verifies items from multiple pages aggregated
+      * `TestCollectAllOrganizations_StopsOnEmptyPage` - verifies loop stops on empty page
+      * `TestCollectAllOrganizations_StopsWhenNextPageIsZero` - verifies stops when no more pages
+      * `TestCollectAllOrganizations_RespectsPageSize` - custom page size passed to API
+      * `TestCollectAllOrganizations_UsesDefaultPageSize` - default page size when not specified
+      * `TestCollectAllOrganizations_PropagatesErrors` - API errors propagated
+    * Tests handle go-tfe's internal /api/v2/ping request on client creation
+  * Files changed: `internal/tfcapi/pagination.go`, `internal/tfcapi/pagination_test.go`
+  * Commands run: `make fmt`, `make lint`, `make build`, `make test` - all pass
+  * Test results: `ok github.com/richclement/tfccli/internal/tfcapi 0.367s`
+  * Gherkin scenarios verified:
+    * "Aggregates multiple pages into one JSON output" - TestCollectAllOrganizations_AggregatesMultiplePages passes
+    * "Stops on empty page to avoid infinite loops" - TestCollectAllOrganizations_StopsOnEmptyPage passes
+  * Implementation notes:
+    * Used type-specific functions (e.g., `CollectAllOrganizations`) rather than generics because go-tfe list methods have varying signatures (some take org name, some take workspace ID, etc.)
+    * go-tfe already handles retry/backoff internally, so pagination just loops through pages
+  * Task complete
 
 ---
 
