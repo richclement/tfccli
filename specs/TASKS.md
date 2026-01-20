@@ -1904,6 +1904,72 @@ Feature: applies read and errored state recovery
     Then the request to archivist has no Authorization header
 ```
 
+**Status: DONE**
+
+**Plan (acceptance + verification + steps)**
+
+* Acceptance criteria:
+  * `tfc applies get <apply-id>` calls GET /api/v2/applies/<apply-id>
+  * `tfc applies errored-state <apply-id>` calls GET /api/v2/applies/<apply-id>/errored-state to get 307 redirect URL
+  * `tfc applies errored-state <apply-id> --out <file>` writes to file and emits meta JSON
+  * Redirect security: errored state downloaded from redirect URL without Authorization header
+  * JSON output wraps result in `{"data": ...}` for get command
+  * Table output shows ID, STATUS, ADDITIONS, CHANGES, DESTRUCTIONS, IMPORTS columns
+  * When `--out` not set: write bytes to stdout
+  * When `--out` set: write to file, emit `{"meta":{"written_to":"<file>", "bytes": N}}` on stdout
+* Verification: `go test ./cmd/tfc/...`; all Gherkin scenarios pass as unit tests
+* Steps:
+  1. Create `cmd/tfc/applies.go` with AppliesCmd group struct
+  2. Define `appliesClient` interface abstracting go-tfe applies API for testing
+  3. Implement `realAppliesClient` wrapping go-tfe client
+  4. Implement `GetErroredStateURL` method that fetches 307 redirect and returns Location URL
+  5. Implement AppliesGetCmd using client.Applies.Read
+  6. Implement AppliesErroredStateCmd with `--out` flag and downloadClient for redirect URL
+  7. Add injectable dependencies for testing (baseDir, tokenResolver, ttyDetector, stdout, clientFactory, downloadClient)
+  8. Create `cmd/tfc/applies_test.go` with unit tests for all Gherkin scenarios
+  9. Wire up AppliesCmd in CLI struct in main.go
+
+**Progress Notes**
+
+* 2026-01-20
+  * Changes:
+    * Created `cmd/tfc/applies.go` with:
+      * `AppliesCmd` group with Get, ErroredState subcommands
+      * `appliesClient` interface abstracting go-tfe applies API for testing
+      * `realAppliesClient` wrapping go-tfe client
+      * `GetErroredStateURL` method that calls /api/v2/applies/<id>/errored-state and captures 307 redirect Location header
+      * `applyJSON` type for JSON serialization
+      * `AppliesGetCmd` with apply-id argument
+      * `AppliesErroredStateCmd` with `--out` flag and injectable downloadClient
+      * Each subcommand supports injectable dependencies: baseDir, tokenResolver, ttyDetector, stdout, clientFactory
+      * JSON output wraps results in `{"data": ...}` for get command
+      * Table output shows ID, STATUS, ADDITIONS, CHANGES, DESTRUCTIONS, IMPORTS columns for get
+      * When `--out` not set: write bytes to stdout
+      * When `--out` set: write to file, emit `{"meta":{"written_to":"<file>", "bytes": N}}` on stdout
+      * Redirect security: downloadClient uses separate http.Client without Authorization header
+    * Updated `cmd/tfc/main.go` to wire AppliesCmd to CLI struct
+    * Created `cmd/tfc/applies_test.go` with 14 unit tests:
+      * TestAppliesGet_JSON - get returns apply details as JSON with top-level "data" field
+      * TestAppliesGet_Table - get returns table with field/value format
+      * TestAppliesGet_NotFound - not found errors surfaced
+      * TestAppliesErroredState_WritesToStdout - errored-state writes to stdout when no --out
+      * TestAppliesErroredState_WritesToFile - errored-state writes to file with --out
+      * TestAppliesErroredState_TableMode - table mode shows "written to" message
+      * TestAppliesErroredState_NotAvailable - error when errored state not available (404)
+      * TestAppliesErroredState_DownloadError - download errors surfaced
+      * TestAppliesGet_FailsWhenSettingsMissing - suggests tfc init
+      * TestAppliesErroredState_NoAuthorizationForwarded - verifies redirect URL is fetched without auth
+      * TestApplies_ContextOverride - --context flag works
+      * TestApplies_AddressOverride - --address flag works
+      * TestAppliesGet_APIError - API errors surfaced
+  * Files changed: `cmd/tfc/main.go`, `cmd/tfc/applies.go`, `cmd/tfc/applies_test.go`
+  * Commands run: `make fmt`, `make lint`, `make build`, `make test` - all pass
+  * Gherkin scenarios verified:
+    * "Get apply uses apply id endpoint" - TestAppliesGet_JSON verifies request flow
+    * "errored-state follows 307 and writes to file" - TestAppliesErroredState_WritesToFile passes
+    * "Redirect follow does not forward Authorization header" - TestAppliesErroredState_NoAuthorizationForwarded verifies downloadClient uses separate http client
+  * Task complete
+
 ---
 
 ### Task 23 — Subcommand: `tfc configuration-versions` (create/list/get/upload/download/archive)
