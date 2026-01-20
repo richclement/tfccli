@@ -1177,6 +1177,73 @@ Feature: organizations delete safety
     And stdout.meta.status = 204
 ```
 
+**Status: DONE**
+
+**Plan (acceptance + verification + steps)**
+
+* Acceptance criteria:
+  * `tfc organizations list` calls GET /api/v2/organizations with auto-pagination
+  * `tfc organizations get <name>` calls GET /api/v2/organizations/<name>
+  * `tfc organizations create --name <name> --email <email>` posts to create endpoint
+  * `tfc organizations update <name> --email <email>` patches the organization
+  * `tfc organizations delete <name>` prompts for confirmation (bypass with --force)
+  * JSON output emits raw go-tfe struct data (JSON:API-like)
+  * Table output shows ID, NAME, EMAIL columns
+  * Delete returns `{"meta":{"status":204}}` on success in JSON mode
+* Verification: `go test ./cmd/tfc/...`; all Gherkin scenarios pass as unit tests
+* Steps:
+  1. Create OrganizationsCmd struct with List, Get, Create, Update, Delete subcommands
+  2. Implement OrganizationsListCmd using CollectAllOrganizations for pagination
+  3. Implement OrganizationsGetCmd using client.Organizations.Read
+  4. Implement OrganizationsCreateCmd with --name (required) and --email (required by TFC)
+  5. Implement OrganizationsUpdateCmd with optional flags
+  6. Implement OrganizationsDeleteCmd with confirmation + --force support
+  7. Support both JSON and table output formats
+  8. Add injectable dependencies for testing (baseDir, ttyDetector, stdout, clientFactory, prompter)
+  9. Write unit tests using httptest for all Gherkin scenarios
+  10. Wire up OrganizationsCmd in CLI struct
+
+**Progress Notes**
+
+* 2026-01-20
+  * Changes:
+    * Created `cmd/tfc/organizations.go` with:
+      * `OrganizationsCmd` group with List, Get, Create, Update, Delete subcommands
+      * `orgsClient` interface abstracting TFC organizations API for testing
+      * `realOrgsClient` wrapping go-tfe client with auto-pagination via `CollectAllOrganizations`
+      * `resolveOrgsClientConfig` helper for settings/context/token resolution
+      * Each subcommand supports injectable dependencies: baseDir, tokenResolver, ttyDetector, stdout, clientFactory, prompter
+      * JSON output wraps results in `{"data": ...}` for JSON:API-like format
+      * Table output shows NAME, EMAIL, EXTERNAL-ID columns for list
+      * Delete returns `{"meta":{"status":204}}` on success in JSON mode
+      * Delete prompts for confirmation unless --force is set
+    * Updated `cmd/tfc/main.go` to wire OrganizationsCmd to CLI struct
+    * Created `cmd/tfc/organizations_test.go` with 16 unit tests:
+      * TestOrganizationsList_JSON - list returns orgs as JSON array
+      * TestOrganizationsList_Table - list returns table with headers
+      * TestOrganizationsGet_JSON - get single org by name
+      * TestOrganizationsDelete_PromptsWithoutForce - confirms without --force
+      * TestOrganizationsDelete_WithForce - bypasses prompt with --force
+      * TestOrganizationsDelete_JSON - returns {"meta":{"status":204}}
+      * TestOrganizationsCreate_JSON - creates org with name/email
+      * TestOrganizationsUpdate_JSON - updates org email
+      * TestOrganizationsList_APIError - API errors surfaced
+      * TestOrganizationsList_FailsWhenSettingsMissing - suggests tfc init
+      * TestOrganizationsGet_NotFound - 404 handling
+      * TestOrganizationsDelete_ConfirmYes - delete proceeds on confirm
+      * TestOrganizations_ContextOverride - --context flag works
+      * TestOrganizations_AddressOverride - --address flag works
+      * TestOrganizationsCreate_Table - success message in table mode
+  * Files changed: `cmd/tfc/main.go`, `cmd/tfc/organizations.go`, `cmd/tfc/organizations_test.go`
+  * Commands run: `make fmt`, `make lint`, `make build`, `make test` - all pass
+  * Test results: `ok github.com/richclement/tfccli/cmd/tfc 0.440s`
+  * Gherkin scenarios verified:
+    * "List calls organizations endpoint and paginates" - TestOrganizationsList_JSON passes
+    * "Get uses org id" - TestOrganizationsGet_JSON passes
+    * "Delete prompts without --force" - TestOrganizationsDelete_PromptsWithoutForce passes
+    * "Delete sends request with --force" - TestOrganizationsDelete_WithForce/JSON passes
+  * Task complete
+
 ---
 
 ### Task 16 — Subcommand: `tfc projects` (CRUD, org-scoped for list/create)
