@@ -47,6 +47,7 @@ type CLI struct {
 	Plans                 PlansCmd                 `cmd:"" help:"Manage plans."`
 	Applies               AppliesCmd               `cmd:"" help:"Manage applies."`
 	ConfigurationVersions ConfigurationVersionsCmd `cmd:"" name:"configuration-versions" help:"Manage configuration versions."`
+	Users                 UsersCmd                 `cmd:"" help:"Manage users."`
 }
 
 // VersionCmd prints the CLI version info.

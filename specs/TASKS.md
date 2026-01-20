@@ -2089,6 +2089,27 @@ Feature: configuration versions lifecycle
 * `users get <user-id>` (raw JSON:API doc) ([HashiCorp Developer][5])
 * (Optional but useful): `users tokens list/create/delete` later; v1 can be just `get`
 
+**Plan (acceptance + verification + steps)**
+
+* Acceptance criteria:
+  * `tfc users get <user-id>` calls GET /api/v2/users/<user-id>
+  * JSON output returns raw JSON:API document with data.id, data.type, data.attributes
+  * Table output shows FIELD/VALUE format with ID, Username, Email, Avatar URL, Service Account
+  * 404 error surfaced with "user not found" message
+  * 401 error surfaced with "unauthorized" message
+  * Supports `--context` and `--address` override flags
+* Verification: `go test ./cmd/tfc/...`; all Gherkin scenarios pass as unit tests
+* Steps:
+  1. Create `cmd/tfc/users.go` with UsersCmd group struct
+  2. Define `usersClient` interface with Read method (go-tfe doesn't expose GET /users/:id, so use raw HTTP)
+  3. Implement `realUsersClient` using http.Client with Authorization header
+  4. Define UserResponse, UserData, UserAttributes types for JSON:API structure
+  5. Implement UsersGetCmd with user-id argument
+  6. Support both JSON and table output formats
+  7. Add injectable dependencies for testing (baseDir, tokenResolver, ttyDetector, stdout, clientFactory)
+  8. Create `cmd/tfc/users_test.go` with unit tests for all Gherkin scenarios
+  9. Wire up UsersCmd in CLI struct in main.go
+
 **Gherkin**
 
 ```gherkin
@@ -2103,6 +2124,40 @@ Feature: users get
     Then stderr contains "User not found"
     And exit code is 2
 ```
+
+**Status: DONE**
+
+**Progress Notes**
+
+* 2026-01-20
+  * Changes:
+    * Created `cmd/tfc/users.go` with:
+      * `UsersCmd` group with Get subcommand
+      * `usersClient` interface abstracting users API (raw HTTP since go-tfe doesn't expose GET /users/:id)
+      * `realUsersClient` using http.Client with Authorization Bearer token
+      * `UserResponse`, `UserData`, `UserAttributes` types for JSON:API response structure
+      * `UsersGetCmd` with user-id argument
+      * JSON output returns raw JSON:API document
+      * Table output shows FIELD/VALUE format: ID, Username, Email, Avatar URL, Service Account
+      * Proper HTTP error handling: 404 -> "user not found", 401 -> "unauthorized"
+      * Each subcommand supports injectable dependencies: baseDir, tokenResolver, ttyDetector, stdout, clientFactory
+    * Updated `cmd/tfc/main.go` to wire UsersCmd to CLI struct
+    * Created `cmd/tfc/users_test.go` with 8 unit tests:
+      * TestUsersGet_JSON - get returns user as JSON with data.id, data.attributes
+      * TestUsersGet_Table - get returns table with FIELD/VALUE headers
+      * TestUsersGet_NotFound - 404 error surfaced with "not found"
+      * TestUsersGet_FailsWhenSettingsMissing - suggests tfc init
+      * TestUsersGet_ContextOverride - --context flag switches context
+      * TestUsersGet_AddressOverride - --address flag overrides address
+      * TestUsersGet_APIError - API errors surfaced
+      * TestUsersGet_UnauthorizedError - 401 error surfaced with "unauthorized"
+  * Files changed: `cmd/tfc/main.go`, `cmd/tfc/users.go`, `cmd/tfc/users_test.go`
+  * Commands run: `make fmt`, `make lint`, `make build`, `make test` - all pass
+  * Gherkin scenarios verified:
+    * "Get user calls /users/:id" - TestUsersGet_JSON verifies request flow
+    * "404 is surfaced clearly" - TestUsersGet_NotFound passes
+  * Implementation note: go-tfe doesn't expose GET /users/:id endpoint, so implemented using raw HTTP client with proper Authorization header handling
+  * Task complete
 
 ---
 
