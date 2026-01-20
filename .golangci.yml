@@ -1,0 +1,19 @@
+run:
+  timeout: 5m
+  tests: false
+  # Explicitly skip modules
+  modules-download-mode: readonly
+
+linters:
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+
+issues:
+  # Show all issues
+  max-issues-per-linter: 0
+  max-same-issues: 0
