@@ -1,0 +1,12 @@
+{
+  "maximumIterations": 20,
+  "completionResponse": "DONE",
+  "outputTruncateChars": 5000,
+  "streamAgentOutput": true,
+  "includeIterationCountInPrompt": false,
+  "agent": {
+    "command": "codex",
+    "flags": []
+  },
+  "guardrails": null
+}
