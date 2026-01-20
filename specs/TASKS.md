@@ -1058,6 +1058,25 @@ Feature: Auto pagination
   * connectivity check (simple GET, e.g., organizations list page 1)
 * Output table/json
 
+**Plan (acceptance + verification + steps)**
+
+* Acceptance criteria:
+  * `tfc doctor` validates settings, context, address, token, and connectivity
+  * Returns exit code 2 on any failure, exit code 0 when all checks pass
+  * Outputs JSON with checks array when `--output-format=json`
+  * Outputs table with CHECK/STATUS/DETAIL columns when `--output-format=table`
+  * Token source shown (env, terraform config, credentials.tfrc.json) but token value never printed
+  * Supports `--context` flag to check a specific context
+  * Supports `--address` flag to override the address
+* Verification: `go test ./cmd/tfc/...`; all Gherkin scenarios pass as unit tests
+* Steps:
+  1. Add DoctorCheck and DoctorResult types for structured output
+  2. Implement DoctorCmd.Run() with injectable dependencies (tokenResolver, ttyDetector, clientFactory)
+  3. Add PingableClient interface and Client wrapper in tfcapi package
+  4. Implement checks: settings, context, address, token, connectivity
+  5. Support both JSON and table output formats
+  6. Write unit tests for all Gherkin scenarios
+
 **Gherkin**
 
 ```gherkin
@@ -1082,6 +1101,40 @@ Feature: doctor command
     Then exit code is 2
     And output indicates connectivity failure
 ```
+
+**Status: DONE**
+
+**Progress Notes**
+
+* 2026-01-20
+  * Changes:
+    * Implemented `DoctorCmd` in `cmd/tfc/main.go` with:
+      * `DoctorCheck` and `DoctorResult` types for JSON output
+      * Injectable dependencies: `tokenResolver`, `ttyDetector`, `stdout`, `clientFactory`
+      * 5 checks: settings, context, address, token, connectivity
+      * JSON output with `checks` array
+      * Table output with CHECK/STATUS/DETAIL columns and colored status
+      * Supports `--context` flag to check specific context
+      * Supports `--address` flag to override address
+    * Added `PingableClient` interface and `Client` wrapper to `internal/tfcapi/client.go`
+    * Created `cmd/tfc/doctor_test.go` with 10 unit tests:
+      * `TestDoctor_FailsWhenSettingsMissing` - verifies "tfc init" in error output
+      * `TestDoctor_ReportsTokenSource` - verifies token status=PASS and source=env
+      * `TestDoctor_FailsOnConnectivityError` - verifies connectivity FAIL status
+      * `TestDoctor_TableOutput` - verifies table headers and check names
+      * `TestDoctor_ContextOverride` - verifies --context flag works
+      * `TestDoctor_AddressOverride` - verifies --address flag works
+      * `TestDoctor_TokenFromCredentialsFile` - verifies credentials.tfrc.json source
+      * `TestDoctor_AllChecksPASS` - verifies all checks pass when configured correctly
+      * `TestDoctor_NoTokenError` - verifies actionable error suggesting terraform login
+  * Files changed: `cmd/tfc/main.go`, `cmd/tfc/doctor_test.go`, `internal/tfcapi/client.go`
+  * Commands run: `make fmt`, `make lint`, `make build`, `make test` - all pass
+  * Test results: `ok github.com/richclement/tfccli/cmd/tfc 0.364s` (all 21 tests pass)
+  * Gherkin scenarios verified:
+    * "Doctor fails when settings missing" - TestDoctor_FailsWhenSettingsMissing passes
+    * "Doctor reports token source" - TestDoctor_ReportsTokenSource passes
+    * "Doctor fails on connectivity error" - TestDoctor_FailsOnConnectivityError passes
+  * Task complete
 
 ---
 
