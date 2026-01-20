@@ -492,6 +492,23 @@ Feature: Terraform token discovery
   * `--debug` overrides to debug
 * Consistent structured fields: `request_id`, `method`, `path`, `status`, `attempt`
 
+**Plan (acceptance + verification + steps)**
+
+* Acceptance criteria:
+  * `internal/logging` package with `NewLogger(logLevel string, debug bool) logr.Logger`
+  * Logger factory reads `log_level` from context settings (debug/info/warn/error)
+  * `--debug` CLI flag overrides to debug level regardless of settings
+  * Logger is configured with stdr (stdlib logger backend)
+  * Log level verbosity mapping: debug=2, info=1, warn=0, error=-1 (convention for stdr)
+  * Logger does not log secrets (API tokens, sensitive var values)
+* Verification: `go test ./internal/logging/...`; all Gherkin scenarios pass as unit tests
+* Steps:
+  1. Create `internal/logging/logger.go` with LogLevel type and NewLogger function
+  2. Implement log level string to verbosity mapping (stdr uses V-levels)
+  3. Create logger factory that accepts context log_level and debug override flag
+  4. Write unit tests covering Gherkin scenarios
+  5. Update CLI to create logger and pass to commands (prepare for future usage)
+
 **Gherkin**
 
 ```gherkin
@@ -506,6 +523,37 @@ Feature: Logging level resolution
     When I run "tfc doctor"
     Then logs do not include info-level messages
 ```
+
+**Status: DONE**
+
+**Progress Notes**
+
+* 2026-01-20
+  * Changes:
+    * Added logr/stdr dependencies to go.mod (v1.4.3 and v1.2.2)
+    * Created `internal/logging/logger.go` with:
+      * `LogLevel` type constants (debug/info/warn/error)
+      * `verbosityForLevel()` mapping log levels to stdr V-levels (debug=2, info=1, warn=0, error=-1)
+      * `NewLogger(logLevel, debug)` factory that creates a logr.Logger with stdr backend
+      * `NewLoggerWithOutput()` variant for testing with custom io.Writer
+      * `Discard()` helper returning a no-op logger
+    * Created `internal/logging/logger_test.go` with 9 unit tests:
+      * Debug flag overrides settings log level
+      * Settings log level is respected (error level does not log info)
+      * Info level logs info messages
+      * Warn level does not log info messages
+      * Warn level logs warn messages
+      * Debug level logs all levels
+      * Unknown level defaults to info
+      * Verbosity mapping unit test
+      * Discard logger test
+  * Files changed: `go.mod`, `go.sum`, `internal/logging/logger.go`, `internal/logging/logger_test.go`
+  * Commands run: `make fmt`, `make lint`, `make build`, `make test` - all pass
+  * Test results: `ok github.com/richclement/tfccli/internal/logging 0.300s`
+  * Gherkin scenarios verified:
+    * `debug flag overrides settings`: TestNewLogger_DebugOverridesSettings passes
+    * `settings log level is respected`: TestNewLogger_SettingsLogLevelRespected passes
+  * Task complete
 
 ---
 
