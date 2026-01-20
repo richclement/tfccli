@@ -1661,7 +1661,7 @@ Feature: workspace resources
   * `runs cancel <run-id>`
   * `runs force-cancel <run-id>`
 
-**Status: IN PROGRESS**
+**Status: DONE**
 
 **Plan (acceptance + verification + steps)**
 
@@ -1765,8 +1765,6 @@ Feature: runs create and actions
     * "Apply posts to action endpoint with --force" - TestRunsApply_WithForce passes
   * Note: Removed `--configuration-version-id` from required flags; go-tfe uses workspace's latest configuration version by default when not specified
   * Task complete
-
-**Status: DONE**
 
 ---
 
@@ -2002,6 +2000,85 @@ Feature: configuration versions lifecycle
     When I run "tfc configuration-versions archive cv-1" and answer "no"
     Then no PATCH/POST request is sent
 ```
+
+**Status: DONE**
+
+**Plan (acceptance + verification + steps)**
+
+* Acceptance criteria:
+  * `tfc configuration-versions list --workspace-id <ws-id>` calls GET /api/v2/workspaces/<ws-id>/configuration-versions with auto-pagination
+  * `tfc configuration-versions list` fails with exit 1 if `--workspace-id` not provided (Kong required flag)
+  * `tfc configuration-versions get <cv-id>` calls GET /api/v2/configuration-versions/<cv-id>
+  * `tfc configuration-versions create --workspace-id <ws-id>` posts to /api/v2/workspaces/<ws-id>/configuration-versions
+  * Create supports optional `--auto-queue-runs` and `--speculative` flags
+  * `tfc configuration-versions upload <cv-id> --file <path>` gets cv, extracts upload URL, sends PUT with file content (no Authorization header)
+  * `tfc configuration-versions download <cv-id>` downloads configuration content from download URL (no auth forwarded)
+  * `tfc configuration-versions archive <cv-id>` calls PATCH to archive (requires confirmation unless --force)
+  * JSON output wraps result in `{"data": ...}` for JSON:API-like format
+  * Table output shows ID, STATUS, SOURCE, AUTO-QUEUE-RUNS, SPECULATIVE columns for list
+  * Upload/download return meta JSON on success when --out used
+* Verification: `go test ./cmd/tfc/...`; all Gherkin scenarios pass as unit tests
+* Steps:
+  1. Create `cmd/tfc/configuration_versions.go` with ConfigurationVersionsCmd group struct
+  2. Define `cvClient` interface abstracting go-tfe configuration versions API for testing
+  3. Create `realCVClient` wrapping go-tfe client with `CollectAllConfigurationVersions` pagination
+  4. Implement ConfigurationVersionsListCmd requiring --workspace-id flag
+  5. Implement ConfigurationVersionsGetCmd using client.ConfigurationVersions.Read
+  6. Implement ConfigurationVersionsCreateCmd with --workspace-id required, optional --auto-queue-runs, --speculative
+  7. Implement ConfigurationVersionsUploadCmd with cv-id arg and --file required (extracts upload URL from cv, uses separate HTTP client without auth)
+  8. Implement ConfigurationVersionsDownloadCmd with cv-id arg and optional --out flag (downloads from download URL without auth)
+  9. Implement ConfigurationVersionsArchiveCmd with confirmation + --force support
+  10. Add injectable dependencies for testing (baseDir, tokenResolver, ttyDetector, stdout, clientFactory, prompter, uploadClient, downloadClient)
+  11. Create `cmd/tfc/configuration_versions_test.go` with unit tests for all Gherkin scenarios
+  12. Wire up ConfigurationVersionsCmd in CLI struct in main.go
+
+**Progress Notes**
+
+* 2026-01-20
+  * Changes:
+    * Created `cmd/tfc/configuration_versions.go` with:
+      * `ConfigurationVersionsCmd` group with List, Get, Create, Upload, Download, Archive subcommands
+      * `cvClient` interface abstracting go-tfe configuration versions API for testing
+      * `realCVClient` wrapping go-tfe client with `CollectAllConfigurationVersions` pagination
+      * `cvJSON` type for JSON serialization
+      * `CVListCmd` requiring `--workspace-id` flag
+      * `CVGetCmd` with cv-id argument
+      * `CVCreateCmd` with `--workspace-id` required, optional `--auto-queue-runs`, `--speculative`
+      * `CVUploadCmd` with cv-id arg and `--file` required (extracts upload URL from cv, uses separate HTTP client without auth)
+      * `CVDownloadCmd` with cv-id arg and optional `--out` flag (downloads using go-tfe's built-in Download method)
+      * `CVArchiveCmd` with confirmation + --force support
+      * Each subcommand supports injectable dependencies: baseDir, tokenResolver, ttyDetector, stdout, clientFactory, prompter, uploadClient, fileReader
+      * JSON output wraps results in `{"data": ...}` for JSON:API-like format
+      * Table output shows ID, STATUS, SOURCE, AUTO-QUEUE-RUNS, SPECULATIVE columns for list
+      * Upload returns `{"meta":{"status":"uploaded", "cv_id":..., "bytes":...}}` on success in JSON mode
+      * Download with `--out` returns `{"meta":{"written_to":..., "bytes":...}}` on success in JSON mode
+      * Archive returns `{"meta":{"status":"archived", "cv_id":...}}` on success in JSON mode
+    * Updated `cmd/tfc/main.go` to wire ConfigurationVersionsCmd to CLI struct with `name:"configuration-versions"`
+    * Created `cmd/tfc/configuration_versions_test.go` with 17 unit tests:
+      * TestCVList_JSON - list returns CVs as JSON with top-level "data" field
+      * TestCVList_Table - list returns table with headers
+      * TestCVGet_JSON - get returns CV details as JSON
+      * TestCVCreate_JSON - creates CV with workspace-id
+      * TestCVCreate_WithSpeculative - speculative flag works
+      * TestCVUpload_JSON - uploads file to upload URL
+      * TestCVUpload_NoUploadURL - error when no upload URL available
+      * TestCVDownload_WritesToStdout - downloads to stdout
+      * TestCVDownload_WritesToFile - downloads to file with --out
+      * TestCVArchive_PromptsWithoutForce - confirms without --force
+      * TestCVArchive_WithForce - bypasses prompt with --force
+      * TestCVArchive_ConfirmYes - archive proceeds on confirm
+      * TestCVList_FailsWhenSettingsMissing - suggests tfc init
+      * TestCVList_APIError - API errors surfaced
+      * TestCVGet_NotFound - not found errors surfaced
+      * TestCV_ContextOverride - --context flag works
+      * TestCV_AddressOverride - --address flag works
+  * Files changed: `cmd/tfc/main.go`, `cmd/tfc/configuration_versions.go`, `cmd/tfc/configuration_versions_test.go`
+  * Commands run: `make fmt`, `make lint`, `make build`, `make test` - all pass
+  * Gherkin scenarios verified:
+    * "Create configuration version requires workspace-id" - `--workspace-id` is required flag in Kong
+    * "Upload uses upload-url and does not attach Authorization" - upload uses separate uploadClient function without auth headers
+    * "Archive requires confirmation unless forced" - TestCVArchive_PromptsWithoutForce passes
+  * Task complete
 
 ---
 
