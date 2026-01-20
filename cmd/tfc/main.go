@@ -34,13 +34,14 @@ type CLI struct {
 	Debug        bool   `help:"Enable debug logging for this invocation."`
 	Force        bool   `help:"Bypass confirmation prompts for destructive operations."`
 
-	Version       VersionCmd       `cmd:"" help:"Print version information."`
-	Doctor        DoctorCmd        `cmd:"" help:"Validate settings, token discovery, and connectivity."`
-	Init          InitCmd          `cmd:"" help:"Initialize CLI settings."`
-	Contexts      ContextsCmd      `cmd:"" help:"Manage named contexts."`
-	Organizations OrganizationsCmd `cmd:"" help:"Manage organizations."`
-	Projects      ProjectsCmd      `cmd:"" help:"Manage projects."`
-	Workspaces    WorkspacesCmd    `cmd:"" help:"Manage workspaces."`
+	Version            VersionCmd            `cmd:"" help:"Print version information."`
+	Doctor             DoctorCmd             `cmd:"" help:"Validate settings, token discovery, and connectivity."`
+	Init               InitCmd               `cmd:"" help:"Initialize CLI settings."`
+	Contexts           ContextsCmd           `cmd:"" help:"Manage named contexts."`
+	Organizations      OrganizationsCmd      `cmd:"" help:"Manage organizations."`
+	Projects           ProjectsCmd           `cmd:"" help:"Manage projects."`
+	Workspaces         WorkspacesCmd         `cmd:"" help:"Manage workspaces."`
+	WorkspaceVariables WorkspaceVariablesCmd `cmd:"" name:"workspace-variables" help:"Manage workspace variables."`
 }
 
 // VersionCmd prints the CLI version info.
