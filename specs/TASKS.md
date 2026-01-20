@@ -433,6 +433,53 @@ Feature: Terraform token discovery
     And error suggests running "terraform login"
 ```
 
+**Status: DONE**
+
+**Plan (acceptance + verification + steps)**
+
+* Acceptance criteria (from PRD/Task):
+  * `ResolveToken(address)` returns `(token, source, error)`
+  * Precedence: env var `TF_TOKEN_<sanitized_host>` > `TF_CLI_CONFIG_FILE` credentials block > `~/.terraform.d/credentials.tfrc.json`
+  * Host sanitization: `app.terraform.io` -> `app_terraform_io`
+  * Address parsing: extract hostname from addresses like `app.terraform.io`, `https://tfe.example.com`, `app.terraform.io/eu`
+  * Returns actionable error suggesting `terraform login` when no token found
+  * Never log/print the token value
+* Verification: `go test ./internal/auth/...`; all Gherkin scenarios pass as unit tests
+* Steps:
+  1. Create `internal/auth/token.go` with `ResolveToken(address string) (token, source string, err error)`
+  2. Implement `SanitizeHost(hostname)` - replaces `.` and `-` with `_`
+  3. Implement `ExtractHostname(address)` - parses URL/host to get hostname only
+  4. Implement env var lookup `TF_TOKEN_<sanitized_host>`
+  5. Implement Terraform CLI config parsing (`TF_CLI_CONFIG_FILE` or `~/.terraformrc` or `terraform.rc` on Windows)
+  6. Implement `credentials.tfrc.json` parsing (`~/.terraform.d/credentials.tfrc.json`)
+  7. Add injectable env/fs for testability (EnvGetter, FSReader interfaces)
+  8. Write unit tests covering all Gherkin scenarios plus edge cases
+
+**Progress Notes**
+
+* 2026-01-20
+  * Changes:
+    * Created `internal/auth/token.go` with:
+      * `TokenResolver` struct with injectable `EnvGetter` and `FSReader` interfaces
+      * `ResolveToken(address)` returning `(*TokenResult, error)` with token and source
+      * `ExtractHostname(address)` - extracts hostname from various address formats
+      * `SanitizeHost(hostname)` - converts `.` and `-` to `_` for env var lookup
+      * Token precedence: env var > TF_CLI_CONFIG_FILE > ~/.terraformrc > ~/.terraform.d/credentials.tfrc.json
+      * `NoTokenError` type with actionable message suggesting `terraform login`
+    * Created `internal/auth/token_test.go` with 12 unit tests covering all Gherkin scenarios:
+      * Env token wins over file tokens
+      * Credentials file token used when env missing
+      * Missing token returns actionable error
+      * Terraform CLI config parsing (.terraformrc)
+      * TF_CLI_CONFIG_FILE override
+      * Address with path (hostname extraction)
+      * Full URL parsing
+      * Precedence tests (env > config > credentials file)
+  * Files changed: `internal/auth/token.go`, `internal/auth/token_test.go`, `specs/TASKS.md`
+  * Commands run: `make fmt`, `make lint`, `make build`, `make test` - all pass
+  * Test results: `ok github.com/richclement/tfccli/internal/auth 0.360s`
+  * Task complete
+
 ---
 
 ### Task 07 — Logging (logr/stdr) + settings-driven level + `--debug`
