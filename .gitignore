@@ -17,6 +17,13 @@ coverage.*
 *.coverprofile
 profile.cov
 
+# Local tools
+.tools/
+
+# Local build output
+bin/
+/tfc
+
 # Dependency directories (remove the comment below to include it)
 # vendor/
 
@@ -31,4 +38,5 @@ go.work.sum
 # .idea/
 # .vscode/
 
-PROMPT.md
+# ralph files
+.ralph/stream-json.log

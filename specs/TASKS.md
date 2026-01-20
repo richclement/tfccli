@@ -59,6 +59,16 @@ Use the following explicit interfaces to produce high-quality unit tests quickly
 * Entry point `cmd/tfc/main.go`
 * Baseline `internal/` layout
 
+**Plan (acceptance + verification + steps)**
+
+* Acceptance criteria (from PRD/Task): `go.mod` pins `kong`, `termenv`, `logr/stdr`, `go-tfe`; entry point exists at `cmd/tfc/main.go`; baseline `internal/` package directories exist.
+* Verification: `go test ./...`; `go run ./cmd/tfc --help` shows `tfc`.
+* Steps:
+  1. Update `go.mod` to include required dependencies.
+  2. Ensure baseline `internal/` directories exist in-tree.
+  3. Extend `cmd/tfc/main.go` if needed to keep compile/build working.
+  4. Run verification commands.
+
 **Gherkin**
 
 ```gherkin
@@ -74,6 +84,13 @@ Feature: Repository scaffolding
     And the exit code is 0
 ```
 
+**Status: DONE**
+
+**Progress Notes**
+
+* 2026-01-20 10:17:02 -0500
+  * Changes: updated `go.mod` with required dependencies for kong, termenv, logr/stdr, and go-tfe.
+
 ---
 
 ### Task 02 — Kong root CLI + global flags + consistent exit codes
@@ -88,6 +105,16 @@ Feature: Repository scaffolding
   * CLI usage errors -> exit 1
   * config/auth/api errors -> exit 2
   * unexpected/panic -> exit 3
+
+**Plan (acceptance + verification + steps)**
+
+* Acceptance criteria (from PRD/Task): Kong root includes global flags (`--context`, `--address`, `--org`, `--output-format`, `--debug`, `--force`); invalid enum/unknown command/missing required flags map to exit code 1; config/auth/api errors map to exit code 2; unexpected errors/panics map to exit code 3.
+* Verification: `go test ./...`; `go run ./cmd/tfc --output-format=xml doctor` exits 1; `go run ./cmd/tfc no-such-command` exits 1.
+* Steps:
+  1. Add root CLI struct with global flags and validation for output format.
+  2. Centralize error handling and map error types to exit codes.
+  3. Update commands to return typed errors for usage vs runtime.
+  4. Add/adjust tests if needed to cover exit code mapping.
 
 **Gherkin**
 
@@ -108,6 +135,13 @@ Feature: CLI parsing and exit codes
     Then stderr contains "organization is required"
     And the exit code is 1
 ```
+
+**Status: IN PROGRESS**
+
+**Progress Notes**
+
+* 2026-01-20 10:21:32 -0500
+  * Changes: added global flags and centralized exit code handling in `cmd/tfc/main.go`; introduced `internal/cmd` runtime error type.
 
 ---
 

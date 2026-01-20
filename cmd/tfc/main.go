@@ -1,6 +1,14 @@
 package main
 
-import "github.com/alecthomas/kong"
+import (
+	"errors"
+	"fmt"
+	"os"
+
+	"github.com/alecthomas/kong"
+
+	internalcmd "github.com/richclement/tfccli/internal/cmd"
+)
 
 var (
 	version = "dev"
@@ -8,12 +16,75 @@ var (
 	date    = ""
 )
 
-type CLI struct{}
-
 func main() {
-	kong.Parse(
-		&CLI{},
+	os.Exit(run())
+}
+
+type CLI struct {
+	Context      string `help:"Select a named context from settings."`
+	Address      string `help:"Override the API address for this invocation."`
+	Org          string `help:"Override the default organization for this invocation."`
+	OutputFormat string `name:"output-format" enum:"table,json" help:"Output format: table or json."`
+	Debug        bool   `help:"Enable debug logging for this invocation."`
+	Force        bool   `help:"Bypass confirmation prompts for destructive operations."`
+}
+
+type exitError struct {
+	code int
+}
+
+func run() (exitCode int) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			if exitErr, ok := recovered.(exitError); ok {
+				exitCode = exitErr.code
+				return
+			}
+			fmt.Fprintln(os.Stderr, "unexpected error")
+			exitCode = 3
+		}
+	}()
+
+	cli := CLI{}
+	parser, err := kong.New(
+		&cli,
 		kong.Name("tfc"),
 		kong.Description("Terraform Cloud API CLI"),
+		kong.Exit(func(code int) {
+			panic(exitError{code: code})
+		}),
 	)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 3
+	}
+
+	ctx, err := parser.Parse(os.Args[1:])
+	if err != nil {
+		printParseError(err)
+		return 1
+	}
+
+	if err := ctx.Run(); err != nil {
+		return exitCodeForError(err)
+	}
+	return 0
+}
+
+func printParseError(err error) {
+	fmt.Fprintln(os.Stderr, err)
+	var parseErr *kong.ParseError
+	if errors.As(err, &parseErr) {
+		_ = parseErr.Context.PrintUsage(true)
+	}
+}
+
+func exitCodeForError(err error) int {
+	var runtimeErr internalcmd.RuntimeError
+	if errors.As(err, &runtimeErr) {
+		fmt.Fprintln(os.Stderr, runtimeErr.Error())
+		return 2
+	}
+	fmt.Fprintln(os.Stderr, err)
+	return 3
 }
