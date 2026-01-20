@@ -194,6 +194,36 @@ Feature: Settings load and validation
     Then I get an error containing "current context not found"
 ```
 
+**Status: DONE**
+
+**Plan (acceptance + verification + steps)**
+
+* Acceptance criteria (from PRD/Task): Settings struct with `current_context` and `contexts` map; Context struct with `address`, `default_org`, `log_level`; Load/Save/Validate functions in `internal/config`; error messages per Gherkin scenarios.
+* Verification: `go test ./internal/config/...`; all Gherkin scenarios pass as unit tests.
+* Steps:
+  1. Define Settings and Context types in `internal/config/settings.go`.
+  2. Implement Load function (reads from `~/.tfccli/settings.json`, returns actionable error if missing).
+  3. Implement Validate function (checks log_level enum, current_context exists).
+  4. Implement Save function (writes settings.json with proper permissions).
+  5. Add SettingsPath helper for testability (accepts optional base dir).
+  6. Write unit tests covering all Gherkin scenarios.
+
+**Progress Notes**
+
+* 2026-01-20 (iteration 1)
+  * Changes:
+    * Created `internal/config/settings.go` with Settings and Context types
+    * Implemented Load/Save/Validate functions with testable base dir parameter
+    * Added SettingsDir/SettingsPath helpers, WithDefaults, GetCurrentContext, NewDefaultSettings
+    * Created `internal/config/settings_test.go` with tests for all Gherkin scenarios
+  * Commands run: `make fmt`, `make lint`, `make build`, `make test` - all pass
+  * Test results: `ok github.com/richclement/tfccli/internal/config 0.156s`
+  * Verified scenarios:
+    * Load returns "run 'tfc init'" when file missing
+    * Invalid log_level "loud" fails with "invalid log_level"
+    * Current context "missing" fails with "current context...not found"
+  * Task complete
+
 ---
 
 ### Task 04 — Subcommand: `tfc init` (interactive + non-interactive)
