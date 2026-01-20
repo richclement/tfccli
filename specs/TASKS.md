@@ -810,6 +810,24 @@ Feature: Table rendering
   * Construct API base as `<address>/api/v2`
 * go-tfe client created using normalized base + token
 
+**Plan (acceptance + verification + steps)**
+
+* Acceptance criteria:
+  * `NormalizeAddress(address)` returns full HTTPS URL (adds scheme if missing)
+  * `APIBaseURL(address)` appends `/api/v2` to normalized address
+  * Host-only input: `app.terraform.io` -> `https://app.terraform.io`
+  * Host with path: `app.terraform.io/eu` -> `https://app.terraform.io/eu`
+  * API base URL: `https://app.terraform.io/eu/api/v2`
+  * `NewClient(address, token, logger)` creates configured go-tfe client
+  * Client uses normalized address and provided token
+* Verification: `go test ./internal/tfcapi/...`; all Gherkin scenarios pass as unit tests
+* Steps:
+  1. Add `github.com/hashicorp/go-tfe` dependency to go.mod
+  2. Create `internal/tfcapi/address.go` with NormalizeAddress and APIBaseURL functions
+  3. Create `internal/tfcapi/client.go` with NewClient factory
+  4. Create `internal/tfcapi/address_test.go` with tests for address normalization
+  5. Create `internal/tfcapi/client_test.go` with tests for client creation
+
 **Gherkin**
 
 ```gherkin
@@ -823,6 +841,38 @@ Feature: Address normalization
     Then base URL is "https://app.terraform.io/eu"
     And API base is "https://app.terraform.io/eu/api/v2"
 ```
+
+**Status: DONE**
+
+**Progress Notes**
+
+* 2026-01-20
+  * Changes:
+    * Added `github.com/hashicorp/go-tfe v1.99.0` dependency to go.mod (plus transitive deps)
+    * Created `internal/tfcapi/address.go` with:
+      * `NormalizeAddress(address)` - adds https:// scheme if missing
+      * `APIBaseURL(address)` - appends /api/v2 to normalized address
+      * `ExtractHostFromAddress(address)` - extracts hostname for token lookup
+    * Created `internal/tfcapi/client.go` with:
+      * `ClientConfig` struct holding Address, Token, Logger
+      * `NewClient(cfg)` - creates go-tfe client with normalized address
+      * `Ping(ctx, client)` - verifies API connectivity using organizations list
+    * Created `internal/tfcapi/address_test.go` with 16 unit tests:
+      * NormalizeAddress: bare host, host with path, https scheme, http scheme, port, empty
+      * APIBaseURL: bare host, host with path, https URL, trailing slash, empty
+      * ExtractHostFromAddress: bare host, host with path, full URL, port, empty
+    * Created `internal/tfcapi/client_test.go` with 4 unit tests using httptest server:
+      * Creates client with valid config
+      * Token required validation (fails without network call)
+      * Address normalization with test server
+  * Files changed: `go.mod`, `go.sum`, `internal/tfcapi/address.go`, `internal/tfcapi/client.go`, `internal/tfcapi/address_test.go`, `internal/tfcapi/client_test.go`
+  * Commands run: `make fmt`, `make lint`, `make build`, `make test` - all pass
+  * Test results: `ok github.com/richclement/tfccli/internal/tfcapi 0.397s`
+  * Gherkin scenarios verified:
+    * "Bare host becomes https URL": `app.terraform.io` -> `https://app.terraform.io`
+    * "Host with path preserves path": `app.terraform.io/eu` -> `https://app.terraform.io/eu`
+    * "API base is address/api/v2": `https://app.terraform.io/eu/api/v2`
+  * Task complete
 
 ---
 
