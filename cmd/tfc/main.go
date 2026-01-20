@@ -39,6 +39,7 @@ type CLI struct {
 	Init          InitCmd          `cmd:"" help:"Initialize CLI settings."`
 	Contexts      ContextsCmd      `cmd:"" help:"Manage named contexts."`
 	Organizations OrganizationsCmd `cmd:"" help:"Manage organizations."`
+	Projects      ProjectsCmd      `cmd:"" help:"Manage projects."`
 }
 
 // VersionCmd prints the CLI version info.

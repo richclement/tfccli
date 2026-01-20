@@ -1256,6 +1256,33 @@ Feature: organizations delete safety
 * `projects update <project-id> ...`
 * `projects delete <project-id> [--force]`
 
+**Plan (acceptance + verification + steps)**
+
+* Acceptance criteria:
+  * `tfc projects list` calls GET /api/v2/organizations/<org>/projects with auto-pagination
+  * `tfc projects list` uses `--org` flag or falls back to `default_org` from context
+  * `tfc projects list` fails with exit 1 if no org available (error: "organization is required")
+  * `tfc projects get <id>` calls GET /api/v2/projects/<id>
+  * `tfc projects create --name <name>` posts to /api/v2/organizations/<org>/projects
+  * `tfc projects update <id> --name <name>` patches /api/v2/projects/<id>
+  * `tfc projects delete <id>` prompts for confirmation (bypass with --force)
+  * JSON output wraps result in `{"data": ...}` for JSON:API-like format
+  * Table output shows ID, NAME, DESCRIPTION columns for list
+  * Delete returns `{"meta":{"status":204}}` on success in JSON mode
+* Verification: `go test ./cmd/tfc/...`; all Gherkin scenarios pass as unit tests
+* Steps:
+  1. Create `cmd/tfc/projects.go` with ProjectsCmd group struct
+  2. Define `projectsClient` interface abstracting go-tfe projects API for testing
+  3. Create `realProjectsClient` wrapping go-tfe client with `CollectAllProjects` pagination
+  4. Implement ProjectsListCmd using org resolution (--org flag or default_org)
+  5. Implement ProjectsGetCmd using client.Projects.Read
+  6. Implement ProjectsCreateCmd with --name required
+  7. Implement ProjectsUpdateCmd with optional --name, --description flags
+  8. Implement ProjectsDeleteCmd with confirmation + --force support
+  9. Add injectable dependencies for testing (baseDir, ttyDetector, stdout, clientFactory, prompter)
+  10. Create `cmd/tfc/projects_test.go` with unit tests for all Gherkin scenarios
+  11. Wire up ProjectsCmd in CLI struct in main.go
+
 **Gherkin**
 
 ```gherkin
@@ -1280,6 +1307,53 @@ Feature: projects CRUD by id
     When I run "tfc projects delete prj-1" and answer "no"
     Then no DELETE request is sent
 ```
+
+**Status: DONE**
+
+**Progress Notes**
+
+* 2026-01-20
+  * Changes:
+    * Created `cmd/tfc/projects.go` with:
+      * `ProjectsCmd` group with List, Get, Create, Update, Delete subcommands
+      * `projectsClient` interface abstracting go-tfe projects API for testing
+      * `realProjectsClient` wrapping go-tfe client with `CollectAllProjects` pagination
+      * `resolveProjectsClientConfig` helper for settings/context/token/org resolution
+      * `projectJSON` type and conversion helpers to handle JSON serialization (go-tfe Project contains jsonapi.NullableAttr fields incompatible with encoding/json)
+      * Each subcommand supports injectable dependencies: baseDir, tokenResolver, ttyDetector, stdout, clientFactory, prompter
+      * JSON output wraps results in `{"data": ...}` for JSON:API-like format
+      * Table output shows ID, NAME, DESCRIPTION columns for list
+      * Delete returns `{"meta":{"status":204}}` on success in JSON mode
+      * Delete prompts for confirmation unless --force is set
+      * List/Create require org (uses --org flag or default_org from context, errors if neither available)
+    * Updated `cmd/tfc/main.go` to wire ProjectsCmd to CLI struct
+    * Created `cmd/tfc/projects_test.go` with 19 unit tests:
+      * TestProjectsList_UsesDefaultOrg - list uses default_org when --org not provided
+      * TestProjectsList_UsesOrgFlag - --org flag overrides default_org
+      * TestProjectsList_FailsWhenNoOrg - fails with "organization is required"
+      * TestProjectsList_JSON - list returns projects as JSON
+      * TestProjectsList_Table - list returns table with headers
+      * TestProjectsGet_JSON - get project by ID
+      * TestProjectsCreate_JSON - creates project with name
+      * TestProjectsCreate_FailsWhenNoOrg - create fails without org
+      * TestProjectsUpdate_JSON - updates project name/description
+      * TestProjectsDelete_PromptsWithoutForce - confirms without --force
+      * TestProjectsDelete_WithForce - bypasses prompt with --force
+      * TestProjectsDelete_JSON - returns {"meta":{"status":204}}
+      * TestProjectsList_APIError - API errors surfaced
+      * TestProjectsGet_NotFound - 404 handling
+      * TestProjectsList_FailsWhenSettingsMissing - suggests tfc init
+      * TestProjectsDelete_ConfirmYes - delete proceeds on confirm
+      * TestProjectsCreate_Table - success message in table mode
+  * Files changed: `cmd/tfc/main.go`, `cmd/tfc/projects.go`, `cmd/tfc/projects_test.go`
+  * Commands run: `make fmt`, `make lint`, `make build`, `make test` - all pass
+  * Test results: `ok github.com/richclement/tfccli/cmd/tfc` (all tests pass)
+  * Gherkin scenarios verified:
+    * "List uses default_org when --org not provided" - TestProjectsList_UsesDefaultOrg passes
+    * "List fails when no org available" - TestProjectsList_FailsWhenNoOrg passes
+    * "Get uses project id endpoint" - TestProjectsGet_JSON passes
+    * "Delete requires confirmation unless forced" - TestProjectsDelete_PromptsWithoutForce passes
+  * Task complete
 
 ---
 
