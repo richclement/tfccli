@@ -726,6 +726,25 @@ Feature: Output format defaults
 * No styling when not TTY
 * Basic PASS/WARN/FAIL formatting for doctor
 
+**Plan (acceptance + verification + steps)**
+
+* Acceptance criteria:
+  * `TableWriter` struct that renders tabular data with headers and rows
+  * Deterministic output: rows appear in input order (no sorting/reordering)
+  * No ANSI styling when stdout is not a TTY (use termenv profile detection)
+  * `StatusStyle(status)` helper returns styled PASS/WARN/FAIL for doctor output
+  * Column alignment (left-aligned) with consistent spacing
+* Verification: `go test ./internal/output/...`; all Gherkin scenarios pass as unit tests
+* Steps:
+  1. Create `internal/output/table.go` with TableWriter struct
+  2. Implement `NewTableWriter(w io.Writer, headers []string, isTTY bool)`
+  3. Implement `WriteRow(values []string)` method
+  4. Implement `Flush()` method that renders the table
+  5. Use termenv for styling (header bold, PASS green, WARN yellow, FAIL red)
+  6. Disable styling when not TTY (termenv Ascii profile)
+  7. Add StatusStyle helper for PASS/WARN/FAIL formatting
+  8. Create tests in output_test.go covering Gherkin scenarios
+
 **Gherkin**
 
 ```gherkin
@@ -740,6 +759,44 @@ Feature: Table rendering
     When I run a table command explicitly "--output-format=table"
     Then stdout does not contain "\u001b["
 ```
+
+**Status: DONE**
+
+**Progress Notes**
+
+* 2026-01-20
+  * Changes:
+    * Added `github.com/muesli/termenv v0.16.0` dependency to go.mod (plus transitive deps)
+    * Created `internal/output/table.go` with:
+      * `TableWriter` struct for rendering tabular data
+      * `NewTableWriter(w, headers, isTTY)` constructor
+      * `AddRow(values...)` method for adding rows
+      * `Render()` method that outputs header, separator, and rows
+      * Deterministic output order (rows in insertion order)
+      * Column alignment with automatic width calculation
+      * ANSI styling disabled when `isTTY=false` (uses termenv Ascii profile)
+      * Bold headers when styling enabled
+    * Added `Status` type with `StatusPass`, `StatusWarn`, `StatusFail` constants
+    * Added `StatusStyle(status, isTTY)` helper for PASS/WARN/FAIL formatting:
+      * PASS: green
+      * WARN: yellow
+      * FAIL: red
+      * Plain text when not TTY
+    * Added 10 unit tests to `internal/output/output_test.go`:
+      * `TestTableWriter_DeterministicOrder` - verifies row order preserved
+      * `TestTableWriter_NoANSIWhenNotTTY` - verifies no escape codes when isTTY=false
+      * `TestTableWriter_HeadersAndSeparator` - verifies table structure
+      * `TestTableWriter_ColumnAlignment` - verifies columns align properly
+      * `TestTableWriter_PadsShortRows` - handles rows with fewer values than headers
+      * `TestTableWriter_EmptyTable` - handles table with no data rows
+      * `TestStatusStyle_NoANSIWhenNotTTY` - status styling disabled when not TTY
+      * `TestStatusStyle_ContainsStatusText` - status text always present
+  * Files changed: `go.mod`, `go.sum`, `internal/output/table.go`, `internal/output/output_test.go`
+  * Commands run: `make fmt`, `make lint`, `make build`, `make test` - all pass
+  * Gherkin scenarios verified:
+    * "Table output is deterministic" - rows appear in input order A, B, C
+    * "No ANSI styling when stdout is not TTY" - no `\u001b[` in output
+  * Task complete
 
 ---
 
