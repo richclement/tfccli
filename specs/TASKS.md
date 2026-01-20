@@ -2435,6 +2435,75 @@ Feature: Test harness
     Then the real user home is not modified
 ```
 
+**Status: DONE**
+
+**Plan (acceptance + verification + steps)**
+
+* Acceptance criteria:
+  * `internal/testutil` package exists with:
+    * `TempHome(t, settings)` - creates temp directory with optional pre-populated settings
+    * `DefaultTestSettings()` - returns minimal valid settings for tests
+    * `MultiContextSettings()` - returns settings with multiple contexts
+    * `RequestRecorder` - captures HTTP requests (method, path, query, headers, body)
+    * `AcceptingPrompter` / `RejectingPrompter` / `FailingPrompter` - common prompter test doubles
+    * `FakeEnv` / `FakeFS` - implements `auth.EnvGetter` and `auth.FSReader`
+    * `TokenResolverWithEnvToken()` - creates resolver with env token for common test setup
+  * Note: Fake TTY detector already exists at `output.FakeTTYDetector`
+  * Note: Scripted prompter already exists at `ui.ScriptedPrompter`
+  * Unit tests cover all Gherkin scenarios
+* Verification: `go test ./internal/testutil/...`; all tests pass
+* Steps:
+  1. Create `internal/testutil/home.go` with TempHome, DefaultTestSettings, MultiContextSettings
+  2. Create `internal/testutil/recorder.go` with RequestRecorder struct
+  3. Create `internal/testutil/prompter.go` with AcceptingPrompter, RejectingPrompter, FailingPrompter
+  4. Create `internal/testutil/env.go` with FakeEnv, FakeFS, TokenResolverWithEnvToken
+  5. Create `internal/testutil/testutil_test.go` with tests for all utilities
+  6. Run feedback loops (make fmt, lint, build, test)
+
+**Progress Notes**
+
+* 2026-01-20
+  * Changes:
+    * Created `internal/testutil/home.go` with:
+      * `TempHome(t, settings)` - creates temp directory, optionally populates settings.json
+      * `DefaultTestSettings()` - returns minimal valid settings (default context, app.terraform.io, test-org)
+      * `MultiContextSettings()` - returns settings with default and prod contexts
+    * Created `internal/testutil/recorder.go` with:
+      * `RequestRecorder` struct that captures HTTP requests
+      * `Record(req)` - captures method, path, query, headers, body (restores body for handler)
+      * `Requests()`, `Count()`, `Last()`, `Clear()` - access recorded requests
+      * `HasRequest(method, path)`, `RequestsForPath(path)` - query helpers
+      * `RecordedRequest` with `HasAuthorizationHeader()`, `GetAuthorizationHeader()`, `BodyString()`
+    * Created `internal/testutil/prompter.go` with:
+      * `AcceptingPrompter` - always returns true for confirms
+      * `RejectingPrompter` - always returns false for confirms
+      * `FailingPrompter` - returns error to verify --force bypasses prompts
+      * `ErrPrompterShouldNotBeCalled` sentinel error
+    * Created `internal/testutil/env.go` with:
+      * `FakeEnv` - implements `auth.EnvGetter` with configurable vars
+      * `FakeFS` - implements `auth.FSReader` with configurable files and home dir
+      * `NewTestTokenResolver()` - creates resolver with fake env/fs
+      * `TokenResolverWithEnvToken()` - convenience for common "token in env" setup
+    * Created `internal/testutil/testutil_test.go` with 15 unit tests:
+      * TempHome creates directory, writes settings, isolates real home
+      * RequestRecorder captures method/path/query/headers/body, preserves body for handler
+      * HasRequest and RequestsForPath filtering
+      * AcceptingPrompter/RejectingPrompter/FailingPrompter behavior
+      * FakeEnv/FakeFS read/write operations
+      * TokenResolverWithEnvToken creates working resolver
+      * DefaultTestSettings/MultiContextSettings helpers
+  * Files changed: `internal/testutil/home.go`, `internal/testutil/recorder.go`, `internal/testutil/prompter.go`, `internal/testutil/env.go`, `internal/testutil/testutil_test.go`
+  * Commands run: `make fmt`, `make lint`, `make build`, `make test` - all pass
+  * Test results: `ok github.com/richclement/tfccli/internal/testutil 0.564s`
+  * Gherkin scenarios verified:
+    * "Request recorder captures headers and body" - TestRequestRecorder_CapturesRequests passes
+    * "Temp home isolates settings file" - TestTempHome_Isolation passes
+  * Implementation notes:
+    * Existing utilities (output.FakeTTYDetector, ui.ScriptedPrompter) are already available and well-tested
+    * The new testutil package consolidates common patterns found across cmd/tfc tests
+    * RequestRecorder is thread-safe (uses mutex) for concurrent test scenarios
+  * Task complete
+
 ---
 
 If you want, I can also produce a **canonical flag spec** per command (exact flag names + which fields map into the JSON:API request body for create/update), but the above is already implementable with a pragmatic approach: **minimal typed flags** + an optional `--payload-file` escape hatch for anything not yet modeled.
