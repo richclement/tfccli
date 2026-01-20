@@ -321,7 +321,7 @@ Feature: init command
 
 ### Task 05 — Context management command group (`tfc contexts ...`)
 
-*(Not in your original list, but required to make “multiple contexts” usable.)*
+*(Not in your original list, but required to make "multiple contexts" usable.)*
 
 **Deliverables**
 
@@ -330,6 +330,26 @@ Feature: init command
 * `tfc contexts use <name>`
 * `tfc contexts remove <name> [--force]` (cannot remove current unless switching first)
 * `tfc contexts show [<name>]` (shows resolved config)
+
+**Plan (acceptance + verification + steps)**
+
+* Acceptance criteria:
+  * `tfc contexts list` displays all contexts with current marked
+  * `tfc contexts add <name>` creates new context with required --address flag
+  * `tfc contexts use <name>` switches current_context
+  * `tfc contexts remove <name>` removes context (not current unless --force + switch)
+  * `tfc contexts show [<name>]` displays context config (current if name omitted)
+* Verification: `go test ./...`; all Gherkin scenarios pass as unit tests
+* Steps:
+  1. Create ContextsCmd group struct with subcommands: List, Add, Use, Remove, Show
+  2. Implement ContextsListCmd - loads settings, lists contexts with marker for current
+  3. Implement ContextsAddCmd - requires name and --address, optional --default-org and --log-level
+  4. Implement ContextsUseCmd - updates current_context and saves
+  5. Implement ContextsRemoveCmd - blocks removing current context, respects --force for confirmation
+  6. Implement ContextsShowCmd - displays resolved context (defaults applied)
+  7. Add helper methods to config.Settings if needed (AddContext, RemoveContext, SetCurrent)
+  8. Write unit tests covering all Gherkin scenarios
+  9. Wire up ContextsCmd in CLI struct
 
 **Gherkin**
 
@@ -352,6 +372,27 @@ Feature: contexts management
     Then stderr contains "cannot remove current context"
     And the exit code is 2
 ```
+
+**Status: DONE**
+
+**Progress Notes**
+
+* 2026-01-20
+  * Changes:
+    * Added `ContextsCmd` group struct with subcommands: List, Add, Use, Remove, Show
+    * `tfc contexts list` - lists all contexts with `*` marker for current
+    * `tfc contexts add <name> --ctx-address ...` - creates new context (note: flag is `--ctx-address` to avoid conflict with global `--address`)
+    * `tfc contexts use <name>` - switches current_context
+    * `tfc contexts remove <name>` - removes context with confirmation (blocks removing current)
+    * `tfc contexts show [<name>]` - displays resolved context config
+    * Created `cmd/tfc/contexts_test.go` with 13 unit tests covering all Gherkin scenarios
+  * Files changed: `cmd/tfc/main.go`, `cmd/tfc/contexts_test.go`, `specs/TASKS.md`
+  * Commands run: `make fmt`, `make lint`, `make build`, `make test` - all pass
+  * Implementation notes:
+    * Used `--ctx-address` instead of `--address` for `contexts add` to avoid conflict with global `--address` flag (Kong merges flags at all levels)
+    * `ContextsRemoveCmd` supports both `--force` (global) and interactive confirmation via injectable `Prompter`
+    * All subcommands have injectable `baseDir` for test isolation
+  * Task complete
 
 ---
 
