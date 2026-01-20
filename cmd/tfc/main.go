@@ -48,6 +48,7 @@ type CLI struct {
 	Applies               AppliesCmd               `cmd:"" help:"Manage applies."`
 	ConfigurationVersions ConfigurationVersionsCmd `cmd:"" name:"configuration-versions" help:"Manage configuration versions."`
 	Users                 UsersCmd                 `cmd:"" help:"Manage users."`
+	Invoices              InvoicesCmd              `cmd:"" help:"Manage invoices (HCP Terraform Cloud only)."`
 }
 
 // VersionCmd prints the CLI version info.

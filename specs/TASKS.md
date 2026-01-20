@@ -2170,6 +2170,31 @@ Feature: users get
 * `invoices next [--org <org>]` (explicitly supported) ([HashiCorp Developer][6])
 * Friendly error if invoices API not available for account/org (Cloud-only note) ([GitHub][7])
 
+**Plan (acceptance + verification + steps)**
+
+* Acceptance criteria:
+  * `tfc invoices list [--org <org>]` calls GET /api/v2/organizations/<org>/invoices with cursor-based pagination
+  * `tfc invoices list` uses `--org` flag or falls back to `default_org` from context
+  * `tfc invoices list` fails with exit 1 if no org available (error: "organization is required")
+  * `tfc invoices next [--org <org>]` calls GET /api/v2/organizations/<org>/invoices/next
+  * JSON output wraps result in `{"data": ...}` for JSON:API-like format
+  * Table output shows ID, STATUS, NUMBER, TOTAL, PAID, CREATED columns for list
+  * Table output shows FIELD/VALUE format for next (single invoice)
+  * Friendly error when invoices API not available: "invoices API is only available in HCP Terraform (Cloud)"
+  * 404/not found returns actionable error about HCP Terraform
+* Verification: `go test ./cmd/tfc/...`; all Gherkin scenarios pass as unit tests
+* Steps:
+  1. Create `cmd/tfc/invoices.go` with InvoicesCmd group struct
+  2. Define `invoicesClient` interface abstracting invoices API (raw HTTP since go-tfe doesn't expose invoices)
+  3. Implement `realInvoicesClient` using http.Client with Authorization header
+  4. Define InvoiceResponse, InvoiceData, InvoiceAttributes types for JSON:API structure
+  5. Implement InvoicesListCmd using org resolution (--org flag or default_org), with cursor-based pagination
+  6. Implement InvoicesNextCmd using org resolution
+  7. Support both JSON and table output formats
+  8. Add injectable dependencies for testing (baseDir, tokenResolver, ttyDetector, stdout, clientFactory)
+  9. Create `cmd/tfc/invoices_test.go` with unit tests for all Gherkin scenarios
+  10. Wire up InvoicesCmd in CLI struct in main.go
+
 **Gherkin**
 
 ```gherkin
@@ -2190,6 +2215,49 @@ Feature: invoices
     When I run "tfc invoices next --org acme"
     Then stderr mentions "invoices API is only available in HCP Terraform"
 ```
+
+**Status: DONE**
+
+**Progress Notes**
+
+* 2026-01-20
+  * Changes:
+    * Created `cmd/tfc/invoices.go` with:
+      * `InvoicesCmd` group with List, Next subcommands
+      * `invoicesClient` interface abstracting invoices API (raw HTTP since go-tfe doesn't expose invoices)
+      * `realInvoicesClient` using http.Client with Authorization header
+      * `InvoicesListResponse`, `InvoiceResponse`, `InvoiceData`, `InvoiceAttributes` types for JSON:API response structure
+      * `InvoicesListCmd` using org resolution (--org flag or default_org), with cursor-based pagination
+      * `InvoicesNextCmd` using org resolution
+      * `invoicesNotAvailableError` type for HCP Terraform (Cloud) only error
+      * JSON output wraps results in `{"data": ...}` for JSON:API-like format
+      * Table output shows ID, STATUS, NUMBER, TOTAL, PAID, CREATED columns for list
+      * Table output shows FIELD/VALUE format for next (single invoice)
+      * Total displayed in dollars format (e.g., $99.00) from cents
+      * Handles 404/403 as "invoices API is only available in HCP Terraform (Cloud)"
+    * Updated `cmd/tfc/main.go` to wire InvoicesCmd to CLI struct
+    * Created `cmd/tfc/invoices_test.go` with 13 unit tests:
+      * TestInvoicesList_JSON - list returns invoices as JSON with top-level "data" field
+      * TestInvoicesList_Table - list returns table with headers and formatted data
+      * TestInvoicesList_FailsWhenNoOrg - fails with "organization is required"
+      * TestInvoicesList_UsesOrgFlag - --org flag override works
+      * TestInvoicesNext_JSON - next returns single invoice as JSON
+      * TestInvoicesNext_Table - next returns FIELD/VALUE table format
+      * TestInvoicesNext_FailsWhenNoOrg - fails with "organization is required"
+      * TestInvoices_NotAvailableError - 404/403 returns HCP Terraform message
+      * TestInvoicesList_FailsWhenSettingsMissing - suggests tfc init
+      * TestInvoicesList_APIError - API errors surfaced
+      * TestInvoices_ContextOverride - --context flag works
+      * TestInvoices_AddressOverride - --address flag works
+      * TestInvoicesList_EmptyList - handles empty invoice list
+  * Files changed: `cmd/tfc/main.go`, `cmd/tfc/invoices.go`, `cmd/tfc/invoices_test.go`
+  * Commands run: `make fmt`, `make build` (via GOCACHE), `go test ./...` - all pass
+  * Gherkin scenarios verified:
+    * "Next invoice uses org-scoped endpoint" - TestInvoicesNext_JSON verifies API call pattern
+    * "List invoices requires org when no default org" - TestInvoicesList_FailsWhenNoOrg passes
+    * "API not available returns actionable error" - TestInvoices_NotAvailableError passes with HCP Terraform message
+  * Implementation note: go-tfe doesn't expose invoices API, so implemented using raw HTTP client with proper Authorization header handling (same pattern as users command)
+  * Task complete
 
 ---
 

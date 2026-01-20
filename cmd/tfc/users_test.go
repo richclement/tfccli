@@ -80,9 +80,9 @@ func setupUsersTestSettings(t *testing.T) (string, *auth.TokenResolver) {
 	// Create fake env with token
 	fakeEnv := &usersTestEnv{
 		vars: map[string]string{
-			"TF_TOKEN_app_terraform_io":    "test-token",
-			"TF_TOKEN_tfe_example_com":     "prod-token",
-			"TF_TOKEN_custom_example_com":  "custom-token",
+			"TF_TOKEN_app_terraform_io":   "test-token",
+			"TF_TOKEN_tfe_example_com":    "prod-token",
+			"TF_TOKEN_custom_example_com": "custom-token",
 		},
 	}
 	fakeFS := &usersTestFS{
