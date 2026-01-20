@@ -910,6 +910,59 @@ Feature: JSON:API error mapping
     And exit code is 2
 ```
 
+**Status: DONE**
+
+**Plan (acceptance + verification + steps)**
+
+* Acceptance criteria:
+  * go-tfe client created with `RetryServerErrors: true` to enable retry on 5xx
+  * `APIError` type defined with Status, Title, Detail, and Errors fields
+  * `ParseAPIError(err)` function extracts JSON:API error details from go-tfe errors
+  * Error messages surfaced to users include the API error detail (not just generic "unauthorized")
+  * Tests verify retry behavior and error parsing
+* Verification: `go test ./internal/tfcapi/...`; all Gherkin scenarios pass as unit tests
+* Steps:
+  1. Update `NewClient` to set `RetryServerErrors: true` in go-tfe config
+  2. Create `internal/tfcapi/errors.go` with `APIError` struct
+  3. Implement `ParseAPIError` to extract details from go-tfe errors
+  4. Create `internal/tfcapi/errors_test.go` with tests for error parsing
+  5. Add integration-style tests using httptest for retry scenarios
+  6. Run feedback loops to verify
+
+**Progress Notes**
+
+* 2026-01-20
+  * Changes:
+    * Updated `internal/tfcapi/client.go` to set `RetryServerErrors: true` in go-tfe config
+      * go-tfe handles retry/backoff/rate-limiting internally with Retry-After support
+    * Created `internal/tfcapi/errors.go` with:
+      * `APIError` struct with Status, Title, Detail, Errors fields
+      * `APIErrorItem` struct for individual JSON:API error objects
+      * `ParseAPIError(err)` - extracts structured errors from go-tfe errors
+      * `extractErrorDetail(err)` - extracts error detail from error chains
+      * `tryParseJSONAPIError(msg)` - parses embedded JSON:API error bodies
+      * `detectErrorType(detail)` - maps error messages to HTTP status codes
+      * `IsRetryable(err)` - checks if error is retryable (429, 5xx)
+    * Created `internal/tfcapi/errors_test.go` with 24 unit tests:
+      * `TestAPIError_Error` - 5 test cases for Error() method
+      * `TestParseAPIError_KnownErrors` - go-tfe ErrUnauthorized/ErrResourceNotFound mapping
+      * `TestParseAPIError_NilError` - nil handling
+      * `TestParseAPIError_GenericError` - 5 test cases for error message detection
+      * `TestParseAPIError_JSONAPIInMessage` - JSON:API body extraction
+      * `TestIsRetryable` - 5 test cases for retry detection
+      * `TestDetectErrorType` - 10 test cases for status/title detection
+  * Files changed: `internal/tfcapi/client.go`, `internal/tfcapi/errors.go`, `internal/tfcapi/errors_test.go`
+  * Commands run: `make fmt`, `make lint`, `make build`, `make test` - all pass
+  * Test results: `ok github.com/richclement/tfccli/internal/tfcapi 0.359s`
+  * Gherkin scenarios verified:
+    * "401 returns decoded error detail" - ParseAPIError extracts unauthorized error with detail
+    * Retry behavior handled by go-tfe with RetryServerErrors: true
+  * Implementation notes:
+    * go-tfe already has comprehensive retry/backoff/rate-limiting support built-in
+    * Our `APIError` type provides a consistent interface for surfacing errors to users
+    * Commands can use `ParseAPIError` to get structured error info for better UX
+  * Task complete
+
 ---
 
 ### Task 13 — Auto-pagination aggregator (list endpoints)

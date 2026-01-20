@@ -32,8 +32,9 @@ func NewClient(cfg ClientConfig) (*tfe.Client, error) {
 	}
 
 	config := &tfe.Config{
-		Address: address,
-		Token:   cfg.Token,
+		Address:           address,
+		Token:             cfg.Token,
+		RetryServerErrors: true, // Enable retry on 5xx errors
 	}
 
 	client, err := tfe.NewClient(config)
