@@ -2355,6 +2355,55 @@ Feature: Documentation presence
     And it contains "tfc contexts"
 ```
 
+**Plan (acceptance + verification + steps)**
+
+* Acceptance criteria:
+  * README.md exists with:
+    * Installation/build instructions (go install, make, goreleaser binaries)
+    * Authentication section explaining Terraform CLI token discovery (env, terraformrc, credentials.tfrc.json)
+    * Quick start with `tfc init` and `tfc doctor` examples
+    * Context management examples (`tfc contexts` subcommands)
+    * Examples for major subcommands (organizations, workspaces, runs, plans, etc.)
+    * Agent-friendly usage notes (--output-format=json, --force for non-interactive)
+    * Global flags reference
+    * Exit codes reference
+* Verification: README.md contains "tfc init" and "tfc contexts"; all major subcommands mentioned
+* Steps:
+  1. Create README.md with header, badges (optional), and description
+  2. Add Installation section (go install, make build, releases)
+  3. Add Quick Start section (tfc init, tfc doctor)
+  4. Add Authentication section explaining token discovery
+  5. Add Configuration section explaining contexts
+  6. Add Commands section with examples for each subcommand group
+  7. Add Agent/Automation section with non-interactive usage notes
+  8. Add Global Flags and Exit Codes reference tables
+  9. Verify README contains required keywords
+
+**Status: DONE**
+
+**Progress Notes**
+
+* 2026-01-20
+  * Changes:
+    * Created comprehensive README.md with:
+      * Features overview
+      * Installation section (source, go install, releases)
+      * Quick Start with `tfc init`, `terraform login`, and `tfc doctor` examples
+      * Authentication section explaining Terraform CLI token discovery (env, terraformrc, credentials.tfrc.json)
+      * Configuration section with multi-context support examples (`tfc contexts` commands)
+      * Commands section with examples for all 13 command groups:
+        * organizations, projects, workspaces, workspace-variables, workspace-resources
+        * runs, plans, applies, configuration-versions, users, invoices
+      * Output Formats section explaining JSON and table modes
+      * Exit Codes reference table (0, 1, 2, 3)
+      * Automation and Agent Usage section with non-interactive examples
+      * Development section with make commands
+  * Files changed: `README.md`, `specs/TASKS.md`
+  * Commands run: `make fmt`, `make lint`, `make build`, `make test` - all pass
+  * Gherkin scenarios verified:
+    * "README exists and mentions init and contexts" - README.md contains "tfc init" (3x) and "tfc contexts" (5x)
+  * Task complete
+
 ---
 
 ### Task 28 — Test harness utilities (shared across command tests)
