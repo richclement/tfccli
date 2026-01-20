@@ -193,3 +193,15 @@ func (p *ScriptedPrompter) PromptSelect(prompt string, _ []string, defaultValue 
 	}
 	return defaultValue, nil
 }
+
+// RequireConfirm prompts for confirmation unless force is true.
+// If force is true, returns true without prompting.
+// If force is false, prompts the user for confirmation.
+// Returns true if confirmed (or forced), false if user declined.
+// Returns an error only if prompting fails.
+func RequireConfirm(prompter Prompter, prompt string, force bool) (bool, error) {
+	if force {
+		return true, nil
+	}
+	return prompter.Confirm(prompt, false)
+}

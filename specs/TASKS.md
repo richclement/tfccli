@@ -568,6 +568,21 @@ Feature: Logging level resolution
 
   * All destructive ops call confirm unless `--force`
 
+**Plan (acceptance + verification + steps)**
+
+* Acceptance criteria:
+  * `Prompter.Confirm(prompt, defaultValue)` method available and injectable for tests
+  * `RequireConfirm(prompter, prompt, force)` helper standardizes confirmation for destructive ops
+  * When `--force` is set, confirmation is bypassed (returns true without prompting)
+  * When `--force` is not set, user is prompted; "no" returns false (operation aborted), "yes" returns true
+  * Exit code is 0 when user declines (no error, just early return)
+* Verification: `go test ./internal/ui/...`; all Gherkin scenarios pass as unit tests
+* Steps:
+  1. Review existing `Prompter.Confirm` implementation (already exists)
+  2. Add `RequireConfirm(prompter, prompt, force)` helper function
+  3. Add comprehensive unit tests for StdPrompter and ScriptedPrompter
+  4. Add Gherkin scenario tests for confirmation workflow
+
 **Gherkin**
 
 ```gherkin
@@ -583,6 +598,33 @@ Feature: Confirmation workflow
     When I run the command
     Then no prompt is shown
 ```
+
+**Status: DONE**
+
+**Progress Notes**
+
+* 2026-01-20
+  * Changes:
+    * Reviewed existing `Prompter` interface - `Confirm(prompt, defaultValue)` already implemented
+    * Added `RequireConfirm(prompter, prompt, force)` helper in `internal/ui/prompter.go`
+      * Returns true immediately when force=true (bypasses prompt)
+      * Calls prompter.Confirm when force=false
+    * Created comprehensive `internal/ui/prompter_test.go` with 17 tests:
+      * StdPrompter: PromptString (4 cases), Confirm (8 cases), PromptSelect (5 cases)
+      * ScriptedPrompter: PromptString, Confirm, PromptSelect
+      * RequireConfirm: "destructive command prompts without --force" (2 cases)
+      * RequireConfirm: "destructive command does not prompt with --force"
+    * Added `failingPrompter` test helper to verify --force bypasses prompts
+  * Files changed: `internal/ui/prompter.go`, `internal/ui/prompter_test.go`
+  * Commands run: `make fmt`, `make lint`, `make build`, `make test` - all pass
+  * Test results: `ok github.com/richclement/tfccli/internal/ui 0.271s`
+  * Gherkin scenarios verified:
+    * "destructive command prompts without --force" - user answers no → RequireConfirm returns false
+    * "destructive command does not prompt with --force" - failingPrompter verifies no prompt called
+  * Implementation notes:
+    * `ContextsRemoveCmd` in main.go already demonstrates the pattern using the global `--force` flag
+    * Future destructive commands can use `ui.RequireConfirm(prompter, prompt, cli.Force)`
+  * Task complete
 
 ---
 
