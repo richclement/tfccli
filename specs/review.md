@@ -629,9 +629,35 @@ if c.ProjectID != "" || c.Search != "" {
 
 ### 11. Add `--tags` Flag to List Command
 
+**Status: DONE** (2026-01-21)
+
 **File:** `cmd/tfc/workspaces.go`
 
 **Rationale:** The TFC API supports filtering by tags via `WorkspaceListOptions.Tags`. Tags are commonly used to organize workspaces.
+
+**Plan (2026-01-21):**
+- Acceptance criteria: `tfc workspaces list --tags env:prod,team:platform` passes the tags string to the API via `WorkspaceListOptions.Tags`
+- Verification: Add test `TestWorkspacesList_WithTags` that verifies the list options include the tags string
+- Implementation:
+  1. Add `Tags` field to `WorkspacesListCmd` struct with kong tag `name:"tags" help:"Filter workspaces by tags (comma-separated)."`
+  2. Update `Run()` to include Tags in `*tfe.WorkspaceListOptions` when set
+  3. Add test `TestWorkspacesList_WithTags`
+  4. Run feedback loops
+
+**Progress notes (2026-01-21):**
+
+Changes made:
+- `cmd/tfc/workspaces.go:150` - Added `Tags string` field with kong tag `name:"tags" help:"Filter workspaces by tags (comma-separated)."`
+- `cmd/tfc/workspaces.go:192` - Updated list options condition to include `c.Tags`
+- `cmd/tfc/workspaces.go:200-202` - Added Tags assignment to list options when set
+- `cmd/tfc/workspaces_test.go:449-485` - Added `TestWorkspacesList_WithTags` test
+
+Verification:
+- `make fmt` - passed
+- `make lint` - passed (with temp cache)
+- `make build` - passed (with temp cache)
+- `make test` - all tests pass
+- `go test -v -run "TestWorkspacesList_WithTags" ./cmd/tfc/...` - pass
 
 **Implementation:**
 
@@ -787,8 +813,8 @@ The `resolveFormat` helper is slightly cleaner as it encapsulates the logic and 
 | List API error | ✅ | - |
 | List missing settings | ✅ | - |
 | List with --project filter | ✅ | #9 |
-| List with --search filter | ❌ | #10 |
-| List with --tags filter | ❌ | #11 |
+| List with --search filter | ✅ | #10 |
+| List with --tags filter | ✅ | #11 |
 | Get JSON output | ✅ | - |
 | Get not found (404) | ✅ | - |
 | Get generic API error | ✅ | #8 |

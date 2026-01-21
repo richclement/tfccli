@@ -446,6 +446,43 @@ func TestWorkspacesList_WithSearch(t *testing.T) {
 	}
 }
 
+// TestWorkspacesList_WithTags tests that list passes tags filter to API.
+func TestWorkspacesList_WithTags(t *testing.T) {
+	tmpDir, resolver := setupWorkspacesTestSettings(t, "acme")
+	out := &bytes.Buffer{}
+
+	fakeClient := &fakeWorkspacesClient{
+		workspaces: []*tfe.Workspace{
+			{ID: "ws-1", Name: "tagged-workspace", ExecutionMode: "remote"},
+		},
+	}
+
+	cmd := &WorkspacesListCmd{
+		Tags:          "env:prod,team:platform",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        out,
+		clientFactory: func(_ tfcapi.ClientConfig) (workspacesClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Verify the list was called with tags filter
+	if len(fakeClient.listCalls) != 1 {
+		t.Errorf("expected 1 list call, got %d", len(fakeClient.listCalls))
+	}
+	if fakeClient.listCalls[0].opts == nil || fakeClient.listCalls[0].opts.Tags != "env:prod,team:platform" {
+		t.Errorf("expected tags filter 'env:prod,team:platform', got: %+v", fakeClient.listCalls[0].opts)
+	}
+}
+
 // TestWorkspacesGet_JSON tests getting a workspace by ID.
 func TestWorkspacesGet_JSON(t *testing.T) {
 	tmpDir, resolver := setupWorkspacesTestSettings(t, "acme")
