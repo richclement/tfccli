@@ -501,6 +501,44 @@ func TestOrganizationsUpdate_JSON(t *testing.T) {
 	}
 }
 
+// TestOrganizationsUpdate_NoFieldsProvided tests that update fails when no fields are provided.
+func TestOrganizationsUpdate_NoFieldsProvided(t *testing.T) {
+	tmpDir, resolver := setupOrgsTestSettings(t)
+	out := &bytes.Buffer{}
+
+	fakeClient := &fakeOrgsClient{
+		org: &tfe.Organization{Name: "org-123"},
+	}
+
+	cmd := &OrganizationsUpdateCmd{
+		Name:          "org-123",
+		Email:         "", // No email provided
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        out,
+		clientFactory: func(_ tfcapi.ClientConfig) (orgsClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+
+	// Should return an error when no fields provided
+	if err == nil {
+		t.Fatal("expected error when no fields provided, got nil")
+	}
+	if !strings.Contains(err.Error(), "nothing to update") {
+		t.Errorf("expected 'nothing to update' error, got: %v", err)
+	}
+
+	// Should NOT have called the API
+	if len(fakeClient.updateCalls) != 0 {
+		t.Errorf("expected no update calls when no fields provided, got: %v", fakeClient.updateCalls)
+	}
+}
+
 // TestOrganizationsList_APIError tests that API errors are surfaced.
 func TestOrganizationsList_APIError(t *testing.T) {
 	tmpDir, resolver := setupOrgsTestSettings(t)

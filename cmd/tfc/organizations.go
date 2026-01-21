@@ -348,10 +348,14 @@ func (c *OrganizationsUpdateCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create client: %w", err))
 	}
 
+	// Validate at least one field is being updated
+	if c.Email == "" {
+		return internalcmd.NewRuntimeError(fmt.Errorf("nothing to update: specify --email"))
+	}
+
 	ctx := context.Background()
-	opts := tfe.OrganizationUpdateOptions{}
-	if c.Email != "" {
-		opts.Email = tfe.String(c.Email)
+	opts := tfe.OrganizationUpdateOptions{
+		Email: tfe.String(c.Email),
 	}
 
 	org, err := client.Update(ctx, c.Name, opts)
