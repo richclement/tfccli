@@ -331,6 +331,11 @@ func (c *WorkspaceVariablesUpdateCmd) Run(cli *CLI) error {
 		c.clientFactory = defaultVariablesClientFactory
 	}
 
+	// Validate at least one field is being updated
+	if c.Key == "" && c.Value == "" && c.Description == "" && c.Sensitive == nil && c.HCL == nil {
+		return internalcmd.NewRuntimeError(fmt.Errorf("at least one of --key, --value, --description, --sensitive, or --hcl is required"))
+	}
+
 	cfg, err := resolveVariablesClientConfig(cli, c.baseDir, c.tokenResolver)
 	if err != nil {
 		return internalcmd.NewRuntimeError(err)

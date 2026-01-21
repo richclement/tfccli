@@ -12,6 +12,7 @@ import (
 	tfe "github.com/hashicorp/go-tfe"
 
 	"github.com/richclement/tfccli/internal/auth"
+	internalcmd "github.com/richclement/tfccli/internal/cmd"
 	"github.com/richclement/tfccli/internal/config"
 	"github.com/richclement/tfccli/internal/output"
 	"github.com/richclement/tfccli/internal/tfcapi"
@@ -668,5 +669,43 @@ func TestWorkspaceVariablesUpdate_PartialUpdate(t *testing.T) {
 	}
 	if *fakeClient.lastUpdate.Value != "new-val" {
 		t.Errorf("expected value 'new-val', got %v", *fakeClient.lastUpdate.Value)
+	}
+}
+
+// TestWorkspaceVariablesUpdate_FailsWhenNoFields tests that update fails when no fields provided.
+func TestWorkspaceVariablesUpdate_FailsWhenNoFields(t *testing.T) {
+	tmpDir, resolver := setupVariablesTestSettings(t)
+
+	fakeClient := &fakeVariablesClient{}
+
+	var buf bytes.Buffer
+	cmd := &WorkspaceVariablesUpdateCmd{
+		VariableID:  "var-123",
+		WorkspaceID: "ws-123",
+		// No update fields provided (Key, Value, Description, Sensitive, HCL all empty/nil)
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &buf,
+		clientFactory: func(_ tfcapi.ClientConfig) (variablesClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error when no fields provided, got nil")
+	}
+
+	// Verify it's a RuntimeError for exit code 2
+	var runtimeErr internalcmd.RuntimeError
+	if !errors.As(err, &runtimeErr) {
+		t.Errorf("expected RuntimeError, got %T", err)
+	}
+
+	// Verify error message
+	if !strings.Contains(err.Error(), "at least one of") {
+		t.Errorf("expected 'at least one of' error message, got: %v", err)
 	}
 }

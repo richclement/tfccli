@@ -768,6 +768,8 @@ Review of `cmd/tfc/workspace_variables.go` and `cmd/tfc/workspace_variables_test
 
 ### 15. Update Command Allows No-Op API Calls
 
+**Status: DONE** (2026-01-21)
+
 **File:** `cmd/tfc/workspace_variables.go:345-360`
 
 **Problem:** Unlike `ProjectsUpdateCmd` (see `projects.go:386-388`), the workspace-variables update command doesn't validate that at least one field is being updated. If a user runs `tfc workspace-variables update var-123 --workspace-id ws-123` with no other flags, it sends a no-op API call and prints "Variable updated" even though nothing changed.
@@ -801,6 +803,28 @@ if c.Key == "" && c.Value == "" && c.Description == "" && c.Sensitive == nil && 
 ```
 
 **Test to add:** `TestWorkspaceVariablesUpdate_FailsWhenNoFields` - verify error message when no update flags provided.
+
+**Progress notes (2026-01-21):**
+
+Plan:
+- Acceptance criteria: `tfc workspace-variables update var-123 --workspace-id ws-123` (no other flags) returns RuntimeError with message "at least one of --key, --value, --description, --sensitive, or --hcl is required"
+- Verification: Add test `TestWorkspaceVariablesUpdate_FailsWhenNoFields` that verifies error is returned and is RuntimeError type
+- Implementation:
+  1. Add validation check after defaults setup in `WorkspaceVariablesUpdateCmd.Run()`
+  2. Add test case in `workspace_variables_test.go`
+  3. Run feedback loops
+
+Changes made:
+- `cmd/tfc/workspace_variables.go:333-336` - Added validation before config resolution
+- `cmd/tfc/workspace_variables_test.go:15` - Added import for `internalcmd`
+- `cmd/tfc/workspace_variables_test.go:674-711` - Added `TestWorkspaceVariablesUpdate_FailsWhenNoFields` test
+
+Verification:
+- `make fmt` - passed
+- `make lint` - passed (with temp caches)
+- `make build` - passed
+- `make test` - all tests pass
+- `go test -v -run "TestWorkspaceVariablesUpdate_FailsWhenNoFields" ./cmd/tfc/...` - pass
 
 ---
 
@@ -1021,6 +1045,8 @@ func TestWorkspaceVariablesDelete_APIError(t *testing.T) {
 
 ### 22. Missing Test: Update with No Fields Provided
 
+**Status: DONE** (2026-01-21) - Completed as part of task #15
+
 **File:** `cmd/tfc/workspace_variables_test.go`
 
 **Problem:** No test verifies behavior when update is called without any fields to update. This test should be added after fixing issue #15.
@@ -1194,7 +1220,7 @@ format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
 | Create API error | ❌ | #19 |
 | Update JSON output | ✅ | - |
 | Update partial (only value) | ✅ | - |
-| Update no fields provided | ❌ | #22 |
+| Update no fields provided | ✅ | #22 |
 | Update API error | ❌ | #20 |
 | Delete with confirmation | ✅ | - |
 | Delete rejected | ✅ | - |
