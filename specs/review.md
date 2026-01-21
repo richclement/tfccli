@@ -1773,9 +1773,31 @@ func TestInitCmd_PrompterErrorOnLogLevel(t *testing.T) {
 
 ### 34. Missing Test: config.Save Failure
 
+**Status: DONE** (2026-01-21)
+
 **File:** `cmd/tfc/init_test.go`
 
 **Problem:** No test verifies error handling when `config.Save()` fails (e.g., disk full, read-only filesystem).
+
+**Plan (2026-01-21):**
+- Acceptance criteria: Test `TestInitCmd_SaveError` exists and verifies that when config.Save() fails (e.g., read-only directory), it is wrapped and surfaced as a RuntimeError with message "failed to save settings"
+- Verification: Run `go test -v -run "TestInitCmd_SaveError" ./cmd/tfc/...`
+- Implementation:
+  1. Add test that creates a temp directory with settings dir made read-only
+  2. Run init command in non-interactive mode with --yes
+  3. Verify RuntimeError is returned with "failed to save settings" message
+
+**Progress notes (2026-01-21):**
+
+Changes made:
+- `cmd/tfc/init_test.go:492-528` - Added `TestInitCmd_SaveError` test that creates a read-only .tfccli directory and verifies the proper RuntimeError is returned
+
+Verification:
+- `make fmt` - passed
+- `make lint` - passed (with temp caches due to permission issues)
+- `make build` - passed (with temp caches)
+- `make test` - all tests pass
+- `go test -v -run "TestInitCmd_SaveError" ./cmd/tfc/...` - pass
 
 **Test to add:**
 ```go
@@ -1841,7 +1863,7 @@ func TestInitCmd_SaveError(t *testing.T) {
 | Prompter error on address prompt | ✅ | #31 |
 | Prompter error on org prompt | ✅ | #32 |
 | Prompter error on log level prompt | ✅ | #33 |
-| config.Save() failure | ❌ | #34 |
+| config.Save() failure | ✅ | #34 |
 | os.Stat permission error handling | ✅ | #28 |
 
 ---

@@ -489,6 +489,45 @@ func TestInitCmd_PrompterErrorOnLogLevel(t *testing.T) {
 	}
 }
 
+// TestInitCmd_SaveError tests that config.Save errors are properly surfaced.
+func TestInitCmd_SaveError(t *testing.T) {
+	// Create a temp dir and then make it read-only to prevent writing
+	tmpHome := t.TempDir()
+	tfccliDir := filepath.Join(tmpHome, ".tfccli")
+	if err := os.MkdirAll(tfccliDir, 0o700); err != nil {
+		t.Fatalf("Failed to create dir: %v", err)
+	}
+	// Make directory read-only to prevent writing settings.json
+	if err := os.Chmod(tfccliDir, 0o500); err != nil {
+		t.Fatalf("Failed to chmod: %v", err)
+	}
+	t.Cleanup(func() {
+		os.Chmod(tfccliDir, 0o700) // Restore so cleanup can delete
+	})
+
+	cmd := &InitCmd{
+		NonInteractive: true,
+		Yes:            true,
+		baseDir:        tmpHome,
+	}
+	cli := &CLI{}
+
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error when save fails, got nil")
+	}
+
+	// Verify it's a RuntimeError for exit code 2
+	var runtimeErr internalcmd.RuntimeError
+	if !errors.As(err, &runtimeErr) {
+		t.Errorf("expected RuntimeError, got %T", err)
+	}
+
+	if !strings.Contains(err.Error(), "failed to save settings") {
+		t.Errorf("expected 'failed to save settings' in error, got: %v", err)
+	}
+}
+
 // TestInitCmd_StatPermissionError tests that os.Stat permission errors are surfaced.
 func TestInitCmd_StatPermissionError(t *testing.T) {
 	tmpHome := t.TempDir()
