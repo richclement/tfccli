@@ -644,6 +644,98 @@ Commands run:
 
 ---
 
+### Finding 6: Missing test for OrganizationsUpdate table output
+
+**Status:** DONE
+
+**Acceptance Criteria:**
+- Test verifies table output for OrganizationsUpdate command
+- Table output includes success message with organization name
+- Test validates the "Organization %q updated." format
+
+**Verification:**
+- Unit test `TestOrganizationsUpdate_Table` must pass
+- Existing tests must continue to pass
+- `make lint && make test` green
+
+**Implementation Plan:**
+1. Add `TestOrganizationsUpdate_Table` test with a fake client returning a known organization
+2. Use table output format and verify output contains "org-123" and "updated"
+3. Run make fmt/lint/build/test
+
+**Progress Notes:**
+
+**2026-01-21:** DONE
+
+Files changed:
+- `cmd/tfc/organizations_test.go`: Added `TestOrganizationsUpdate_Table` test that verifies:
+  - Table output format is used when cli.OutputFormat is "table"
+  - Output contains organization name "org-123"
+  - Output contains "updated" in the success message
+
+Commands run:
+- `make fmt` - passed
+- `make lint` - passed
+- `make build` - passed
+- `make test` - all tests pass
+- `go test -v -run TestOrganizationsUpdate_Table ./cmd/tfc/...` - passed
+
+---
+
+### Finding 7: Missing test for OrganizationsDelete table output
+
+**Status:** TODO
+
+**Acceptance Criteria:**
+- Test verifies table output for OrganizationsDelete command
+- Table output includes success message with organization name
+- Test validates the "Organization %q deleted." format
+
+**Verification:**
+- Unit test `TestOrganizationsDelete_Table` must pass
+- Existing tests must continue to pass
+- `make lint && make test` green
+
+**Implementation Plan:**
+1. Add `TestOrganizationsDelete_Table` test with a fake client and force flag
+2. Use table output format and verify output contains "org-123" and "deleted"
+3. Run make fmt/lint/build/test
+
+---
+
+### Finding 10: forceFlag and cli.Force interaction undocumented
+
+**Status:** TODO
+
+**Acceptance Criteria:**
+- Comment added to organizations.go explaining forceFlag precedence
+- Comment clarifies that test injection takes precedence over CLI flag
+
+**Verification:**
+- `make lint && make test` green
+
+**Implementation Plan:**
+1. Add explanatory comment at line 422-425 in organizations.go
+2. Run make fmt/lint/build/test
+
+---
+
+### Finding 11: Potential nil pointer with tfe.Organization fields
+
+**Status:** TODO
+
+**Acceptance Criteria:**
+- Comment added explaining go-tfe returns empty strings for optional fields, not nil
+
+**Verification:**
+- `make lint && make test` green
+
+**Implementation Plan:**
+1. Add defensive comment near line 170 in organizations.go
+2. Run make fmt/lint/build/test
+
+---
+
 ### Finding 8: Missing test for prompter error path
 
 **Status:** DONE

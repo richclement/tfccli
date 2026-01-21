@@ -680,6 +680,42 @@ func TestOrganizationsUpdate_NoFieldsProvided(t *testing.T) {
 	}
 }
 
+// TestOrganizationsUpdate_Table tests that update outputs a success message in table mode.
+func TestOrganizationsUpdate_Table(t *testing.T) {
+	tmpDir, resolver := setupOrgsTestSettings(t)
+	out := &bytes.Buffer{}
+
+	fakeClient := &fakeOrgsClient{
+		org: &tfe.Organization{
+			Name:  "org-123",
+			Email: "newemail@example.com",
+		},
+	}
+
+	cmd := &OrganizationsUpdateCmd{
+		Name:          "org-123",
+		Email:         "newemail@example.com",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        out,
+		clientFactory: func(_ tfcapi.ClientConfig) (orgsClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "table"}
+	err := cmd.Run(cli)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	outStr := out.String()
+	if !strings.Contains(outStr, "org-123") || !strings.Contains(outStr, "updated") {
+		t.Errorf("expected success message with org name and 'updated', got: %s", outStr)
+	}
+}
+
 // TestOrganizationsList_APIError tests that API errors are surfaced.
 func TestOrganizationsList_APIError(t *testing.T) {
 	tmpDir, resolver := setupOrgsTestSettings(t)
