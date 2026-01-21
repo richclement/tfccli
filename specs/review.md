@@ -457,41 +457,29 @@ func TestProjectsDelete_PromptError(t *testing.T) {
 
 ### 6. Extract TTY detection to helper function
 
+**Status:** DONE
+
 **File:** `cmd/tfc/projects.go`
-**Lines:** 190-194, 261-265, 345-349, 419-423, 506-510
+**Lines:** 190-194, 261-265, 345-349, 424-428, 511-515
 
 **Problem:**
 The same TTY detection boilerplate is repeated 5 times across the file.
 
-**Current code (repeated):**
-```go
-isTTY := false
-if f, ok := c.stdout.(*os.File); ok {
-    isTTY = c.ttyDetector.IsTTY(f)
-}
-format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
-```
+**Plan:**
+- Acceptance criteria: TTY detection boilerplate replaced with helper function; all tests pass
+- Verification: `make test`, `go test -v ./cmd/tfc/... -run TestProjects`
+- Implementation:
+  1. Add `resolveFormat` helper function after type definitions (around line 99)
+  2. Replace 5 occurrences in List/Get/Create/Update/Delete Run methods
+  3. Verify tests pass
 
-**Fix:**
-Create a helper function. Add near the top of the file after the type definitions:
-
-```go
-// resolveFormat determines the output format based on CLI flags and TTY detection.
-func resolveFormat(stdout io.Writer, ttyDetector output.TTYDetector, cliFormat string) output.Format {
-    isTTY := false
-    if f, ok := stdout.(*os.File); ok {
-        isTTY = ttyDetector.IsTTY(f)
-    }
-    return output.ResolveOutputFormat(cliFormat, isTTY)
-}
-```
-
-Then replace each occurrence with:
-```go
-format := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
-```
-
-**Note:** This is a refactoring task. Run `make test` after to verify no regressions.
+**Progress (2026-01-21):**
+- Added `resolveFormat` helper function at line 102 in `cmd/tfc/projects.go`
+- Returns both `output.Format` and `isTTY` bool (needed by TableWriter)
+- Replaced 5 occurrences: List (line 199), Get (line 261), Create (line 341), Update (line 419), Delete (line 496)
+- Commands run: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Specific tests verified: `go test -v ./cmd/tfc/... -run TestProjects` - 25 tests pass
+- Net reduction: 20 lines of duplicated code → 8-line helper + 5 single-line calls
 
 ---
 

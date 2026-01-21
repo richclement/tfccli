@@ -98,6 +98,16 @@ func defaultProjectsClientFactory(cfg tfcapi.ClientConfig) (projectsClient, erro
 	return &realProjectsClient{client: client}, nil
 }
 
+// resolveFormat determines the output format based on CLI flags and TTY detection.
+// Returns both the format and the isTTY bool (needed by TableWriter).
+func resolveFormat(stdout io.Writer, ttyDetector output.TTYDetector, cliFormat string) (output.Format, bool) {
+	isTTY := false
+	if f, ok := stdout.(*os.File); ok {
+		isTTY = ttyDetector.IsTTY(f)
+	}
+	return output.ResolveOutputFormat(cliFormat, isTTY), isTTY
+}
+
 // resolveProjectsClientConfig resolves settings and token for API calls, including org resolution.
 func resolveProjectsClientConfig(cli *CLI, baseDir string, tokenResolver *auth.TokenResolver) (tfcapi.ClientConfig, string, error) {
 	settings, err := config.Load(baseDir)
@@ -186,12 +196,7 @@ func (c *ProjectsListCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to list projects: %w", err))
 	}
 
-	// Determine output format
-	isTTY := false
-	if f, ok := c.stdout.(*os.File); ok {
-		isTTY = c.ttyDetector.IsTTY(f)
-	}
-	format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
+	format, isTTY := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
 
 	if format == output.FormatJSON {
 		// Wrap in data array for JSON:API-like output
@@ -257,12 +262,7 @@ func (c *ProjectsGetCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to get project: %w", err))
 	}
 
-	// Determine output format
-	isTTY := false
-	if f, ok := c.stdout.(*os.File); ok {
-		isTTY = c.ttyDetector.IsTTY(f)
-	}
-	format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
+	format, isTTY := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
 
 	if format == output.FormatJSON {
 		// Wrap in data for JSON:API-like output
@@ -341,12 +341,7 @@ func (c *ProjectsCreateCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create project: %w", err))
 	}
 
-	// Determine output format
-	isTTY := false
-	if f, ok := c.stdout.(*os.File); ok {
-		isTTY = c.ttyDetector.IsTTY(f)
-	}
-	format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
+	format, _ := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
 
 	if format == output.FormatJSON {
 		// Convert to JSON-serializable form since tfe.Project has jsonapi.NullableAttr fields
@@ -420,12 +415,7 @@ func (c *ProjectsUpdateCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to update project: %w", err))
 	}
 
-	// Determine output format
-	isTTY := false
-	if f, ok := c.stdout.(*os.File); ok {
-		isTTY = c.ttyDetector.IsTTY(f)
-	}
-	format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
+	format, _ := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
 
 	if format == output.FormatJSON {
 		// Convert to JSON-serializable form since tfe.Project has jsonapi.NullableAttr fields
@@ -507,12 +497,7 @@ func (c *ProjectsDeleteCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to delete project: %w", err))
 	}
 
-	// Determine output format
-	isTTY := false
-	if f, ok := c.stdout.(*os.File); ok {
-		isTTY = c.ttyDetector.IsTTY(f)
-	}
-	format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
+	format, _ := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
 
 	if format == output.FormatJSON {
 		if err := output.WriteEmptySuccess(c.stdout, 204); err != nil {
