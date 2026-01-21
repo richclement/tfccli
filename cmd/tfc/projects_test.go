@@ -882,3 +882,97 @@ func TestProjectsCreate_Table(t *testing.T) {
 		t.Errorf("expected success message, got: %s", out.String())
 	}
 }
+
+// TestProjectsCreate_APIError tests that API errors during create are surfaced.
+func TestProjectsCreate_APIError(t *testing.T) {
+	tmpDir, resolver := setupProjectsTestSettings(t, "acme")
+	out := &bytes.Buffer{}
+
+	fakeClient := &fakeProjectsClient{
+		createErr: errors.New("name already exists"),
+	}
+
+	cmd := &ProjectsCreateCmd{
+		Name:          "existing-project",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        out,
+		clientFactory: func(_ tfcapi.ClientConfig) (projectsClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "failed to create project") {
+		t.Errorf("expected error message about create failure, got: %v", err)
+	}
+}
+
+// TestProjectsUpdate_APIError tests that API errors during update are surfaced.
+func TestProjectsUpdate_APIError(t *testing.T) {
+	tmpDir, resolver := setupProjectsTestSettings(t, "acme")
+	out := &bytes.Buffer{}
+
+	fakeClient := &fakeProjectsClient{
+		updateErr: errors.New("project not found"),
+	}
+
+	cmd := &ProjectsUpdateCmd{
+		ID:            "prj-nonexistent",
+		Name:          "new-name",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        out,
+		clientFactory: func(_ tfcapi.ClientConfig) (projectsClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "failed to update project") {
+		t.Errorf("expected error message about update failure, got: %v", err)
+	}
+}
+
+// TestProjectsDelete_APIError tests that API errors during delete are surfaced.
+func TestProjectsDelete_APIError(t *testing.T) {
+	tmpDir, resolver := setupProjectsTestSettings(t, "acme")
+	out := &bytes.Buffer{}
+
+	fakeClient := &fakeProjectsClient{
+		deleteErr: errors.New("cannot delete project with workspaces"),
+	}
+	forceFlag := true
+
+	cmd := &ProjectsDeleteCmd{
+		ID:            "prj-123",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        out,
+		clientFactory: func(_ tfcapi.ClientConfig) (projectsClient, error) {
+			return fakeClient, nil
+		},
+		prompter:  &failingPrompter{},
+		forceFlag: &forceFlag,
+	}
+
+	cli := &CLI{OutputFormat: "json", Force: true}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "failed to delete project") {
+		t.Errorf("expected error message about delete failure, got: %v", err)
+	}
+}

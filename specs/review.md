@@ -269,10 +269,28 @@ func TestProjectsDelete_Table(t *testing.T) {
 
 ### 4. Add API error tests for create/update/delete
 
+**Status:** DONE
+
 **File:** `cmd/tfc/projects_test.go`
 
 **Problem:**
 API error paths are not tested for `Create`, `Update`, and `Delete` commands.
+
+**Plan:**
+- Acceptance criteria: Unit tests verify that Create, Update, and Delete commands surface API errors with proper error messages containing "failed to create/update/delete project"
+- Verification: `go test -v -run "TestProjectsCreate_APIError|TestProjectsUpdate_APIError|TestProjectsDelete_APIError" ./cmd/tfc/`
+- Implementation:
+  1. Add `TestProjectsCreate_APIError` - inject createErr, verify error message
+  2. Add `TestProjectsUpdate_APIError` - inject updateErr, verify error message
+  3. Add `TestProjectsDelete_APIError` - inject deleteErr, verify error message (with --force to bypass prompt)
+
+**Progress (2026-01-21):**
+- Added three tests at end of `cmd/tfc/projects_test.go` (lines 886-988):
+  - `TestProjectsCreate_APIError`: injects createErr, verifies "failed to create project" error
+  - `TestProjectsUpdate_APIError`: injects updateErr, verifies "failed to update project" error
+  - `TestProjectsDelete_APIError`: injects deleteErr with --force, verifies "failed to delete project" error
+- Commands run: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Specific tests verified: `go test -v -run "TestProjectsCreate_APIError|TestProjectsUpdate_APIError|TestProjectsDelete_APIError" ./cmd/tfc/` - all pass
 
 **Tests to add:**
 
