@@ -403,9 +403,32 @@ func TestWorkspacesDelete_APIError(t *testing.T) {
 
 ### 8. Missing Test: Get Generic API Error (non-404)
 
+**Status: DONE** (2026-01-21)
+
 **File:** `cmd/tfc/workspaces_test.go`
 
 **Problem:** `TestWorkspacesGet_NotFound` tests 404 errors, but no test covers other API errors (e.g., 403 forbidden, 500 server error).
+
+**Plan (2026-01-21):**
+- Acceptance criteria: Test `TestWorkspacesGet_APIError` exists and verifies that when the ReadByID API call fails with a non-404 error, it is wrapped and surfaced as a RuntimeError with message "failed to get workspace"
+- Verification: Run `go test -v -run "TestWorkspacesGet_APIError" ./cmd/tfc/...`
+- Implementation:
+  1. Add test `TestWorkspacesGet_APIError` to `workspaces_test.go` after `TestWorkspacesGet_NotFound`
+  2. Use `fakeWorkspacesClient.readErr` to simulate API failure (generic error, not ErrResourceNotFound)
+  3. Verify RuntimeError type for exit code 2
+  4. Run feedback loops to verify
+
+**Progress notes (2026-01-21):**
+
+Changes made:
+- `cmd/tfc/workspaces_test.go:860-894` - Added `TestWorkspacesGet_APIError` test
+
+Verification:
+- `make fmt` - passed
+- `make lint` - passed (with temp cache)
+- `make build` - passed (with temp cache)
+- `make test` - all tests pass
+- `go test -v -run "TestWorkspacesGet_APIError" ./cmd/tfc/...` - pass
 
 **Test to add:**
 ```go
@@ -717,7 +740,7 @@ The `resolveFormat` helper is slightly cleaner as it encapsulates the logic and 
 | List with --tags filter | ❌ | #11 |
 | Get JSON output | ✅ | - |
 | Get not found (404) | ✅ | - |
-| Get generic API error | ❌ | #8 |
+| Get generic API error | ✅ | #8 |
 | Create JSON | ✅ | - |
 | Create with project-id | ✅ | - |
 | Create no org | ✅ | - |
