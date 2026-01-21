@@ -373,6 +373,43 @@ func TestInitCmd_InvalidAddressRejected(t *testing.T) {
 	}
 }
 
+// TestInitCmd_PrompterErrorOnOverwriteConfirm tests prompter error during overwrite prompt.
+func TestInitCmd_PrompterErrorOnOverwriteConfirm(t *testing.T) {
+	tmpHome := t.TempDir()
+
+	// Create existing settings
+	existingSettings := &config.Settings{
+		CurrentContext: "default",
+		Contexts: map[string]config.Context{
+			"default": {Address: "existing.example.com", LogLevel: "error"},
+		},
+	}
+	if err := config.Save(existingSettings, tmpHome); err != nil {
+		t.Fatalf("Failed to create existing settings: %v", err)
+	}
+
+	cmd := &InitCmd{
+		prompter: &errorPrompter{err: errors.New("terminal not available")},
+		baseDir:  tmpHome,
+	}
+	cli := &CLI{}
+
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	// Verify it's a RuntimeError for exit code 2
+	var runtimeErr internalcmd.RuntimeError
+	if !errors.As(err, &runtimeErr) {
+		t.Errorf("expected RuntimeError, got %T", err)
+	}
+
+	if !strings.Contains(err.Error(), "failed to prompt for confirmation") {
+		t.Errorf("expected prompt confirmation error, got: %v", err)
+	}
+}
+
 // TestInitCmd_StatPermissionError tests that os.Stat permission errors are surfaced.
 func TestInitCmd_StatPermissionError(t *testing.T) {
 	tmpHome := t.TempDir()

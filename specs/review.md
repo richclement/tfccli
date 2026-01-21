@@ -1451,9 +1451,32 @@ fmt.Fprintf(c.stdout, "Settings written to %s\n", settingsPath)
 
 ### 30. Missing Test: Prompter Error on Overwrite Confirmation
 
+**Status: DONE** (2026-01-21)
+
 **File:** `cmd/tfc/init_test.go`
 
 **Problem:** No test verifies error handling when `prompter.Confirm()` returns an error during the "overwrite existing settings?" prompt.
+
+**Plan (2026-01-21):**
+- Acceptance criteria: Test `TestInitCmd_PrompterErrorOnOverwriteConfirm` exists and verifies that when prompter.Confirm() returns an error during overwrite confirmation, it is wrapped and surfaced as a RuntimeError with message "failed to prompt for confirmation"
+- Verification: Run `go test -v -run "TestInitCmd_PrompterErrorOnOverwriteConfirm" ./cmd/tfc/...`
+- Implementation:
+  1. Use the existing shared `errorPrompter` from `testhelpers_test.go`
+  2. Add test `TestInitCmd_PrompterErrorOnOverwriteConfirm` to `init_test.go`
+  3. Verify RuntimeError type for exit code 2
+  4. Run feedback loops to verify
+
+**Progress notes (2026-01-21):**
+
+Changes made:
+- `cmd/tfc/init_test.go:376-409` - Added `TestInitCmd_PrompterErrorOnOverwriteConfirm` test using shared `errorPrompter`
+
+Verification:
+- `make fmt` - passed
+- `make lint` - passed (with temp cache due to permission issues)
+- `make build` - passed
+- `make test` - all tests pass
+- `go test -v -run "TestInitCmd_PrompterErrorOnOverwriteConfirm" ./cmd/tfc/...` - pass
 
 **Test to add:**
 ```go
@@ -1688,7 +1711,7 @@ func TestInitCmd_SaveError(t *testing.T) {
 | Non-interactive without --yes errors on existing | ✅ | - |
 | Interactive with custom values | ✅ | - |
 | Invalid address format rejected | ❌ | #27 |
-| Prompter error on overwrite confirm | ❌ | #30 |
+| Prompter error on overwrite confirm | ✅ | #30 |
 | Prompter error on address prompt | ❌ | #31 |
 | Prompter error on org prompt | ❌ | #32 |
 | Prompter error on log level prompt | ❌ | #33 |
