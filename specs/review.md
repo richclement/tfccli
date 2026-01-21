@@ -2157,9 +2157,32 @@ func TestDoctor_InvalidAddressFormat(t *testing.T) {
 
 ### 40. Missing Test: Client Factory Returns Error
 
+**Status: DONE** (2026-01-21)
+
 **File:** `cmd/tfc/doctor_test.go`
 
 **Problem:** No test verifies the behavior when `clientFactory` returns an error (distinct from `Ping()` returning an error). This tests lines 192-204.
+
+**Plan (2026-01-21):**
+- Acceptance criteria: Test `TestDoctor_ClientFactoryError` exists and verifies that when clientFactory returns an error, the doctor command fails with connectivity check status FAIL and detail containing "failed to create client"
+- Verification: Run `go test -v -run "TestDoctor_ClientFactoryError" ./cmd/tfc/...`
+- Implementation:
+  1. Add test `TestDoctor_ClientFactoryError` to `doctor_test.go`
+  2. Create settings with valid address and token
+  3. Return error from clientFactory to trigger the error path
+  4. Verify RuntimeError is returned and connectivity check shows FAIL status with "failed to create client" message
+
+**Progress notes (2026-01-21):**
+
+Changes made:
+- `cmd/tfc/doctor_test.go:766-829` - Added `TestDoctor_ClientFactoryError` test
+
+Verification:
+- `make fmt` - passed
+- `make lint` - passed (with temp caches due to permission issues)
+- `make build` - passed (with temp caches)
+- `make test` - all tests pass
+- `go test -v -run "TestDoctor_ClientFactoryError" ./cmd/tfc/...` - pass
 
 **Test to add:**
 ```go
@@ -2407,7 +2430,7 @@ format, isTTY := resolveFormat(d.stdout, d.ttyDetector, cli.OutputFormat)
 | --address flag override | ✅ | - |
 | Context not found (--context flag) | ✅ | #38 |
 | Invalid address format | ✅ | #39 |
-| Client factory error | ❌ | #40 |
+| Client factory error | ✅ | #40 |
 | Empty address uses default | ❌ | #41 |
 
 ---
