@@ -147,6 +147,41 @@ func TestRequestRecorder_HasRequest(t *testing.T) {
 	}
 }
 
+// TestRequestRecorder_First verifies First helper.
+func TestRequestRecorder_First(t *testing.T) {
+	recorder := NewRequestRecorder()
+
+	// First on empty recorder returns nil
+	if recorder.First() != nil {
+		t.Error("expected First() to return nil on empty recorder")
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		recorder.Record(r)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	// Make GET request first
+	resp, _ := http.Get(server.URL + "/first")
+	resp.Body.Close()
+
+	// Make POST request second
+	resp, _ = http.Post(server.URL+"/second", "application/json", nil)
+	resp.Body.Close()
+
+	first := recorder.First()
+	if first == nil {
+		t.Fatal("expected First() to return a request")
+	}
+	if first.Path != "/first" {
+		t.Errorf("expected first request path /first, got %s", first.Path)
+	}
+	if first.Method != "GET" {
+		t.Errorf("expected first request method GET, got %s", first.Method)
+	}
+}
+
 // TestRequestRecorder_RequestsForPath verifies path filtering.
 func TestRequestRecorder_RequestsForPath(t *testing.T) {
 	recorder := NewRequestRecorder()

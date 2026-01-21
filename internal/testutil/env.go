@@ -52,12 +52,12 @@ func NewFakeFS(homeDir string, files map[string][]byte) *FakeFS {
 	}
 }
 
-// ReadFile returns the content of the given path, or os.ErrNotExist if not found.
+// ReadFile returns the content of the given path, or os.PathError if not found.
 func (f *FakeFS) ReadFile(path string) ([]byte, error) {
 	if data, ok := f.Files[path]; ok {
 		return data, nil
 	}
-	return nil, os.ErrNotExist
+	return nil, &os.PathError{Op: "open", Path: path, Err: os.ErrNotExist}
 }
 
 // UserHomeDir returns the configured home directory.
@@ -88,23 +88,7 @@ func NewTestTokenResolver(homeDir string, envVars map[string]string, files map[s
 // token from the environment for the given host.
 // Example: TokenResolverWithEnvToken(tmpDir, "app.terraform.io", "test-token")
 func TokenResolverWithEnvToken(homeDir, host, token string) *auth.TokenResolver {
-	sanitizedHost := sanitizeHost(host)
-	envKey := "TF_TOKEN_" + sanitizedHost
+	envKey := "TF_TOKEN_" + auth.SanitizeHost(host)
 
 	return NewTestTokenResolver(homeDir, map[string]string{envKey: token}, nil)
-}
-
-// sanitizeHost converts a hostname to the Terraform env var format.
-// Example: "app.terraform.io" -> "app_terraform_io"
-func sanitizeHost(host string) string {
-	result := make([]byte, len(host))
-	for i := range len(host) {
-		c := host[i]
-		if c == '.' || c == '-' {
-			result[i] = '_'
-		} else {
-			result[i] = c
-		}
-	}
-	return string(result)
 }

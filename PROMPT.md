@@ -1,4 +1,3 @@
-```markdown
 Read `@specs/PRD.md` and `@specs/TASKS.md`.
 
 ## Hard constraints
@@ -59,5 +58,4 @@ Review your diff:
 
 ## Exit condition
 If (and only if) **all tasks in `TASKS.md` are DONE** and the feedback loops are green, output exactly:
-**All tasks have been completed and the build and tests run correctly**
-```
+All tasks have been completed and the build and tests run correctly

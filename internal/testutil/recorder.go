@@ -86,7 +86,19 @@ func (r *RequestRecorder) Last() *RecordedRequest {
 func (r *RequestRecorder) Clear() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.requests = nil
+	r.requests = []RecordedRequest{}
+}
+
+// First returns the first request, or nil if none recorded.
+func (r *RequestRecorder) First() *RecordedRequest {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if len(r.requests) == 0 {
+		return nil
+	}
+	req := r.requests[0]
+	return &req
 }
 
 // HasRequest returns true if any request matches the given method and path.
