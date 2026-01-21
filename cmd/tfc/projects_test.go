@@ -976,3 +976,37 @@ func TestProjectsDelete_APIError(t *testing.T) {
 		t.Errorf("expected error message about delete failure, got: %v", err)
 	}
 }
+
+// TestProjectsDelete_PromptError tests that prompter errors are surfaced.
+func TestProjectsDelete_PromptError(t *testing.T) {
+	tmpDir, resolver := setupProjectsTestSettings(t, "acme")
+	out := &bytes.Buffer{}
+
+	fakeClient := &fakeProjectsClient{}
+
+	cmd := &ProjectsDeleteCmd{
+		ID:            "prj-123",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        out,
+		clientFactory: func(_ tfcapi.ClientConfig) (projectsClient, error) {
+			return fakeClient, nil
+		},
+		prompter: &errorPrompter{err: errors.New("terminal not available")},
+	}
+
+	cli := &CLI{Force: false}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "failed to prompt for confirmation") {
+		t.Errorf("expected prompt error, got: %v", err)
+	}
+
+	// Should not have called delete
+	if len(fakeClient.deleteCalls) != 0 {
+		t.Errorf("expected no delete calls on prompt error, got: %v", fakeClient.deleteCalls)
+	}
+}

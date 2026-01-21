@@ -391,10 +391,26 @@ func TestProjectsDelete_APIError(t *testing.T) {
 
 ### 5. Add prompter error test for delete
 
+**Status:** DONE
+
 **File:** `cmd/tfc/projects_test.go`
 
 **Problem:**
 The error path when the prompter returns an error is not tested.
+
+**Plan:**
+- Acceptance criteria: Test verifies that when prompter returns an error, the error is surfaced with "failed to prompt for confirmation" and no delete API call is made
+- Verification: `go test -v -run "TestProjectsDelete_PromptError" ./cmd/tfc/`
+- Implementation:
+  1. Add `TestProjectsDelete_PromptError` test using existing `errorPrompter` from organizations_test.go
+  2. Verify error message contains "failed to prompt for confirmation"
+  3. Verify no delete calls made when prompt fails
+
+**Progress (2026-01-21):**
+- Added test `TestProjectsDelete_PromptError` in `cmd/tfc/projects_test.go` (lines 981-1007)
+- Test uses `errorPrompter` from organizations_test.go (Go test files in same package can share types)
+- Commands run: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Specific test verified: `go test -v -run "TestProjectsDelete_PromptError" ./cmd/tfc/` - pass
 
 **Test to add:**
 
