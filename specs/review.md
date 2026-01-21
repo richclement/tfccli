@@ -485,12 +485,28 @@ The same TTY detection boilerplate is repeated 5 times across the file.
 
 ### 7. Move test prompters to shared file
 
+**Status:** DONE
+
 **Files:**
 - `cmd/tfc/organizations_test.go` (source)
 - `cmd/tfc/projects_test.go` (consumer)
 
 **Problem:**
 Test helper types (`acceptingPrompter`, `rejectingPrompter`, `failingPrompter`, `errorPrompter`) are defined in `organizations_test.go` but used by `projects_test.go`. This creates implicit coupling.
+
+**Plan:**
+- Acceptance criteria: Prompter types moved to shared file; all tests pass; no duplicate definitions
+- Verification: `go test ./cmd/tfc/...` passes, no redeclaration errors
+- Implementation:
+  1. Create `cmd/tfc/testhelpers_test.go` with prompter definitions
+  2. Remove prompter definitions from `cmd/tfc/organizations_test.go`
+  3. Verify tests pass
+
+**Progress (2026-01-21):**
+- Created `cmd/tfc/testhelpers_test.go` with all 4 prompter types (61 lines)
+- Removed prompter definitions from `cmd/tfc/organizations_test.go` (lines 82-142)
+- Commands run: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- All 55 tests in `cmd/tfc` pass (organizations + projects tests both use shared helpers)
 
 **Fix:**
 Create a new file `cmd/tfc/testhelpers_test.go` and move the prompter definitions there:
