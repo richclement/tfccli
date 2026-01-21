@@ -143,7 +143,7 @@ func (c *OrganizationsListCmd) Run(cli *CLI) error {
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
 		if apiErr != nil {
-			return internalcmd.NewRuntimeError(fmt.Errorf("failed to list organizations: %s", apiErr.Error()))
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to list organizations: %w", apiErr))
 		}
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to list organizations: %w", err))
 	}
@@ -213,7 +213,7 @@ func (c *OrganizationsGetCmd) Run(cli *CLI) error {
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
 		if apiErr != nil {
-			return internalcmd.NewRuntimeError(fmt.Errorf("failed to get organization: %s", apiErr.Error()))
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to get organization: %w", apiErr))
 		}
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to get organization: %w", err))
 	}
@@ -289,7 +289,7 @@ func (c *OrganizationsCreateCmd) Run(cli *CLI) error {
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
 		if apiErr != nil {
-			return internalcmd.NewRuntimeError(fmt.Errorf("failed to create organization: %s", apiErr.Error()))
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to create organization: %w", apiErr))
 		}
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create organization: %w", err))
 	}
@@ -362,7 +362,7 @@ func (c *OrganizationsUpdateCmd) Run(cli *CLI) error {
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
 		if apiErr != nil {
-			return internalcmd.NewRuntimeError(fmt.Errorf("failed to update organization: %s", apiErr.Error()))
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to update organization: %w", apiErr))
 		}
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to update organization: %w", err))
 	}
@@ -448,7 +448,7 @@ func (c *OrganizationsDeleteCmd) Run(cli *CLI) error {
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
 		if apiErr != nil {
-			return internalcmd.NewRuntimeError(fmt.Errorf("failed to delete organization: %s", apiErr.Error()))
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to delete organization: %w", apiErr))
 		}
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to delete organization: %w", err))
 	}

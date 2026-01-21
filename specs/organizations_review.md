@@ -477,3 +477,47 @@ Commands run:
 - `go test -v -run TestOrganizationsUpdate_NoFieldsProvided ./cmd/tfc/...` - passed
 
 **Status:** DONE
+
+---
+
+### Finding 3: Inconsistent error message formatting
+
+**Status:** IN PROGRESS
+
+**Acceptance Criteria:**
+- All API error handling in organizations.go uses `%w` consistently to wrap errors
+- `errors.Is()` and `errors.As()` work correctly on returned errors
+- Error chain is preserved for both parsed API errors and unparsed errors
+
+**Verification:**
+- Existing tests must continue to pass
+- `make lint && make test` green
+
+**Implementation Plan:**
+1. Change `%s` to `%w` and remove `.Error()` call for all apiErr cases in:
+   - List (line 146)
+   - Get (line 216)
+   - Create (line 292)
+   - Update (line 365)
+   - Delete (line 451)
+2. Run make fmt/lint/build/test
+
+**Progress Notes:**
+
+**2026-01-21:** DONE
+
+Files changed:
+- `cmd/tfc/organizations.go`: Changed all 5 API error cases from `%s", apiErr.Error()` to `%w", apiErr` in:
+  - List (line 146)
+  - Get (line 216)
+  - Create (line 292)
+  - Update (line 365)
+  - Delete (line 451)
+
+Commands run:
+- `make fmt` - passed
+- `make lint` - passed
+- `make build` - passed
+- `make test` - all tests pass
+
+**Status:** DONE
