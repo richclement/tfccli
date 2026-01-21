@@ -168,6 +168,7 @@ func (c *OrganizationsListCmd) Run(cli *CLI) error {
 		}
 		tw := output.NewTableWriter(c.stdout, []string{"NAME", "EMAIL", "EXTERNAL-ID"}, isTTY)
 		for _, org := range orgs {
+			// go-tfe returns empty strings for optional fields (Email, ExternalID), not nil.
 			tw.AddRow(org.Name, org.Email, org.ExternalID)
 		}
 		if _, err := tw.Render(); err != nil {

@@ -439,7 +439,7 @@ tw.AddRow(org.Name, email, externalID)
 
 ### Finding 1: No-op updates allowed
 
-**Status:** IN PROGRESS
+**Status:** DONE
 
 **Acceptance Criteria:**
 - `tfc organizations update <name>` without `--email` flag must return an error
@@ -518,7 +518,7 @@ Commands run:
 
 ### Finding 3: Inconsistent error message formatting
 
-**Status:** IN PROGRESS
+**Status:** DONE
 
 **Acceptance Criteria:**
 - All API error handling in organizations.go uses `%w` consistently to wrap errors
@@ -604,7 +604,7 @@ Commands run:
 
 ### Finding 9: Missing test for client factory error
 
-**Status:** IN PROGRESS
+**Status:** DONE
 
 **Acceptance Criteria:**
 - Tests verify that when `clientFactory` returns an error, each command returns a RuntimeError
@@ -753,17 +753,31 @@ Commands run:
 
 ### Finding 11: Potential nil pointer with tfe.Organization fields
 
-**Status:** TODO
+**Status:** DONE
 
 **Acceptance Criteria:**
 - Comment added explaining go-tfe returns empty strings for optional fields, not nil
+- Comment placed near line 170 in OrganizationsListCmd (table output loop)
 
 **Verification:**
 - `make lint && make test` green
 
 **Implementation Plan:**
-1. Add defensive comment near line 170 in organizations.go
+1. Add defensive comment near line 170 in organizations.go explaining go-tfe field behavior
 2. Run make fmt/lint/build/test
+
+**Progress Notes:**
+
+**2026-01-21:** DONE
+
+Files changed:
+- `cmd/tfc/organizations.go`: Added comment "go-tfe returns empty strings for optional fields (Email, ExternalID), not nil." near line 171 before the AddRow call in OrganizationsListCmd
+
+Commands run:
+- `make fmt` - passed
+- `make lint` - passed
+- `make build` - passed
+- `make test` - all tests pass
 
 ---
 
