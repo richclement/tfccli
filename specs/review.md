@@ -873,9 +873,32 @@ if c.Description != "" {
 
 ### 18. Missing Test: Prompter Error Path for Delete
 
+**Status: DONE** (2026-01-21)
+
 **File:** `cmd/tfc/workspace_variables_test.go`
 
 **Problem:** No test verifies error handling when `prompter.Confirm()` returns an error. The shared `errorPrompter` type already exists in `testhelpers_test.go`.
+
+**Plan (2026-01-21):**
+- Acceptance criteria: Test `TestWorkspaceVariablesDelete_PrompterError` exists and verifies that when prompter.Confirm() returns an error, it is wrapped and surfaced as a RuntimeError with message "failed to prompt for confirmation"
+- Verification: Run `go test -v -run "TestWorkspaceVariablesDelete_PrompterError" ./cmd/tfc/...`
+- Implementation:
+  1. Use the existing shared `errorPrompter` from `testhelpers_test.go`
+  2. Add test `TestWorkspaceVariablesDelete_PrompterError` to `workspace_variables_test.go`
+  3. Verify RuntimeError type for exit code 2
+  4. Run feedback loops to verify
+
+**Progress notes (2026-01-21):**
+
+Changes made:
+- `cmd/tfc/workspace_variables_test.go:713-746` - Added `TestWorkspaceVariablesDelete_PrompterError` test using shared `errorPrompter`
+
+Verification:
+- `make fmt` - passed
+- `make lint` - passed (with temp caches due to permission issues)
+- `make build` - passed
+- `make test` - all tests pass
+- `go test -v -run "TestWorkspaceVariablesDelete_PrompterError" ./cmd/tfc/...` - pass
 
 **Test to add:**
 ```go
@@ -1227,7 +1250,7 @@ format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
 | Delete with --force | ✅ | - |
 | Delete JSON output | ✅ | - |
 | Delete API error | ❌ | #21 |
-| Delete prompter error | ❌ | #18 |
+| Delete prompter error | ✅ | #18 |
 
 ---
 

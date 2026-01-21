@@ -709,3 +709,38 @@ func TestWorkspaceVariablesUpdate_FailsWhenNoFields(t *testing.T) {
 		t.Errorf("expected 'at least one of' error message, got: %v", err)
 	}
 }
+
+// TestWorkspaceVariablesDelete_PrompterError tests that prompter errors are surfaced.
+func TestWorkspaceVariablesDelete_PrompterError(t *testing.T) {
+	tmpDir, resolver := setupVariablesTestSettings(t)
+	var buf bytes.Buffer
+
+	cmd := &WorkspaceVariablesDeleteCmd{
+		VariableID:    "var-123",
+		WorkspaceID:   "ws-123",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &buf,
+		clientFactory: func(_ tfcapi.ClientConfig) (variablesClient, error) {
+			return &fakeVariablesClient{}, nil
+		},
+		prompter: &errorPrompter{err: errors.New("terminal not available")},
+	}
+
+	cli := &CLI{Force: false}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	// Verify it's a RuntimeError for exit code 2
+	var runtimeErr internalcmd.RuntimeError
+	if !errors.As(err, &runtimeErr) {
+		t.Errorf("expected RuntimeError, got %T", err)
+	}
+
+	if !strings.Contains(err.Error(), "failed to prompt for confirmation") {
+		t.Errorf("expected prompt error, got: %v", err)
+	}
+}
