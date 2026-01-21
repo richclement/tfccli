@@ -264,6 +264,74 @@ func TestOrganizationsList_Table(t *testing.T) {
 	}
 }
 
+// TestOrganizationsList_EmptyTable tests that empty list shows a message in table mode.
+func TestOrganizationsList_EmptyTable(t *testing.T) {
+	tmpDir, resolver := setupOrgsTestSettings(t)
+	out := &bytes.Buffer{}
+
+	fakeClient := &fakeOrgsClient{
+		orgs: []*tfe.Organization{}, // Empty list
+	}
+
+	cmd := &OrganizationsListCmd{
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        out,
+		clientFactory: func(_ tfcapi.ClientConfig) (orgsClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "table"}
+	err := cmd.Run(cli)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	outStr := out.String()
+	if !strings.Contains(outStr, "No organizations found.") {
+		t.Errorf("expected 'No organizations found.' message, got: %s", outStr)
+	}
+}
+
+// TestOrganizationsList_EmptyJSON tests that empty list returns empty JSON array.
+func TestOrganizationsList_EmptyJSON(t *testing.T) {
+	tmpDir, resolver := setupOrgsTestSettings(t)
+	out := &bytes.Buffer{}
+
+	fakeClient := &fakeOrgsClient{
+		orgs: []*tfe.Organization{}, // Empty list
+	}
+
+	cmd := &OrganizationsListCmd{
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        out,
+		clientFactory: func(_ tfcapi.ClientConfig) (orgsClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Parse JSON output - should have empty data array
+	var result struct {
+		Data []*tfe.Organization `json:"data"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &result); err != nil {
+		t.Fatalf("failed to parse JSON output: %v", err)
+	}
+	if len(result.Data) != 0 {
+		t.Errorf("expected 0 organizations, got %d", len(result.Data))
+	}
+}
+
 // TestOrganizationsGet_JSON tests getting an organization by name.
 func TestOrganizationsGet_JSON(t *testing.T) {
 	tmpDir, resolver := setupOrgsTestSettings(t)

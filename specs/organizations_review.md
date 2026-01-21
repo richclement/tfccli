@@ -480,6 +480,42 @@ Commands run:
 
 ---
 
+### Finding 2: Empty organization list has no feedback
+
+**Status:** DONE
+
+**Acceptance Criteria:**
+- In table mode, when the API returns an empty list, print "No organizations found." instead of just headers
+- JSON mode must still return the empty data array (no change for JSON)
+- Existing tests must continue to pass
+
+**Verification:**
+- Unit test `TestOrganizationsList_EmptyTable` must pass
+- `make lint && make test` green
+
+**Implementation Plan:**
+1. After API call, check `len(orgs) == 0` in table mode
+2. If empty, print "No organizations found.\n" and return early
+3. JSON mode unchanged (already returns `{"data": []}`)
+4. Add test `TestOrganizationsList_EmptyTable` verifying the message
+
+**Progress Notes:**
+
+**2026-01-21:** DONE
+
+Files changed:
+- `cmd/tfc/organizations.go`: Added early return with "No organizations found." message when orgs list is empty in table mode
+- `cmd/tfc/organizations_test.go`: Added `TestOrganizationsList_EmptyTable` and `TestOrganizationsList_EmptyJSON` tests
+
+Commands run:
+- `make fmt` - passed
+- `make lint` - passed
+- `make build` - passed
+- `make test` - all tests pass
+- `go test -v -run TestOrganizationsList_Empty ./cmd/tfc/...` - both new tests pass
+
+---
+
 ### Finding 3: Inconsistent error message formatting
 
 **Status:** IN PROGRESS

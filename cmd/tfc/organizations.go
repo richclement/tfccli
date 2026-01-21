@@ -162,6 +162,10 @@ func (c *OrganizationsListCmd) Run(cli *CLI) error {
 			return internalcmd.NewRuntimeError(fmt.Errorf("failed to write output: %w", err))
 		}
 	} else {
+		if len(orgs) == 0 {
+			fmt.Fprintln(c.stdout, "No organizations found.")
+			return nil
+		}
 		tw := output.NewTableWriter(c.stdout, []string{"NAME", "EMAIL", "EXTERNAL-ID"}, isTTY)
 		for _, org := range orgs {
 			tw.AddRow(org.Name, org.Email, org.ExternalID)
