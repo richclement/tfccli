@@ -1149,3 +1149,41 @@ func TestOrganizationsCreate_Table(t *testing.T) {
 		t.Errorf("expected success message, got: %s", out.String())
 	}
 }
+
+// TestOrganizationsDelete_Table tests that delete outputs a success message in table mode.
+func TestOrganizationsDelete_Table(t *testing.T) {
+	tmpDir, resolver := setupOrgsTestSettings(t)
+	out := &bytes.Buffer{}
+
+	fakeClient := &fakeOrgsClient{}
+	forceFlag := true
+
+	cmd := &OrganizationsDeleteCmd{
+		Name:          "org-123",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        out,
+		clientFactory: func(_ tfcapi.ClientConfig) (orgsClient, error) {
+			return fakeClient, nil
+		},
+		prompter:  &failingPrompter{}, // Would fail if called
+		forceFlag: &forceFlag,
+	}
+
+	cli := &CLI{OutputFormat: "table", Force: true}
+	err := cmd.Run(cli)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Should have called delete
+	if len(fakeClient.deleteCalls) != 1 || fakeClient.deleteCalls[0] != "org-123" {
+		t.Errorf("expected delete call for org-123, got: %v", fakeClient.deleteCalls)
+	}
+
+	outStr := out.String()
+	if !strings.Contains(outStr, "org-123") || !strings.Contains(outStr, "deleted") {
+		t.Errorf("expected success message with org name and 'deleted', got: %s", outStr)
+	}
+}

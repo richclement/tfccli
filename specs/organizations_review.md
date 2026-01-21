@@ -684,7 +684,7 @@ Commands run:
 
 ### Finding 7: Missing test for OrganizationsDelete table output
 
-**Status:** TODO
+**Status:** DONE
 
 **Acceptance Criteria:**
 - Test verifies table output for OrganizationsDelete command
@@ -700,6 +700,24 @@ Commands run:
 1. Add `TestOrganizationsDelete_Table` test with a fake client and force flag
 2. Use table output format and verify output contains "org-123" and "deleted"
 3. Run make fmt/lint/build/test
+
+**Progress Notes:**
+
+**2026-01-21:** DONE
+
+Files changed:
+- `cmd/tfc/organizations_test.go`: Added `TestOrganizationsDelete_Table` test that verifies:
+  - Table output format is used when cli.OutputFormat is "table"
+  - Delete API is called with correct org name "org-123"
+  - Output contains organization name "org-123"
+  - Output contains "deleted" in the success message
+
+Commands run:
+- `make fmt` - passed
+- `make lint` - passed
+- `make build` - passed
+- `make test` - all tests pass
+- `go test -v -run TestOrganizationsDelete_Table ./cmd/tfc/...` - passed
 
 ---
 
