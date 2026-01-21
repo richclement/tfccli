@@ -395,6 +395,62 @@ func TestOrganizationsGet_JSON(t *testing.T) {
 	}
 }
 
+// TestOrganizationsGet_Table tests getting an organization with table output.
+func TestOrganizationsGet_Table(t *testing.T) {
+	tmpDir, resolver := setupOrgsTestSettings(t)
+	out := &bytes.Buffer{}
+
+	fakeClient := &fakeOrgsClient{
+		org: &tfe.Organization{
+			Name:       "org-123",
+			Email:      "admin@example.com",
+			ExternalID: "ext-123",
+			CreatedAt:  time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC),
+		},
+	}
+
+	cmd := &OrganizationsGetCmd{
+		Name:          "org-123",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        out,
+		clientFactory: func(_ tfcapi.ClientConfig) (orgsClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "table"}
+	err := cmd.Run(cli)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(fakeClient.readCalls) != 1 || fakeClient.readCalls[0] != "org-123" {
+		t.Errorf("expected read call for org-123, got: %v", fakeClient.readCalls)
+	}
+
+	outStr := out.String()
+	// Verify table headers
+	if !strings.Contains(outStr, "FIELD") || !strings.Contains(outStr, "VALUE") {
+		t.Errorf("expected table headers FIELD and VALUE, got: %s", outStr)
+	}
+	// Verify field values
+	if !strings.Contains(outStr, "org-123") {
+		t.Errorf("expected org name in output, got: %s", outStr)
+	}
+	if !strings.Contains(outStr, "admin@example.com") {
+		t.Errorf("expected email in output, got: %s", outStr)
+	}
+	if !strings.Contains(outStr, "ext-123") {
+		t.Errorf("expected external ID in output, got: %s", outStr)
+	}
+	// CreatedAt should be formatted
+	if !strings.Contains(outStr, "2024") {
+		t.Errorf("expected created at year in output, got: %s", outStr)
+	}
+}
+
 // TestOrganizationsDelete_PromptsWithoutForce tests that delete prompts without --force.
 func TestOrganizationsDelete_PromptsWithoutForce(t *testing.T) {
 	tmpDir, resolver := setupOrgsTestSettings(t)

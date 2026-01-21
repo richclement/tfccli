@@ -560,6 +560,48 @@ Commands run:
 
 ---
 
+### Finding 4: Missing test for OrganizationsGet table output
+
+**Status:** DONE
+
+**Acceptance Criteria:**
+- Test verifies table output for OrganizationsGet command
+- Table output includes Name, Email, External ID, and Created At fields
+- Test validates format matches expected FIELD/VALUE structure
+
+**Verification:**
+- Unit test `TestOrganizationsGet_Table` must pass
+- Existing tests must continue to pass
+- `make lint && make test` green
+
+**Implementation Plan:**
+1. Add `TestOrganizationsGet_Table` test with a fake client returning a known organization
+2. Use table output format and verify output contains expected fields (Name, Email, External ID, Created At)
+3. Run make fmt/lint/build/test
+
+**Progress Notes:**
+
+**2026-01-21:** DONE
+
+Files changed:
+- `cmd/tfc/organizations_test.go`: Added `TestOrganizationsGet_Table` test that verifies:
+  - Table headers (FIELD, VALUE) are present
+  - Organization name "org-123" is in output
+  - Email "admin@example.com" is in output
+  - External ID "ext-123" is in output
+  - Created At date (year 2024) is formatted and present
+
+Commands run:
+- `make fmt` - passed
+- `make lint` - passed
+- `make build` - passed
+- `make test` - all tests pass
+- `go test -v -run TestOrganizationsGet_Table ./cmd/tfc/...` - passed
+
+**Status:** DONE
+
+---
+
 ### Finding 9: Missing test for client factory error
 
 **Status:** IN PROGRESS
