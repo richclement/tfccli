@@ -888,6 +888,141 @@ func TestOrganizationsDelete_PrompterError(t *testing.T) {
 	}
 }
 
+// TestOrganizationsList_ClientFactoryError tests that client factory errors are surfaced.
+func TestOrganizationsList_ClientFactoryError(t *testing.T) {
+	tmpDir, resolver := setupOrgsTestSettings(t)
+	out := &bytes.Buffer{}
+
+	cmd := &OrganizationsListCmd{
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        out,
+		clientFactory: func(_ tfcapi.ClientConfig) (orgsClient, error) {
+			return nil, errors.New("connection refused")
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "failed to create client") {
+		t.Errorf("expected 'failed to create client' error, got: %v", err)
+	}
+}
+
+// TestOrganizationsGet_ClientFactoryError tests that client factory errors are surfaced.
+func TestOrganizationsGet_ClientFactoryError(t *testing.T) {
+	tmpDir, resolver := setupOrgsTestSettings(t)
+	out := &bytes.Buffer{}
+
+	cmd := &OrganizationsGetCmd{
+		Name:          "org-123",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        out,
+		clientFactory: func(_ tfcapi.ClientConfig) (orgsClient, error) {
+			return nil, errors.New("connection refused")
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "failed to create client") {
+		t.Errorf("expected 'failed to create client' error, got: %v", err)
+	}
+}
+
+// TestOrganizationsCreate_ClientFactoryError tests that client factory errors are surfaced.
+func TestOrganizationsCreate_ClientFactoryError(t *testing.T) {
+	tmpDir, resolver := setupOrgsTestSettings(t)
+	out := &bytes.Buffer{}
+
+	cmd := &OrganizationsCreateCmd{
+		Name:          "new-org",
+		Email:         "admin@example.com",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        out,
+		clientFactory: func(_ tfcapi.ClientConfig) (orgsClient, error) {
+			return nil, errors.New("connection refused")
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "failed to create client") {
+		t.Errorf("expected 'failed to create client' error, got: %v", err)
+	}
+}
+
+// TestOrganizationsUpdate_ClientFactoryError tests that client factory errors are surfaced.
+func TestOrganizationsUpdate_ClientFactoryError(t *testing.T) {
+	tmpDir, resolver := setupOrgsTestSettings(t)
+	out := &bytes.Buffer{}
+
+	cmd := &OrganizationsUpdateCmd{
+		Name:          "org-123",
+		Email:         "newemail@example.com",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        out,
+		clientFactory: func(_ tfcapi.ClientConfig) (orgsClient, error) {
+			return nil, errors.New("connection refused")
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "failed to create client") {
+		t.Errorf("expected 'failed to create client' error, got: %v", err)
+	}
+}
+
+// TestOrganizationsDelete_ClientFactoryError tests that client factory errors are surfaced.
+func TestOrganizationsDelete_ClientFactoryError(t *testing.T) {
+	tmpDir, resolver := setupOrgsTestSettings(t)
+	out := &bytes.Buffer{}
+
+	forceFlag := true
+
+	cmd := &OrganizationsDeleteCmd{
+		Name:          "org-123",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        out,
+		clientFactory: func(_ tfcapi.ClientConfig) (orgsClient, error) {
+			return nil, errors.New("connection refused")
+		},
+		prompter:  &failingPrompter{}, // Would fail if called
+		forceFlag: &forceFlag,
+	}
+
+	cli := &CLI{Force: true}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "failed to create client") {
+		t.Errorf("expected 'failed to create client' error, got: %v", err)
+	}
+}
+
 // TestOrganizationsCreate_Table tests that create outputs a success message in table mode.
 func TestOrganizationsCreate_Table(t *testing.T) {
 	tmpDir, resolver := setupOrgsTestSettings(t)
