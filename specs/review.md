@@ -276,7 +276,28 @@ func TestWorkspacesCreate_APIError(t *testing.T) {
 
 ### 6. Missing Test: Update API Error
 
+**Status: DONE** (2026-01-21)
+
 **File:** `cmd/tfc/workspaces_test.go`
+
+**Plan (2026-01-21):**
+- Acceptance criteria: Test `TestWorkspacesUpdate_APIError` exists and verifies that when the Update API call fails, it is wrapped and surfaced as a RuntimeError with message "failed to update workspace"
+- Verification: Run `go test -v -run "TestWorkspacesUpdate_APIError" ./cmd/tfc/...`
+- Implementation:
+  1. Add test `TestWorkspacesUpdate_APIError` to `workspaces_test.go` after `TestWorkspacesUpdate_FailsWhenNoFields`
+  2. Verify test passes with `make test`
+
+**Progress notes (2026-01-21):**
+
+Changes made:
+- `cmd/tfc/workspaces_test.go:657-691` - Added `TestWorkspacesUpdate_APIError` test
+
+Verification:
+- `make fmt` - passed
+- `make lint` - passed (with alternate cache dirs due to permission issues)
+- `make build` - passed
+- `make test` - all tests pass
+- `go test -v -run "TestWorkspacesUpdate_APIError" ./cmd/tfc/...` - pass
 
 **Test to add:**
 ```go
@@ -680,7 +701,7 @@ The `resolveFormat` helper is slightly cleaner as it encapsulates the logic and 
 | Create API error | ✅ | #5 |
 | Update JSON | ✅ | - |
 | Update no fields provided | ✅ | #2 |
-| Update API error | ❌ | #6 |
+| Update API error | ✅ | #6 |
 | Delete with confirmation | ✅ | - |
 | Delete rejected | ✅ | - |
 | Delete with --force | ✅ | - |

@@ -654,6 +654,42 @@ func TestWorkspacesUpdate_FailsWhenNoFields(t *testing.T) {
 	}
 }
 
+// TestWorkspacesUpdate_APIError tests that API errors are surfaced during update.
+func TestWorkspacesUpdate_APIError(t *testing.T) {
+	tmpDir, resolver := setupWorkspacesTestSettings(t, "acme")
+	out := &bytes.Buffer{}
+
+	fakeClient := &fakeWorkspacesClient{
+		updateErr: errors.New("workspace not found"),
+	}
+
+	cmd := &WorkspacesUpdateCmd{
+		ID:            "ws-nonexistent",
+		Name:          "new-name",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        out,
+		clientFactory: func(_ tfcapi.ClientConfig) (workspacesClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "failed to update workspace") {
+		t.Errorf("expected update failure message, got: %v", err)
+	}
+	// Verify it's a RuntimeError for exit code 2
+	var runtimeErr internalcmd.RuntimeError
+	if !errors.As(err, &runtimeErr) {
+		t.Errorf("expected RuntimeError, got %T", err)
+	}
+}
+
 // TestWorkspacesDelete_PromptsWithoutForce tests that delete prompts without --force.
 func TestWorkspacesDelete_PromptsWithoutForce(t *testing.T) {
 	tmpDir, resolver := setupWorkspacesTestSettings(t, "acme")
