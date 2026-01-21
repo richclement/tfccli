@@ -1,10 +1,13 @@
 package main
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	internalcmd "github.com/richclement/tfccli/internal/cmd"
 	"github.com/richclement/tfccli/internal/config"
 	"github.com/richclement/tfccli/internal/ui"
 )
@@ -322,5 +325,50 @@ func TestInitCmd_OverwritesWithConfirmation(t *testing.T) {
 	ctx := settings.Contexts["default"]
 	if ctx.Address != "new.example.com" {
 		t.Errorf("Address = %q, want %q", ctx.Address, "new.example.com")
+	}
+}
+
+func TestInitCmd_InvalidAddressRejected(t *testing.T) {
+	tests := []struct {
+		name    string
+		address string
+	}{
+		{"malformed URL", "://broken"},
+		{"empty hostname", "https:///path"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tmpHome := t.TempDir()
+
+			cmd := &InitCmd{
+				NonInteractive: true,
+				baseDir:        tmpHome,
+			}
+			cli := &CLI{
+				Address: tc.address,
+			}
+
+			err := cmd.Run(cli)
+			if err == nil {
+				t.Fatal("expected error for invalid address, got nil")
+			}
+
+			// Verify it's a RuntimeError for exit code 2
+			var runtimeErr internalcmd.RuntimeError
+			if !errors.As(err, &runtimeErr) {
+				t.Errorf("expected RuntimeError, got %T", err)
+			}
+
+			if !strings.Contains(err.Error(), "invalid address") {
+				t.Errorf("expected 'invalid address' in error, got: %v", err)
+			}
+
+			// Verify settings file was not created
+			settingsPath := filepath.Join(tmpHome, ".tfccli", "settings.json")
+			if _, err := os.Stat(settingsPath); err == nil {
+				t.Error("settings.json should not have been created for invalid address")
+			}
+		})
 	}
 }

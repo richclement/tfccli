@@ -335,6 +335,11 @@ func (c *InitCmd) Run(cli *CLI) error {
 		}
 	}
 
+	// Validate address format
+	if _, err := auth.ExtractHostname(address); err != nil {
+		return internalcmd.NewRuntimeError(fmt.Errorf("invalid address %q: %w", address, err))
+	}
+
 	// Create settings
 	settings := &config.Settings{
 		CurrentContext: "default",

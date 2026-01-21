@@ -1297,6 +1297,8 @@ Review of `cmd/tfc/main.go` (InitCmd) and `cmd/tfc/init_test.go`.
 
 ### 27. Missing Address Validation
 
+**Status: DONE** (2026-01-21)
+
 **File:** `cmd/tfc/main.go:321` (interactive) and `305-308` (non-interactive)
 
 **Problem:** The init command accepts any address value without validation. Unlike the `doctor` command which validates the address format using `auth.ExtractHostname()` (main.go:158), the init command saves whatever address is provided. This allows invalid addresses (e.g., "not-a-url", "://broken") to be stored in settings.json, causing confusing failures later when running other commands.
@@ -1324,6 +1326,27 @@ if _, err := auth.ExtractHostname(address); err != nil {
 ```
 
 **Test to add:** `TestInitCmd_InvalidAddressRejected` - verify error when address format is invalid.
+
+**Plan (2026-01-21):**
+- Acceptance criteria: `tfc init --non-interactive --address "://broken"` returns RuntimeError with message containing "invalid address"
+- Verification: Add test `TestInitCmd_InvalidAddressRejected` that verifies error is returned and is RuntimeError type
+- Implementation:
+  1. Add validation using `auth.ExtractHostname()` after address is collected (both interactive and non-interactive paths)
+  2. Add test case in `init_test.go`
+  3. Run feedback loops
+
+**Progress notes (2026-01-21):**
+
+Changes made:
+- `cmd/tfc/main.go:338-341` - Added address validation using `auth.ExtractHostname()` after collecting address value (before creating settings)
+- `cmd/tfc/init_test.go:330-375` - Added `TestInitCmd_InvalidAddressRejected` test with subtests for malformed URL and empty hostname cases
+
+Verification:
+- `make fmt` - passed
+- `make lint` - passed (with temp caches)
+- `make build` - passed (with temp caches)
+- `make test` - all tests pass
+- `go test -v -run "TestInitCmd_InvalidAddressRejected" ./cmd/tfc/...` - pass (both subtests pass)
 
 ---
 
