@@ -823,3 +823,42 @@ func TestWorkspaceVariablesUpdate_APIError(t *testing.T) {
 		t.Errorf("expected update failure message, got: %v", err)
 	}
 }
+
+// TestWorkspaceVariablesDelete_APIError tests that API errors are surfaced during delete.
+func TestWorkspaceVariablesDelete_APIError(t *testing.T) {
+	tmpDir, resolver := setupVariablesTestSettings(t)
+	var buf bytes.Buffer
+
+	fakeClient := &fakeVariablesClient{
+		deleteErr: errors.New("forbidden"),
+	}
+
+	cmd := &WorkspaceVariablesDeleteCmd{
+		VariableID:    "var-123",
+		WorkspaceID:   "ws-123",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &buf,
+		clientFactory: func(_ tfcapi.ClientConfig) (variablesClient, error) {
+			return fakeClient, nil
+		},
+		prompter: &acceptingPrompter{},
+	}
+
+	cli := &CLI{Force: true}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	// Verify it's a RuntimeError for exit code 2
+	var runtimeErr internalcmd.RuntimeError
+	if !errors.As(err, &runtimeErr) {
+		t.Errorf("expected RuntimeError, got %T", err)
+	}
+
+	if !strings.Contains(err.Error(), "failed to delete variable") {
+		t.Errorf("expected delete failure message, got: %v", err)
+	}
+}

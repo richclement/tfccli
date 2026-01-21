@@ -1033,9 +1033,33 @@ Verification:
 
 ### 21. Missing Test: Delete API Error
 
+**Status: DONE** (2026-01-21)
+
 **File:** `cmd/tfc/workspace_variables_test.go`
 
 **Problem:** No test verifies error handling when the Delete API call fails.
+
+**Plan (2026-01-21):**
+- Acceptance criteria: Test `TestWorkspaceVariablesDelete_APIError` exists and verifies that when the Delete API call fails, it is wrapped and surfaced as a RuntimeError with message "failed to delete variable"
+- Verification: Run `go test -v -run "TestWorkspaceVariablesDelete_APIError" ./cmd/tfc/...`
+- Implementation:
+  1. Add test `TestWorkspaceVariablesDelete_APIError` to `workspace_variables_test.go` after `TestWorkspaceVariablesUpdate_APIError`
+  2. Use `fakeVariablesClient.deleteErr` to simulate API failure
+  3. Use `--force` flag to skip confirmation and test API error path directly
+  4. Verify RuntimeError type for exit code 2
+  5. Run feedback loops to verify
+
+**Progress notes (2026-01-21):**
+
+Changes made:
+- `cmd/tfc/workspace_variables_test.go:826-860` - Added `TestWorkspaceVariablesDelete_APIError` test
+
+Verification:
+- `make fmt` - passed
+- `make lint` - passed (with temp cache due to permission issues)
+- `make build` - passed (with temp cache)
+- `make test` - all tests pass (with temp cache)
+- `go test -v -run "TestWorkspaceVariablesDelete_APIError" ./cmd/tfc/...` - pass
 
 **Test to add:**
 ```go
@@ -1258,7 +1282,7 @@ format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
 | Delete rejected | ✅ | - |
 | Delete with --force | ✅ | - |
 | Delete JSON output | ✅ | - |
-| Delete API error | ❌ | #21 |
+| Delete API error | ✅ | #21 |
 | Delete prompter error | ✅ | #18 |
 
 ---
