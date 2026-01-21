@@ -2320,6 +2320,8 @@ for _, name := range names {
 
 ### 48. Missing Address Validation in Add Command
 
+**Status: DONE** (2026-01-21)
+
 **File:** `cmd/tfc/main.go:399-421`
 
 **Problem:** Unlike the `doctor` command which validates addresses using `auth.ExtractHostname()` (main.go:158), the `contexts add` command accepts any address value including malformed URLs like "://broken", "not-a-url", or empty strings. This allows invalid configurations to be saved, causing confusing failures later when other commands try to use the context.
@@ -2362,6 +2364,28 @@ func (c *ContextsAddCmd) Run() error {
 ```
 
 **Test to add:** `TestContextsAddCmd_InvalidAddressRejected`
+
+**Plan (2026-01-21):**
+- Acceptance criteria: `tfc contexts add bad --ctx-address "://broken"` returns RuntimeError with message containing "invalid address"
+- Verification: Add test `TestContextsAddCmd_InvalidAddressRejected` that verifies error is returned and is RuntimeError type
+- Implementation:
+  1. Add address validation using `auth.ExtractHostname()` after checking context doesn't exist
+  2. Add test case in `contexts_test.go`
+  3. Run feedback loops
+
+**Progress notes (2026-01-21):**
+
+Changes made:
+- `cmd/tfc/main.go:415-418` - Added address validation using `auth.ExtractHostname()` after checking context doesn't exist
+- `cmd/tfc/contexts_test.go:109-147` - Added `TestContextsAddCmd_InvalidAddressRejected` test with subtests for malformed URL and empty hostname cases
+- `cmd/tfc/contexts_test.go:4` - Added `strings` import for `strings.Contains`
+
+Verification:
+- `make fmt` - passed
+- `make lint` - passed (with temp caches)
+- `make build` - passed
+- `make test` - all tests pass
+- `go test -v -run "TestContextsAddCmd_InvalidAddressRejected" ./cmd/tfc/...` - pass (both subtests pass)
 
 ---
 

@@ -413,6 +413,11 @@ func (c *ContextsAddCmd) Run() error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("context %q already exists", c.Name))
 	}
 
+	// Validate address format
+	if _, err := auth.ExtractHostname(c.CtxAddress); err != nil {
+		return internalcmd.NewRuntimeError(fmt.Errorf("invalid address %q: %w", c.CtxAddress, err))
+	}
+
 	settings.Contexts[c.Name] = config.Context{
 		Address:    c.CtxAddress,
 		DefaultOrg: c.DefaultOrg,

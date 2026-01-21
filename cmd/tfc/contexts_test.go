@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/richclement/tfccli/internal/config"
@@ -103,6 +104,45 @@ func TestContextsAddCmd_ErrorsIfContextExists(t *testing.T) {
 	err := cmd.Run()
 	if err == nil {
 		t.Fatal("Expected error when adding existing context")
+	}
+}
+
+func TestContextsAddCmd_InvalidAddressRejected(t *testing.T) {
+	tmpHome := t.TempDir()
+
+	settings := &config.Settings{
+		CurrentContext: "default",
+		Contexts: map[string]config.Context{
+			"default": {Address: "app.terraform.io", LogLevel: "info"},
+		},
+	}
+	createTestSettings(t, tmpHome, settings)
+
+	testCases := []struct {
+		name    string
+		address string
+	}{
+		{name: "malformed URL", address: "://broken"},
+		{name: "empty hostname", address: "https:///path"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cmd := &ContextsAddCmd{
+				Name:       "bad-context",
+				CtxAddress: tc.address,
+				baseDir:    tmpHome,
+			}
+
+			err := cmd.Run()
+			if err == nil {
+				t.Fatalf("expected error for invalid address %q, got nil", tc.address)
+			}
+			errStr := err.Error()
+			if !strings.Contains(errStr, "invalid address") {
+				t.Errorf("expected 'invalid address' in error, got: %v", err)
+			}
+		})
 	}
 }
 
