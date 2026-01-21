@@ -1989,9 +1989,32 @@ Detail: fmt.Sprintf("context %q not found; run 'tfc contexts list' to see availa
 
 ### 38. Missing Test: Context Not Found with --context Flag
 
+**Status: DONE** (2026-01-21)
+
 **File:** `cmd/tfc/doctor_test.go`
 
 **Problem:** No test verifies the behavior when `--context` flag specifies a non-existent context name. The existing tests use valid context names or rely on `CurrentContext`.
+
+**Plan (2026-01-21):**
+- Acceptance criteria: Test `TestDoctor_ContextNotFound` exists and verifies that when `--context` flag specifies a non-existent context, the doctor command fails with context check status FAIL and detail containing the context name
+- Verification: Run `go test -v -run "TestDoctor_ContextNotFound" ./cmd/tfc/...`
+- Implementation:
+  1. Add test `TestDoctor_ContextNotFound` to `doctor_test.go`
+  2. Create settings with only "default" context
+  3. Use `--context nonexistent` to trigger the error path
+  4. Verify RuntimeError is returned and context check shows FAIL status
+
+**Progress notes (2026-01-21):**
+
+Changes made:
+- `cmd/tfc/doctor_test.go:662-711` - Added `TestDoctor_ContextNotFound` test
+
+Verification:
+- `make fmt` - passed
+- `make lint` - passed (with temp caches due to permission issues)
+- `make build` - passed (with temp caches)
+- `make test` - all tests pass
+- `go test -v -run "TestDoctor_ContextNotFound" ./cmd/tfc/...` - pass
 
 **Test to add:**
 ```go
@@ -2360,7 +2383,7 @@ format, isTTY := resolveFormat(d.stdout, d.ttyDetector, cli.OutputFormat)
 | JSON output format | ✅ | - |
 | --context flag override | ✅ | - |
 | --address flag override | ✅ | - |
-| Context not found (--context flag) | ❌ | #38 |
+| Context not found (--context flag) | ✅ | #38 |
 | Invalid address format | ❌ | #39 |
 | Client factory error | ❌ | #40 |
 | Empty address uses default | ❌ | #41 |

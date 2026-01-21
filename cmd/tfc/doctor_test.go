@@ -659,6 +659,58 @@ func TestDoctor_NoTokenError(t *testing.T) {
 	}
 }
 
+// TestDoctor_ContextNotFound tests error when --context flag specifies non-existent context.
+func TestDoctor_ContextNotFound(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create settings with only "default" context
+	settings := &config.Settings{
+		CurrentContext: "default",
+		Contexts: map[string]config.Context{
+			"default": {
+				Address:  "app.terraform.io",
+				LogLevel: "info",
+			},
+		},
+	}
+	if err := config.Save(settings, tmpDir); err != nil {
+		t.Fatalf("failed to save settings: %v", err)
+	}
+
+	stdout, getOutput := captureStdout(t)
+
+	cmd := &DoctorCmd{
+		baseDir:     tmpDir,
+		stdout:      stdout,
+		ttyDetector: &output.FakeTTYDetector{IsTTYValue: false},
+	}
+	cli := &CLI{OutputFormat: "json", Context: "nonexistent"}
+
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	out := getOutput()
+
+	var result DoctorResult
+	if err := json.Unmarshal([]byte(out), &result); err != nil {
+		t.Fatalf("failed to parse JSON output: %v\nOutput: %s", err, out)
+	}
+
+	ctxCheck := findCheck(result.Checks, "context")
+	if ctxCheck == nil {
+		t.Fatal("context check not found")
+	}
+
+	if ctxCheck.Status != "FAIL" {
+		t.Errorf("expected context status FAIL, got: %s", ctxCheck.Status)
+	}
+	if !strings.Contains(ctxCheck.Detail, "nonexistent") {
+		t.Errorf("expected detail to contain 'nonexistent', got: %s", ctxCheck.Detail)
+	}
+}
+
 // findCheck finds a check by name in the results.
 func findCheck(checks []DoctorCheck, name string) *DoctorCheck {
 	for i := range checks {
