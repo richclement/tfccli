@@ -2433,9 +2433,33 @@ if c.stdout == nil {
 
 ### 47. List Output Order is Non-Deterministic
 
-**File:** `cmd/tfc/main.go:379`
+**Status: DONE** (2026-01-21)
+
+**File:** `cmd/tfc/main.go:386-392`
 
 **Problem:** The list command iterates over `settings.Contexts` map directly. Map iteration in Go is not deterministic, meaning context listing may appear in different orders between runs. This makes testing difficult and the CLI behavior unpredictable.
+
+**Plan (2026-01-21):**
+- Acceptance criteria: `tfc contexts list` outputs context names in alphabetical order, deterministically
+- Verification: Run existing tests, add test for alphabetical ordering if not covered
+- Implementation:
+  1. Import `sort` package in main.go
+  2. Collect context names into a slice
+  3. Sort the slice alphabetically
+  4. Iterate over the sorted slice instead of the map directly
+
+**Progress notes (2026-01-21):**
+
+Changes made:
+- `cmd/tfc/main.go:8` - Added `sort` import
+- `cmd/tfc/main.go:387-392` - Added slice collection and `sort.Strings(names)` before iteration
+
+Verification:
+- `make fmt` - passed
+- `make lint` - passed (with temp caches due to permission issues)
+- `make build` - passed (with temp caches)
+- `make test` - all tests pass
+- Output now deterministic with alphabetical ordering
 
 **Current code:**
 ```go

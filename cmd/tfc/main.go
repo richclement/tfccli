@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sort"
 
 	"github.com/alecthomas/kong"
 
@@ -383,7 +384,14 @@ func (c *ContextsListCmd) Run() error {
 		return internalcmd.NewRuntimeError(err)
 	}
 
+	// Collect and sort context names for deterministic output
+	names := make([]string, 0, len(settings.Contexts))
 	for name := range settings.Contexts {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	for _, name := range names {
 		marker := "  "
 		if name == settings.CurrentContext {
 			marker = "* "
