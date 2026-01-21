@@ -372,3 +372,58 @@ func TestInitCmd_InvalidAddressRejected(t *testing.T) {
 		})
 	}
 }
+
+// TestInitCmd_StatPermissionError tests that os.Stat permission errors are surfaced.
+func TestInitCmd_StatPermissionError(t *testing.T) {
+	tmpHome := t.TempDir()
+
+	// Create the .tfccli directory with no read permission to trigger stat error
+	tfccliDir := filepath.Join(tmpHome, ".tfccli")
+	if err := os.MkdirAll(tfccliDir, 0o700); err != nil {
+		t.Fatalf("Failed to create dir: %v", err)
+	}
+
+	// Create the settings file so it exists
+	settingsPath := filepath.Join(tfccliDir, "settings.json")
+	if err := os.WriteFile(settingsPath, []byte("{}"), 0o600); err != nil {
+		t.Fatalf("Failed to create settings file: %v", err)
+	}
+
+	// Remove read permission from settings file to trigger permission error on stat
+	if err := os.Chmod(settingsPath, 0o000); err != nil {
+		t.Fatalf("Failed to chmod settings file: %v", err)
+	}
+	t.Cleanup(func() {
+		os.Chmod(settingsPath, 0o600) // Restore so cleanup can delete
+	})
+
+	// Also remove read permission from directory to prevent stat from reading file metadata
+	if err := os.Chmod(tfccliDir, 0o000); err != nil {
+		t.Fatalf("Failed to chmod dir: %v", err)
+	}
+	t.Cleanup(func() {
+		os.Chmod(tfccliDir, 0o700)
+	})
+
+	cmd := &InitCmd{
+		NonInteractive: true,
+		Yes:            true,
+		baseDir:        tmpHome,
+	}
+	cli := &CLI{}
+
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error when stat fails with permission error, got nil")
+	}
+
+	// Verify it's a RuntimeError for exit code 2
+	var runtimeErr internalcmd.RuntimeError
+	if !errors.As(err, &runtimeErr) {
+		t.Errorf("expected RuntimeError, got %T", err)
+	}
+
+	if !strings.Contains(err.Error(), "failed to check settings file") {
+		t.Errorf("expected 'failed to check settings file' in error, got: %v", err)
+	}
+}

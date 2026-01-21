@@ -1352,6 +1352,8 @@ Verification:
 
 ### 28. os.Stat Error Handling Ignores Permission Errors
 
+**Status: DONE** (2026-01-21)
+
 **File:** `cmd/tfc/main.go:277-280`
 
 **Problem:** The code checks if settings exist using `os.Stat`, but doesn't distinguish between "file doesn't exist" (`os.ErrNotExist`) and other errors like permission denied. If `os.Stat` returns a permission error, it's treated as "file doesn't exist" leading the code to try creating a new file, which may also fail with a confusing error.
@@ -1374,6 +1376,27 @@ if _, err := os.Stat(settingsPath); err == nil {
     return internalcmd.NewRuntimeError(fmt.Errorf("failed to check settings file: %w", err))
 }
 ```
+
+**Plan (2026-01-21):**
+- Acceptance criteria: `tfc init` returns RuntimeError with "failed to check settings file" when os.Stat encounters a permission error (or other non-ErrNotExist error)
+- Verification: Add test `TestInitCmd_StatPermissionError` that verifies error is returned and is RuntimeError type
+- Implementation:
+  1. Edit `cmd/tfc/main.go:277-280` to check for errors other than `os.ErrNotExist`
+  2. Add test case in `init_test.go`
+  3. Run feedback loops
+
+**Progress notes (2026-01-21):**
+
+Changes made:
+- `cmd/tfc/main.go:277-281` - Added `else if !errors.Is(err, os.ErrNotExist)` check to return RuntimeError for permission or other unexpected errors
+- `cmd/tfc/init_test.go:376-427` - Added `TestInitCmd_StatPermissionError` test that creates settings with no read permission and verifies RuntimeError is returned with "failed to check settings file" message
+
+Verification:
+- `make fmt` - passed
+- `make lint` - passed (with temp caches due to permission issues)
+- `make build` - passed (with temp caches)
+- `make test` - all tests pass
+- `go test -v -run "TestInitCmd_StatPermissionError" ./cmd/tfc/...` - pass
 
 ---
 

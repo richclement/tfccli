@@ -277,6 +277,8 @@ func (c *InitCmd) Run(cli *CLI) error {
 	settingsExist := false
 	if _, err := os.Stat(settingsPath); err == nil {
 		settingsExist = true
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return internalcmd.NewRuntimeError(fmt.Errorf("failed to check settings file: %w", err))
 	}
 
 	// Handle existing settings
