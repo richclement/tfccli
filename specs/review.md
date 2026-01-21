@@ -469,9 +469,35 @@ func TestWorkspacesGet_APIError(t *testing.T) {
 
 ### 9. Add `--project` Flag to List Command
 
+**Status: DONE** (2026-01-21)
+
 **File:** `cmd/tfc/workspaces.go`
 
 **Rationale:** The TFC API supports filtering workspaces by project ID via `WorkspaceListOptions.ProjectID`. Organizations with many workspaces benefit from scoped listing. The create command already accepts `--project-id`, so `list --project` is a natural complement.
+
+**Plan (2026-01-21):**
+- Acceptance criteria: `tfc workspaces list --project prj-123` passes the project ID to the API via `WorkspaceListOptions.ProjectID`
+- Verification: Add test `TestWorkspacesList_WithProjectFilter` that verifies the list options include the project ID
+- Implementation:
+  1. Add `ProjectID` field to `WorkspacesListCmd` struct with kong tag `name:"project" help:"Filter workspaces by project ID."`
+  2. Update `Run()` to build `*tfe.WorkspaceListOptions` when `ProjectID` is set
+  3. Pass the options to `client.List()`
+  4. Add test case
+  5. Run feedback loops
+
+**Progress notes (2026-01-21):**
+
+Changes made:
+- `cmd/tfc/workspaces.go:148` - Added `ProjectID string` field with kong tag `name:"project" help:"Filter workspaces by project ID."`
+- `cmd/tfc/workspaces.go:188-192` - Added list options building: creates `*tfe.WorkspaceListOptions` when `ProjectID` is set
+- `cmd/tfc/workspaces_test.go:375-410` - Added `TestWorkspacesList_WithProjectFilter` test
+
+Verification:
+- `make fmt` - passed
+- `make lint` - passed (with cache warnings)
+- `make build` - passed
+- `make test` - all tests pass
+- `go test -v -run "TestWorkspacesList_WithProjectFilter" ./cmd/tfc/...` - pass
 
 **Implementation:**
 
@@ -735,7 +761,7 @@ The `resolveFormat` helper is slightly cleaner as it encapsulates the logic and 
 | List table output | ✅ | - |
 | List API error | ✅ | - |
 | List missing settings | ✅ | - |
-| List with --project filter | ❌ | #9 |
+| List with --project filter | ✅ | #9 |
 | List with --search filter | ❌ | #10 |
 | List with --tags filter | ❌ | #11 |
 | Get JSON output | ✅ | - |

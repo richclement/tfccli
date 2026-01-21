@@ -372,6 +372,43 @@ func TestWorkspacesList_Table(t *testing.T) {
 	}
 }
 
+// TestWorkspacesList_WithProjectFilter tests that list passes project filter to API.
+func TestWorkspacesList_WithProjectFilter(t *testing.T) {
+	tmpDir, resolver := setupWorkspacesTestSettings(t, "acme")
+	out := &bytes.Buffer{}
+
+	fakeClient := &fakeWorkspacesClient{
+		workspaces: []*tfe.Workspace{
+			{ID: "ws-1", Name: "workspace-1", ExecutionMode: "remote", Project: &tfe.Project{ID: "prj-123"}},
+		},
+	}
+
+	cmd := &WorkspacesListCmd{
+		ProjectID:     "prj-123",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        out,
+		clientFactory: func(_ tfcapi.ClientConfig) (workspacesClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Verify the list was called with project filter
+	if len(fakeClient.listCalls) != 1 {
+		t.Errorf("expected 1 list call, got %d", len(fakeClient.listCalls))
+	}
+	if fakeClient.listCalls[0].opts == nil || fakeClient.listCalls[0].opts.ProjectID != "prj-123" {
+		t.Errorf("expected project filter prj-123, got: %+v", fakeClient.listCalls[0].opts)
+	}
+}
+
 // TestWorkspacesGet_JSON tests getting a workspace by ID.
 func TestWorkspacesGet_JSON(t *testing.T) {
 	tmpDir, resolver := setupWorkspacesTestSettings(t, "acme")
