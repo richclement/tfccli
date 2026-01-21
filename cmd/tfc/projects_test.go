@@ -698,6 +698,38 @@ func TestProjectsDelete_ConfirmYes(t *testing.T) {
 	}
 }
 
+// TestProjectsUpdate_FailsWhenNoChanges tests that update requires at least one field.
+func TestProjectsUpdate_FailsWhenNoChanges(t *testing.T) {
+	tmpDir, resolver := setupProjectsTestSettings(t, "acme")
+	out := &bytes.Buffer{}
+
+	fakeClient := &fakeProjectsClient{}
+
+	cmd := &ProjectsUpdateCmd{
+		ID:            "prj-123",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        out,
+		clientFactory: func(_ tfcapi.ClientConfig) (projectsClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "at least one of --name or --description is required") {
+		t.Errorf("expected validation error, got: %v", err)
+	}
+	// Verify no API calls were made
+	if len(fakeClient.updateCalls) != 0 {
+		t.Errorf("expected no update calls, got: %v", fakeClient.updateCalls)
+	}
+}
+
 // TestProjectsCreate_Table tests that create outputs a success message in table mode.
 func TestProjectsCreate_Table(t *testing.T) {
 	tmpDir, resolver := setupProjectsTestSettings(t, "acme")
