@@ -1517,31 +1517,32 @@ func TestInitCmd_PrompterErrorOnOverwriteConfirm(t *testing.T) {
 
 ### 31. Missing Test: Prompter Error on Address Input
 
+**Status: DONE** (2026-01-21)
+
 **File:** `cmd/tfc/init_test.go`
 
 **Problem:** No test verifies error handling when `prompter.PromptString()` returns an error for the address prompt.
 
-**Test to add:**
-```go
-// TestInitCmd_PrompterErrorOnAddress tests prompter error during address prompt.
-func TestInitCmd_PrompterErrorOnAddress(t *testing.T) {
-    tmpHome := t.TempDir()
+**Plan (2026-01-21):**
+- Acceptance criteria: Test `TestInitCmd_PrompterErrorOnAddress` exists and verifies that when prompter.PromptString() returns an error during address prompt, it is wrapped and surfaced as a RuntimeError with message "failed to prompt for address"
+- Verification: Run `go test -v -run "TestInitCmd_PrompterErrorOnAddress" ./cmd/tfc/...`
+- Implementation:
+  1. Use the existing shared `errorPrompter` from `testhelpers_test.go`
+  2. Add test `TestInitCmd_PrompterErrorOnAddress` to `init_test.go`
+  3. Verify RuntimeError type for exit code 2
+  4. Run feedback loops to verify
 
-    cmd := &InitCmd{
-        prompter: &errorPrompter{err: errors.New("EOF")},
-        baseDir:  tmpHome,
-    }
-    cli := &CLI{}
+**Progress notes (2026-01-21):**
 
-    err := cmd.Run(cli)
-    if err == nil {
-        t.Fatal("expected error, got nil")
-    }
-    if !strings.Contains(err.Error(), "failed to prompt for address") {
-        t.Errorf("expected address prompt error, got: %v", err)
-    }
-}
-```
+Changes made:
+- `cmd/tfc/init_test.go:413-437` - Added `TestInitCmd_PrompterErrorOnAddress` test using shared `errorPrompter`
+
+Verification:
+- `make fmt` - passed
+- `make lint` - passed (with temp caches due to permission issues)
+- `make build` - passed
+- `make test` - all tests pass
+- `go test -v -run "TestInitCmd_PrompterErrorOnAddress" ./cmd/tfc/...` - pass
 
 ---
 
@@ -1710,9 +1711,9 @@ func TestInitCmd_SaveError(t *testing.T) {
 | Non-interactive with --yes overwrites | ✅ | - |
 | Non-interactive without --yes errors on existing | ✅ | - |
 | Interactive with custom values | ✅ | - |
-| Invalid address format rejected | ❌ | #27 |
+| Invalid address format rejected | ✅ | #27 |
 | Prompter error on overwrite confirm | ✅ | #30 |
-| Prompter error on address prompt | ❌ | #31 |
+| Prompter error on address prompt | ✅ | #31 |
 | Prompter error on org prompt | ❌ | #32 |
 | Prompter error on log level prompt | ❌ | #33 |
 | config.Save() failure | ❌ | #34 |
