@@ -533,6 +533,41 @@ func TestWorkspacesCreate_FailsWhenNoOrg(t *testing.T) {
 	}
 }
 
+// TestWorkspacesCreate_APIError tests that API errors are surfaced during create.
+func TestWorkspacesCreate_APIError(t *testing.T) {
+	tmpDir, resolver := setupWorkspacesTestSettings(t, "acme")
+	out := &bytes.Buffer{}
+
+	fakeClient := &fakeWorkspacesClient{
+		createErr: errors.New("workspace name already exists"),
+	}
+
+	cmd := &WorkspacesCreateCmd{
+		Name:          "existing-workspace",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        out,
+		clientFactory: func(_ tfcapi.ClientConfig) (workspacesClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "failed to create workspace") {
+		t.Errorf("expected create failure message, got: %v", err)
+	}
+	// Verify it's a RuntimeError for exit code 2
+	var runtimeErr internalcmd.RuntimeError
+	if !errors.As(err, &runtimeErr) {
+		t.Errorf("expected RuntimeError, got %T", err)
+	}
+}
+
 // TestWorkspacesUpdate_JSON tests updating a workspace.
 func TestWorkspacesUpdate_JSON(t *testing.T) {
 	tmpDir, resolver := setupWorkspacesTestSettings(t, "acme")

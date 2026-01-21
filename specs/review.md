@@ -216,7 +216,28 @@ func (p *wsErrorPrompter) PromptSelect(_ string, _ []string, _ string) (string, 
 
 ### 5. Missing Test: Create API Error
 
+**Status: DONE** (2026-01-21)
+
 **File:** `cmd/tfc/workspaces_test.go`
+
+**Plan (2026-01-21):**
+- Acceptance criteria: Test `TestWorkspacesCreate_APIError` exists and verifies that when the Create API call fails, it is wrapped and surfaced as a RuntimeError with message "failed to create workspace"
+- Verification: Run `go test -v -run "TestWorkspacesCreate_APIError" ./cmd/tfc/...`
+- Implementation:
+  1. Add test `TestWorkspacesCreate_APIError` to `workspaces_test.go` after `TestWorkspacesCreate_FailsWhenNoOrg`
+  2. Verify test passes with `make test`
+
+**Progress notes (2026-01-21):**
+
+Changes made:
+- `cmd/tfc/workspaces_test.go:536-571` - Added `TestWorkspacesCreate_APIError` test
+
+Verification:
+- `make fmt` - passed
+- `make lint` - passed
+- `make build` - passed
+- `make test` - all tests pass
+- `go test -v -run "TestWorkspacesCreate_APIError" ./cmd/tfc/...` - pass
 
 **Test to add:**
 ```go
@@ -656,7 +677,7 @@ The `resolveFormat` helper is slightly cleaner as it encapsulates the logic and 
 | Create with project-id | ✅ | - |
 | Create no org | ✅ | - |
 | Create table output | ✅ | - |
-| Create API error | ❌ | #5 |
+| Create API error | ✅ | #5 |
 | Update JSON | ✅ | - |
 | Update no fields provided | ✅ | #2 |
 | Update API error | ❌ | #6 |
