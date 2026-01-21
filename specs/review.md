@@ -136,10 +136,27 @@ if !errors.As(err, &runtimeErr) {
 
 ### 3. Add missing table output tests
 
+**Status:** DONE
+
 **File:** `cmd/tfc/projects_test.go`
 
 **Problem:**
 Table output format is not tested for `Get`, `Update`, and `Delete` commands.
+
+**Plan:**
+- Acceptance criteria: Table output tests exist for Get, Update, and Delete commands verifying human-readable output
+- Verification: `go test -v -run "TestProjectsGet_Table|TestProjectsUpdate_Table|TestProjectsDelete_Table" ./cmd/tfc/`
+- Implementation:
+  1. Add `TestProjectsGet_Table` - verify FIELD/VALUE headers and project data
+  2. Add `TestProjectsUpdate_Table` - verify updated project info in output
+  3. Add `TestProjectsDelete_Table` - verify "deleted" message
+
+**Progress (2026-01-21):**
+- Added `TestProjectsGet_Table` (lines 744-774): verifies FIELD/VALUE table headers and project data
+- Added `TestProjectsUpdate_Table` (lines 776-808): verifies "updated" message with project name
+- Added `TestProjectsDelete_Table` (lines 810-842): verifies "deleted" message with project ID
+- Commands run: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Specific tests verified: `go test -v -run "TestProjectsGet_Table|TestProjectsUpdate_Table|TestProjectsDelete_Table" ./cmd/tfc/` - all pass
 
 **Tests to add:**
 

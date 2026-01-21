@@ -741,6 +741,114 @@ func TestProjectsUpdate_FailsWhenNoChanges(t *testing.T) {
 	}
 }
 
+// TestProjectsGet_Table tests that get outputs project details in table format.
+func TestProjectsGet_Table(t *testing.T) {
+	tmpDir, resolver := setupProjectsTestSettings(t, "acme")
+	out := &bytes.Buffer{}
+
+	fakeClient := &fakeProjectsClient{
+		project: &tfe.Project{
+			ID:          "prj-123",
+			Name:        "test-project",
+			Description: "Test description",
+		},
+	}
+
+	cmd := &ProjectsGetCmd{
+		ID:            "prj-123",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        out,
+		clientFactory: func(_ tfcapi.ClientConfig) (projectsClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "table"}
+	err := cmd.Run(cli)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	outStr := out.String()
+	if !strings.Contains(outStr, "FIELD") || !strings.Contains(outStr, "VALUE") {
+		t.Errorf("expected table headers, got: %s", outStr)
+	}
+	if !strings.Contains(outStr, "prj-123") || !strings.Contains(outStr, "test-project") {
+		t.Errorf("expected project data in output, got: %s", outStr)
+	}
+}
+
+// TestProjectsUpdate_Table tests that update outputs a success message in table mode.
+func TestProjectsUpdate_Table(t *testing.T) {
+	tmpDir, resolver := setupProjectsTestSettings(t, "acme")
+	out := &bytes.Buffer{}
+
+	fakeClient := &fakeProjectsClient{
+		project: &tfe.Project{
+			ID:   "prj-123",
+			Name: "updated-project",
+		},
+	}
+
+	cmd := &ProjectsUpdateCmd{
+		ID:            "prj-123",
+		Name:          "updated-project",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        out,
+		clientFactory: func(_ tfcapi.ClientConfig) (projectsClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "table"}
+	err := cmd.Run(cli)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	outStr := out.String()
+	if !strings.Contains(outStr, "updated-project") || !strings.Contains(outStr, "updated") {
+		t.Errorf("expected success message with project name, got: %s", outStr)
+	}
+}
+
+// TestProjectsDelete_Table tests that delete outputs a success message in table mode.
+func TestProjectsDelete_Table(t *testing.T) {
+	tmpDir, resolver := setupProjectsTestSettings(t, "acme")
+	out := &bytes.Buffer{}
+
+	fakeClient := &fakeProjectsClient{}
+	forceFlag := true
+
+	cmd := &ProjectsDeleteCmd{
+		ID:            "prj-123",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        out,
+		clientFactory: func(_ tfcapi.ClientConfig) (projectsClient, error) {
+			return fakeClient, nil
+		},
+		prompter:  &failingPrompter{},
+		forceFlag: &forceFlag,
+	}
+
+	cli := &CLI{OutputFormat: "table", Force: true}
+	err := cmd.Run(cli)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	outStr := out.String()
+	if !strings.Contains(outStr, "prj-123") || !strings.Contains(outStr, "deleted") {
+		t.Errorf("expected success message with project ID, got: %s", outStr)
+	}
+}
+
 // TestProjectsCreate_Table tests that create outputs a success message in table mode.
 func TestProjectsCreate_Table(t *testing.T) {
 	tmpDir, resolver := setupProjectsTestSettings(t, "acme")
