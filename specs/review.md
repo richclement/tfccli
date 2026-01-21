@@ -84,11 +84,21 @@ func TestProjectsUpdate_FailsWhenNoChanges(t *testing.T) {
 
 ### 2. Wrap "organization required" errors with RuntimeError
 
+**Status:** DONE
+
 **Files:** `cmd/tfc/projects.go`
 **Lines:** 171, 319
 
 **Problem:**
 The "organization is required" errors are not wrapped with `NewRuntimeError`, causing exit code 1 (usage error) instead of exit code 2 (runtime error). This is inconsistent with other runtime errors in the same functions.
+
+**Plan:**
+- Acceptance criteria: `tfc projects list` and `tfc projects create` return exit code 2 (RuntimeError) when org is missing (no default_org in context and no --org flag)
+- Verification: Add type assertions to existing tests `TestProjectsList_FailsWhenNoOrg` and `TestProjectsCreate_FailsWhenNoOrg`
+- Implementation:
+  1. Wrap error at line 171 with `internalcmd.NewRuntimeError`
+  2. Wrap error at line 319 with `internalcmd.NewRuntimeError`
+  3. Add `errors.As` assertions in tests to verify RuntimeError type
 
 **Current code (line 171):**
 ```go
@@ -112,6 +122,13 @@ if !errors.As(err, &runtimeErr) {
     t.Errorf("expected RuntimeError, got %T", err)
 }
 ```
+
+**Progress (2026-01-21):**
+- Wrapped errors at lines 171 and 319 in `cmd/tfc/projects.go` with `internalcmd.NewRuntimeError`
+- Added `internalcmd` import to `cmd/tfc/projects_test.go`
+- Added RuntimeError type assertions to both `TestProjectsList_FailsWhenNoOrg` and `TestProjectsCreate_FailsWhenNoOrg`
+- Commands run: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Specific tests verified: `go test -v -run "TestProjectsList_FailsWhenNoOrg|TestProjectsCreate_FailsWhenNoOrg" ./cmd/tfc/` - pass
 
 ---
 

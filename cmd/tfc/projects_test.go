@@ -12,6 +12,7 @@ import (
 	tfe "github.com/hashicorp/go-tfe"
 
 	"github.com/richclement/tfccli/internal/auth"
+	internalcmd "github.com/richclement/tfccli/internal/cmd"
 	"github.com/richclement/tfccli/internal/config"
 	"github.com/richclement/tfccli/internal/output"
 	"github.com/richclement/tfccli/internal/tfcapi"
@@ -243,6 +244,11 @@ func TestProjectsList_FailsWhenNoOrg(t *testing.T) {
 	if !strings.Contains(err.Error(), "organization is required") {
 		t.Errorf("expected 'organization is required' error, got: %v", err)
 	}
+	// Verify it's a RuntimeError for exit code 2
+	var runtimeErr internalcmd.RuntimeError
+	if !errors.As(err, &runtimeErr) {
+		t.Errorf("expected RuntimeError, got %T", err)
+	}
 }
 
 // TestProjectsList_JSON tests that list returns projects as JSON.
@@ -432,6 +438,11 @@ func TestProjectsCreate_FailsWhenNoOrg(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "organization is required") {
 		t.Errorf("expected 'organization is required' error, got: %v", err)
+	}
+	// Verify it's a RuntimeError for exit code 2
+	var runtimeErr internalcmd.RuntimeError
+	if !errors.As(err, &runtimeErr) {
+		t.Errorf("expected RuntimeError, got %T", err)
 	}
 }
 
