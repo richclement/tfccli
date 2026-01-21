@@ -2256,9 +2256,32 @@ func TestDoctor_ClientFactoryError(t *testing.T) {
 
 ### 41. Missing Test: Empty Address in Context
 
+**Status: DONE** (2026-01-21)
+
 **File:** `cmd/tfc/doctor_test.go`
 
 **Problem:** No test verifies the behavior when the context has an empty address and relies on `WithDefaults()` to apply `DefaultAddress`. While this path likely works, it's not explicitly tested.
+
+**Plan (2026-01-21):**
+- Acceptance criteria: Test `TestDoctor_EmptyAddressUsesDefault` exists and verifies that when the context has an empty address, the doctor command uses the default `app.terraform.io` address and passes all checks
+- Verification: Run `go test -v -run "TestDoctor_EmptyAddressUsesDefault" ./cmd/tfc/...`
+- Implementation:
+  1. Add test `TestDoctor_EmptyAddressUsesDefault` to `doctor_test.go`
+  2. Create settings with empty address in context
+  3. Provide token for default `app.terraform.io` host
+  4. Verify address check passes with default hostname in detail
+
+**Progress notes (2026-01-21):**
+
+Changes made:
+- `cmd/tfc/doctor_test.go:831-889` - Added `TestDoctor_EmptyAddressUsesDefault` test
+
+Verification:
+- `make fmt` - passed
+- `make lint` - passed (with temp caches due to permission issues)
+- `make build` - passed
+- `make test` - all tests pass
+- `go test -v -run "TestDoctor_EmptyAddressUsesDefault" ./cmd/tfc/...` - pass
 
 **Test to add:**
 ```go
@@ -2431,7 +2454,7 @@ format, isTTY := resolveFormat(d.stdout, d.ttyDetector, cli.OutputFormat)
 | Context not found (--context flag) | ✅ | #38 |
 | Invalid address format | ✅ | #39 |
 | Client factory error | ✅ | #40 |
-| Empty address uses default | ❌ | #41 |
+| Empty address uses default | ✅ | #41 |
 
 ---
 

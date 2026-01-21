@@ -828,6 +828,73 @@ func TestDoctor_ClientFactoryError(t *testing.T) {
 	}
 }
 
+// TestDoctor_EmptyAddressUsesDefault tests that empty address in context uses default.
+func TestDoctor_EmptyAddressUsesDefault(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create settings with empty address (should default to app.terraform.io)
+	settings := &config.Settings{
+		CurrentContext: "default",
+		Contexts: map[string]config.Context{
+			"default": {
+				Address:  "", // Empty - should use default
+				LogLevel: "info",
+			},
+		},
+	}
+	if err := config.Save(settings, tmpDir); err != nil {
+		t.Fatalf("failed to save settings: %v", err)
+	}
+
+	stdout, getOutput := captureStdout(t)
+
+	fakeEnvMap := &fakeEnv{
+		vars: map[string]string{
+			"TF_TOKEN_app_terraform_io": "fake-token",
+		},
+	}
+	fakeFSMap := &fakeFS{
+		homeDir: tmpDir,
+		files:   make(map[string][]byte),
+	}
+
+	cmd := &DoctorCmd{
+		baseDir:       tmpDir,
+		stdout:        stdout,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		tokenResolver: &auth.TokenResolver{Env: fakeEnvMap, FS: fakeFSMap},
+		clientFactory: func(_ tfcapi.ClientConfig) (doctorClient, error) {
+			return &fakeDoctorClient{pingErr: nil}, nil
+		},
+	}
+	cli := &CLI{OutputFormat: "json"}
+
+	err := cmd.Run(cli)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	out := getOutput()
+
+	var result DoctorResult
+	if err := json.Unmarshal([]byte(out), &result); err != nil {
+		t.Fatalf("failed to parse JSON output: %v\nOutput: %s", err, out)
+	}
+
+	// Verify address check shows default hostname
+	addrCheck := findCheck(result.Checks, "address")
+	if addrCheck == nil {
+		t.Fatal("address check not found")
+	}
+
+	if addrCheck.Status != "PASS" {
+		t.Errorf("expected address status PASS, got: %s", addrCheck.Status)
+	}
+	if !strings.Contains(addrCheck.Detail, "app.terraform.io") {
+		t.Errorf("expected address detail to contain default 'app.terraform.io', got: %s", addrCheck.Detail)
+	}
+}
+
 // findCheck finds a check by name in the results.
 func findCheck(checks []DoctorCheck, name string) *DoctorCheck {
 	for i := range checks {
