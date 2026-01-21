@@ -133,9 +133,31 @@ if c.Description != "" {
 
 ### 4. Missing Test: Prompter Error Path for Delete
 
+**Status: DONE** (2026-01-21)
+
 **File:** `cmd/tfc/workspaces_test.go`
 
 **Problem:** No test verifies error handling when `prompter.Confirm()` returns an error. The projects tests have `TestProjectsDelete_PrompterError` but workspaces doesn't.
+
+**Plan (2026-01-21):**
+- Acceptance criteria: Test `TestWorkspacesDelete_PrompterError` exists and verifies that when prompter.Confirm() returns an error, it is wrapped and surfaced as a RuntimeError with message "failed to prompt for confirmation"
+- Verification: Run `go test -v -run "TestWorkspacesDelete_PrompterError" ./cmd/tfc/...`
+- Implementation:
+  1. Use the existing shared `errorPrompter` from `testhelpers_test.go` (not create new `wsErrorPrompter`)
+  2. Add test `TestWorkspacesDelete_PrompterError` to `workspaces_test.go`
+  3. Verify test passes with `make test`
+
+**Progress notes (2026-01-21):**
+
+Changes made:
+- `cmd/tfc/workspaces_test.go:842-870` - Added `TestWorkspacesDelete_PrompterError` test using shared `errorPrompter`
+
+Verification:
+- `make fmt` - passed
+- `make lint` - passed
+- `make build` - passed
+- `make test` - all tests pass
+- `go test -v -run "TestWorkspacesDelete_PrompterError" ./cmd/tfc/...` - pass
 
 **Test to add:**
 ```go

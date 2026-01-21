@@ -839,6 +839,38 @@ func TestWorkspacesDelete_ConfirmYes(t *testing.T) {
 	}
 }
 
+// TestWorkspacesDelete_PrompterError tests that prompter errors are surfaced.
+func TestWorkspacesDelete_PrompterError(t *testing.T) {
+	tmpDir, resolver := setupWorkspacesTestSettings(t, "acme")
+	out := &bytes.Buffer{}
+
+	cmd := &WorkspacesDeleteCmd{
+		ID:            "ws-123",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        out,
+		clientFactory: func(_ tfcapi.ClientConfig) (workspacesClient, error) {
+			return &fakeWorkspacesClient{}, nil
+		},
+		prompter: &errorPrompter{err: errors.New("terminal not available")},
+	}
+
+	cli := &CLI{Force: false}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "failed to prompt for confirmation") {
+		t.Errorf("expected prompt error, got: %v", err)
+	}
+	// Verify it's a RuntimeError for exit code 2
+	var runtimeErr internalcmd.RuntimeError
+	if !errors.As(err, &runtimeErr) {
+		t.Errorf("expected RuntimeError, got %T", err)
+	}
+}
+
 // TestWorkspacesCreate_Table tests that create outputs a success message in table mode.
 func TestWorkspacesCreate_Table(t *testing.T) {
 	tmpDir, resolver := setupWorkspacesTestSettings(t, "acme")
