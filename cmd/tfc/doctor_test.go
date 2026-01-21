@@ -711,6 +711,58 @@ func TestDoctor_ContextNotFound(t *testing.T) {
 	}
 }
 
+// TestDoctor_InvalidAddressFormat tests error when address is malformed.
+func TestDoctor_InvalidAddressFormat(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create settings with invalid address
+	settings := &config.Settings{
+		CurrentContext: "default",
+		Contexts: map[string]config.Context{
+			"default": {
+				Address:  "://invalid-url", // Malformed URL
+				LogLevel: "info",
+			},
+		},
+	}
+	if err := config.Save(settings, tmpDir); err != nil {
+		t.Fatalf("failed to save settings: %v", err)
+	}
+
+	stdout, getOutput := captureStdout(t)
+
+	cmd := &DoctorCmd{
+		baseDir:     tmpDir,
+		stdout:      stdout,
+		ttyDetector: &output.FakeTTYDetector{IsTTYValue: false},
+	}
+	cli := &CLI{OutputFormat: "json"}
+
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	out := getOutput()
+
+	var result DoctorResult
+	if err := json.Unmarshal([]byte(out), &result); err != nil {
+		t.Fatalf("failed to parse JSON output: %v\nOutput: %s", err, out)
+	}
+
+	addrCheck := findCheck(result.Checks, "address")
+	if addrCheck == nil {
+		t.Fatal("address check not found")
+	}
+
+	if addrCheck.Status != "FAIL" {
+		t.Errorf("expected address status FAIL, got: %s", addrCheck.Status)
+	}
+	if !strings.Contains(addrCheck.Detail, "invalid address") {
+		t.Errorf("expected detail to contain 'invalid address', got: %s", addrCheck.Detail)
+	}
+}
+
 // findCheck finds a check by name in the results.
 func findCheck(checks []DoctorCheck, name string) *DoctorCheck {
 	for i := range checks {
