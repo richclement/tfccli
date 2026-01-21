@@ -1625,9 +1625,33 @@ Verification:
 
 ### 32. Missing Test: Prompter Error on Organization Input
 
+**Status: DONE** (2026-01-21)
+
 **File:** `cmd/tfc/init_test.go`
 
 **Problem:** No test verifies error handling when `prompter.PromptString()` returns an error for the organization prompt. This requires a custom prompter that succeeds on the first call (address) but fails on the second (org).
+
+**Plan (2026-01-21):**
+- Acceptance criteria: Test `TestInitCmd_PrompterErrorOnOrg` exists and verifies that when prompter.PromptString() returns an error during the org prompt, it is wrapped and surfaced as a RuntimeError with message "failed to prompt for default org"
+- Verification: Run `go test -v -run "TestInitCmd_PrompterErrorOnOrg" ./cmd/tfc/...`
+- Implementation:
+  1. Add `sequentialErrorPrompter` type to `testhelpers_test.go` (succeeds on first N calls, then fails)
+  2. Add test `TestInitCmd_PrompterErrorOnOrg` to `init_test.go`
+  3. Verify RuntimeError type for exit code 2
+  4. Run feedback loops to verify
+
+**Progress notes (2026-01-21):**
+
+Changes made:
+- `cmd/tfc/testhelpers_test.go:67-87` - Added `sequentialErrorPrompter` type that returns default values until reaching errorOnCall, then returns error
+- `cmd/tfc/init_test.go:439-462` - Added `TestInitCmd_PrompterErrorOnOrg` test
+
+Verification:
+- `make fmt` - passed
+- `make lint` - passed (with cache warnings due to permission issues)
+- `make build` - passed (with temp caches)
+- `make test` - all tests pass
+- `go test -v -run "TestInitCmd_PrompterErrorOnOrg" ./cmd/tfc/...` - pass
 
 **Test to add:**
 ```go
@@ -1791,10 +1815,10 @@ func TestInitCmd_SaveError(t *testing.T) {
 | Invalid address format rejected | ✅ | #27 |
 | Prompter error on overwrite confirm | ✅ | #30 |
 | Prompter error on address prompt | ✅ | #31 |
-| Prompter error on org prompt | ❌ | #32 |
+| Prompter error on org prompt | ✅ | #32 |
 | Prompter error on log level prompt | ❌ | #33 |
 | config.Save() failure | ❌ | #34 |
-| os.Stat permission error handling | ❌ | #28 |
+| os.Stat permission error handling | ✅ | #28 |
 
 ---
 

@@ -63,3 +63,27 @@ func (p *errorPrompter) Confirm(_ string, _ bool) (bool, error) {
 func (p *errorPrompter) PromptSelect(_ string, _ []string, _ string) (string, error) {
 	return "", p.err
 }
+
+// sequentialErrorPrompter returns default values until it reaches the errorOnCall call number,
+// then returns an error. Useful for testing mid-flow errors in multi-prompt sequences.
+type sequentialErrorPrompter struct {
+	stringCalls int
+	errorOnCall int
+	err         error
+}
+
+func (p *sequentialErrorPrompter) PromptString(_, defaultValue string) (string, error) {
+	p.stringCalls++
+	if p.stringCalls == p.errorOnCall {
+		return "", p.err
+	}
+	return defaultValue, nil
+}
+
+func (p *sequentialErrorPrompter) Confirm(_ string, defaultValue bool) (bool, error) {
+	return defaultValue, nil
+}
+
+func (p *sequentialErrorPrompter) PromptSelect(_ string, _ []string, defaultValue string) (string, error) {
+	return defaultValue, nil
+}

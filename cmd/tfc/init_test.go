@@ -436,6 +436,33 @@ func TestInitCmd_PrompterErrorOnAddress(t *testing.T) {
 	}
 }
 
+// TestInitCmd_PrompterErrorOnOrg tests prompter error during organization prompt.
+func TestInitCmd_PrompterErrorOnOrg(t *testing.T) {
+	tmpHome := t.TempDir()
+
+	// Error on the 2nd PromptString call (org), succeed on the 1st (address)
+	cmd := &InitCmd{
+		prompter: &sequentialErrorPrompter{errorOnCall: 2, err: errors.New("EOF")},
+		baseDir:  tmpHome,
+	}
+	cli := &CLI{}
+
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	// Verify it's a RuntimeError for exit code 2
+	var runtimeErr internalcmd.RuntimeError
+	if !errors.As(err, &runtimeErr) {
+		t.Errorf("expected RuntimeError, got %T", err)
+	}
+
+	if !strings.Contains(err.Error(), "failed to prompt for default org") {
+		t.Errorf("expected org prompt error, got: %v", err)
+	}
+}
+
 // TestInitCmd_StatPermissionError tests that os.Stat permission errors are surfaced.
 func TestInitCmd_StatPermissionError(t *testing.T) {
 	tmpHome := t.TempDir()
