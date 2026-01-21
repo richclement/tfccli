@@ -124,6 +124,23 @@ func (p *failingPrompter) PromptSelect(_ string, _ []string, _ string) (string, 
 	return "", errors.New("should not be called with --force")
 }
 
+// errorPrompter returns a configurable error for testing prompter error paths.
+type errorPrompter struct {
+	err error
+}
+
+func (p *errorPrompter) PromptString(_, _ string) (string, error) {
+	return "", p.err
+}
+
+func (p *errorPrompter) Confirm(_ string, _ bool) (bool, error) {
+	return false, p.err
+}
+
+func (p *errorPrompter) PromptSelect(_ string, _ []string, _ string) (string, error) {
+	return "", p.err
+}
+
 // orgsTestEnv implements auth.EnvGetter for testing.
 type orgsTestEnv struct {
 	vars map[string]string
@@ -834,6 +851,40 @@ func TestOrganizations_AddressOverride(t *testing.T) {
 
 	if capturedAddress != "custom.tfe.io" {
 		t.Errorf("expected address custom.tfe.io, got %s", capturedAddress)
+	}
+}
+
+// TestOrganizationsDelete_PrompterError tests that prompter errors are surfaced.
+func TestOrganizationsDelete_PrompterError(t *testing.T) {
+	tmpDir, resolver := setupOrgsTestSettings(t)
+	out := &bytes.Buffer{}
+
+	fakeClient := &fakeOrgsClient{}
+
+	cmd := &OrganizationsDeleteCmd{
+		Name:          "org-123",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        out,
+		clientFactory: func(_ tfcapi.ClientConfig) (orgsClient, error) {
+			return fakeClient, nil
+		},
+		prompter: &errorPrompter{err: errors.New("terminal not available")},
+	}
+
+	cli := &CLI{Force: false} // Not forced, so prompter will be called
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "failed to prompt") {
+		t.Errorf("expected 'failed to prompt' error, got: %v", err)
+	}
+
+	// Should NOT have called delete since prompter failed
+	if len(fakeClient.deleteCalls) != 0 {
+		t.Errorf("expected no delete calls when prompter fails, got: %v", fakeClient.deleteCalls)
 	}
 }
 

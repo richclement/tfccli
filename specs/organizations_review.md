@@ -557,3 +557,47 @@ Commands run:
 - `make test` - all tests pass
 
 **Status:** DONE
+
+---
+
+### Finding 8: Missing test for prompter error path
+
+**Status:** DONE
+
+**Acceptance Criteria:**
+- Test verifies that when the prompter returns an error, the delete command returns a RuntimeError
+- Error message must contain "failed to prompt" text
+- No API call is made when prompter fails
+
+**Verification:**
+- Unit test `TestOrganizationsDelete_PrompterError` must pass
+- Existing tests must continue to pass
+- `make lint && make test` green
+
+**Implementation Plan:**
+1. Create `errorPrompter` test double that returns configurable errors
+2. Add `TestOrganizationsDelete_PrompterError` test that:
+   - Uses errorPrompter with a test error
+   - Does NOT set --force (so prompter is called)
+   - Verifies error is returned containing "failed to prompt"
+   - Verifies no delete API call is made
+3. Run make fmt/lint/build/test
+
+**Progress Notes:**
+
+**2026-01-21:** DONE
+
+Files changed:
+- `cmd/tfc/organizations_test.go`: Added `errorPrompter` test double that returns configurable errors, and added `TestOrganizationsDelete_PrompterError` test that verifies:
+  - Error is returned when prompter fails
+  - Error message contains "failed to prompt"
+  - No delete API call is made when prompter fails
+
+Commands run:
+- `make fmt` - passed
+- `make lint` - passed
+- `make build` - passed
+- `make test` - all tests pass
+- `go test -v -run TestOrganizationsDelete_PrompterError ./cmd/tfc/...` - passed
+
+**Status:** DONE
