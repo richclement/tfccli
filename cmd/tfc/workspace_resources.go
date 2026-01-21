@@ -173,9 +173,8 @@ func (c *WorkspaceResourcesListCmd) Run(cli *CLI) error {
 			return internalcmd.NewRuntimeError(fmt.Errorf("failed to write output: %w", err))
 		}
 	} else {
-		tw := output.NewTableWriter(c.stdout, []string{"ID", "TYPE", "NAME", "PROVIDER-TYPE"}, isTTY)
+		tw := output.NewTableWriter(c.stdout, []string{"ID", "RESOURCE-TYPE", "NAME", "PROVIDER"}, isTTY)
 		for _, r := range resources {
-			// Provider type is the resource type (e.g., "aws_instance")
 			tw.AddRow(r.ID, r.ProviderType, r.Name, r.Provider)
 		}
 		if _, err := tw.Render(); err != nil {

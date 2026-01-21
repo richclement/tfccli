@@ -2777,6 +2777,8 @@ Review of `cmd/tfc/workspace_resources.go` and `cmd/tfc/workspace_resources_test
 
 ### 66. Table Column Label and Data Mismatch
 
+**Status: DONE** (2026-01-21)
+
 **File:** `cmd/tfc/workspace_resources.go:176-179`
 
 **Problem:** The table headers and data columns are misaligned. The header "PROVIDER-TYPE" (4th column) receives `r.Provider` (the provider name like "aws"), while the header "TYPE" (2nd column) receives `r.ProviderType` (the resource type like "aws_instance"). The labels are semantically swapped.
@@ -2807,6 +2809,32 @@ for _, r := range resources {
     tw.AddRow(r.ID, r.ProviderType, r.Name, r.Provider)
 }
 ```
+
+**Progress notes (2026-01-21):**
+
+Plan:
+- Acceptance criteria: Table headers accurately describe the data in each column:
+  - Column 1: ID → r.ID
+  - Column 2: RESOURCE-TYPE → r.ProviderType (like "aws_instance")
+  - Column 3: NAME → r.Name
+  - Column 4: PROVIDER → r.Provider (like "aws")
+- Verification: Run existing table output test `TestWorkspaceResourcesList_Table`
+- Implementation:
+  1. Change header from `["ID", "TYPE", "NAME", "PROVIDER-TYPE"]` to `["ID", "RESOURCE-TYPE", "NAME", "PROVIDER"]`
+  2. Remove misleading comment on line 178
+  3. Update test to verify headers match
+
+Changes made:
+- `cmd/tfc/workspace_resources.go:176` - Changed headers to `["ID", "RESOURCE-TYPE", "NAME", "PROVIDER"]`
+- `cmd/tfc/workspace_resources.go:178` - Removed misleading comment about provider type
+- `cmd/tfc/workspace_resources_test.go:172-173` - Updated test to verify new headers
+
+Verification:
+- `make fmt` - passed
+- `make lint` - passed
+- `make build` - passed
+- `make test` - all tests pass
+- `go test -v -run "TestWorkspaceResourcesList_Table" ./cmd/tfc/...` - pass
 
 ---
 

@@ -169,8 +169,8 @@ func TestWorkspaceResourcesList_Table(t *testing.T) {
 	}
 
 	out := buf.String()
-	// Verify table headers
-	if !strings.Contains(out, "ID") || !strings.Contains(out, "TYPE") || !strings.Contains(out, "NAME") || !strings.Contains(out, "PROVIDER-TYPE") {
+	// Verify table headers (RESOURCE-TYPE and PROVIDER columns)
+	if !strings.Contains(out, "ID") || !strings.Contains(out, "RESOURCE-TYPE") || !strings.Contains(out, "NAME") || !strings.Contains(out, "PROVIDER") {
 		t.Errorf("expected table headers in output, got: %s", out)
 	}
 	// Verify resource data
