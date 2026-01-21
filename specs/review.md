@@ -337,7 +337,31 @@ func TestWorkspacesUpdate_APIError(t *testing.T) {
 
 ### 7. Missing Test: Delete API Error
 
+**Status: DONE** (2026-01-21)
+
 **File:** `cmd/tfc/workspaces_test.go`
+
+**Plan (2026-01-21):**
+- Acceptance criteria: Test `TestWorkspacesDelete_APIError` exists and verifies that when the Delete API call fails, it is wrapped and surfaced as a RuntimeError with message "failed to delete workspace"
+- Verification: Run `go test -v -run "TestWorkspacesDelete_APIError" ./cmd/tfc/...`
+- Implementation:
+  1. Add test `TestWorkspacesDelete_APIError` to `workspaces_test.go` after `TestWorkspacesDelete_PrompterError`
+  2. Use `fakeWorkspacesClient.deleteErr` to simulate API failure
+  3. Use `--force` to skip confirmation prompt and test the API error path directly
+  4. Verify RuntimeError type for exit code 2
+  5. Run feedback loops to verify
+
+**Progress notes (2026-01-21):**
+
+Changes made:
+- `cmd/tfc/workspaces_test.go:944-981` - Added `TestWorkspacesDelete_APIError` test
+
+Verification:
+- `make fmt` - passed
+- `make lint` - passed (with temp cache due to permission issues)
+- `make build` - passed
+- `make test` - all tests pass
+- `go test -v -run "TestWorkspacesDelete_APIError" ./cmd/tfc/...` - pass
 
 **Test to add:**
 ```go
@@ -706,8 +730,8 @@ The `resolveFormat` helper is slightly cleaner as it encapsulates the logic and 
 | Delete rejected | ✅ | - |
 | Delete with --force | ✅ | - |
 | Delete JSON | ✅ | - |
-| Delete API error | ❌ | #7 |
-| Delete prompter error | ❌ | #4 |
+| Delete API error | ✅ | #7 |
+| Delete prompter error | ✅ | #4 |
 
 ---
 

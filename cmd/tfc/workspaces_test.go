@@ -942,6 +942,44 @@ func TestWorkspacesDelete_PrompterError(t *testing.T) {
 	}
 }
 
+// TestWorkspacesDelete_APIError tests that API errors are surfaced during delete.
+func TestWorkspacesDelete_APIError(t *testing.T) {
+	tmpDir, resolver := setupWorkspacesTestSettings(t, "acme")
+	out := &bytes.Buffer{}
+
+	fakeClient := &fakeWorkspacesClient{
+		deleteErr: errors.New("workspace has active runs"),
+	}
+	forceFlag := true
+
+	cmd := &WorkspacesDeleteCmd{
+		ID:            "ws-123",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        out,
+		clientFactory: func(_ tfcapi.ClientConfig) (workspacesClient, error) {
+			return fakeClient, nil
+		},
+		prompter:  &wsFailingPrompter{},
+		forceFlag: &forceFlag,
+	}
+
+	cli := &CLI{Force: true}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "failed to delete workspace") {
+		t.Errorf("expected delete failure message, got: %v", err)
+	}
+	// Verify it's a RuntimeError for exit code 2
+	var runtimeErr internalcmd.RuntimeError
+	if !errors.As(err, &runtimeErr) {
+		t.Errorf("expected RuntimeError, got %T", err)
+	}
+}
+
 // TestWorkspacesCreate_Table tests that create outputs a success message in table mode.
 func TestWorkspacesCreate_Table(t *testing.T) {
 	tmpDir, resolver := setupWorkspacesTestSettings(t, "acme")
