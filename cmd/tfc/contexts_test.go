@@ -409,3 +409,16 @@ func TestContextsShowCmd_ErrorsIfContextNotFound(t *testing.T) {
 		t.Fatal("Expected error when showing nonexistent context")
 	}
 }
+
+// TestContextsListCmd_NoSettings tests error when settings file doesn't exist.
+func TestContextsListCmd_NoSettings(t *testing.T) {
+	tmpHome := t.TempDir()
+	// Don't create settings file
+
+	cmd := &ContextsListCmd{baseDir: tmpHome}
+
+	err := cmd.Run()
+	if err == nil {
+		t.Fatal("expected error when settings not found, got nil")
+	}
+}
