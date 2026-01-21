@@ -147,6 +147,7 @@ func resolveWorkspacesClientConfig(cli *CLI, baseDir string, tokenResolver *auth
 // WorkspacesListCmd lists workspaces in an organization.
 type WorkspacesListCmd struct {
 	ProjectID string `name:"project" help:"Filter workspaces by project ID."`
+	Search    string `name:"search" help:"Search workspaces by name (partial match)."`
 
 	// Dependencies for testing
 	baseDir       string
@@ -187,8 +188,14 @@ func (c *WorkspacesListCmd) Run(cli *CLI) error {
 
 	// Build list options
 	var listOpts *tfe.WorkspaceListOptions
-	if c.ProjectID != "" {
-		listOpts = &tfe.WorkspaceListOptions{ProjectID: c.ProjectID}
+	if c.ProjectID != "" || c.Search != "" {
+		listOpts = &tfe.WorkspaceListOptions{}
+		if c.ProjectID != "" {
+			listOpts.ProjectID = c.ProjectID
+		}
+		if c.Search != "" {
+			listOpts.Search = c.Search
+		}
 	}
 
 	workspaces, err := client.List(ctx, org, listOpts)

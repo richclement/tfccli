@@ -409,6 +409,43 @@ func TestWorkspacesList_WithProjectFilter(t *testing.T) {
 	}
 }
 
+// TestWorkspacesList_WithSearch tests that list passes search filter to API.
+func TestWorkspacesList_WithSearch(t *testing.T) {
+	tmpDir, resolver := setupWorkspacesTestSettings(t, "acme")
+	out := &bytes.Buffer{}
+
+	fakeClient := &fakeWorkspacesClient{
+		workspaces: []*tfe.Workspace{
+			{ID: "ws-1", Name: "my-workspace", ExecutionMode: "remote"},
+		},
+	}
+
+	cmd := &WorkspacesListCmd{
+		Search:        "my-",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        out,
+		clientFactory: func(_ tfcapi.ClientConfig) (workspacesClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Verify the list was called with search filter
+	if len(fakeClient.listCalls) != 1 {
+		t.Errorf("expected 1 list call, got %d", len(fakeClient.listCalls))
+	}
+	if fakeClient.listCalls[0].opts == nil || fakeClient.listCalls[0].opts.Search != "my-" {
+		t.Errorf("expected search filter 'my-', got: %+v", fakeClient.listCalls[0].opts)
+	}
+}
+
 // TestWorkspacesGet_JSON tests getting a workspace by ID.
 func TestWorkspacesGet_JSON(t *testing.T) {
 	tmpDir, resolver := setupWorkspacesTestSettings(t, "acme")

@@ -569,9 +569,34 @@ func TestWorkspacesList_WithProjectFilter(t *testing.T) {
 
 ### 10. Add `--search` Flag to List Command
 
+**Status: DONE** (2026-01-21)
+
 **File:** `cmd/tfc/workspaces.go`
 
 **Rationale:** The TFC API supports name search via `WorkspaceListOptions.Search`. Useful for finding workspaces by partial name match.
+
+**Plan (2026-01-21):**
+- Acceptance criteria: `tfc workspaces list --search myws` passes the search string to the API via `WorkspaceListOptions.Search`
+- Verification: Add test `TestWorkspacesList_WithSearch` that verifies the list options include the search string
+- Implementation:
+  1. Add `Search` field to `WorkspacesListCmd` struct with kong tag `name:"search" help:"Search workspaces by name (partial match)."`
+  2. Update `Run()` to include Search in `*tfe.WorkspaceListOptions` when set
+  3. Add test `TestWorkspacesList_WithSearch`
+  4. Run feedback loops
+
+**Progress notes (2026-01-21):**
+
+Changes made:
+- `cmd/tfc/workspaces.go:150` - Added `Search string` field with kong tag `name:"search" help:"Search workspaces by name (partial match)."`
+- `cmd/tfc/workspaces.go:190-198` - Updated list options building to include Search when set
+- `cmd/tfc/workspaces_test.go:412-449` - Added `TestWorkspacesList_WithSearch` test
+
+Verification:
+- `make fmt` - passed
+- `make lint` - passed (with temp cache)
+- `make build` - passed
+- `make test` - all tests pass
+- `go test -v -run "TestWorkspacesList_WithSearch" ./cmd/tfc/...` - pass
 
 **Implementation:**
 
