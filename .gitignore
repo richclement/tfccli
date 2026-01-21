@@ -40,3 +40,4 @@ go.work.sum
 
 # ralph files
 .ralph/stream-json.log
+.ralph/guardrail*.log
