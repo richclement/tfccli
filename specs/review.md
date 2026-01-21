@@ -937,9 +937,30 @@ func TestWorkspaceVariablesDelete_PrompterError(t *testing.T) {
 
 ### 19. Missing Test: Create API Error
 
+**Status: DONE** (2026-01-21)
+
 **File:** `cmd/tfc/workspace_variables_test.go`
 
 **Problem:** No test verifies error handling when the Create API call fails.
+
+**Plan (2026-01-21):**
+- Acceptance criteria: Test `TestWorkspaceVariablesCreate_APIError` exists and verifies that when the Create API call fails, it is wrapped and surfaced as a RuntimeError with message "failed to create variable"
+- Verification: Run `go test -v -run "TestWorkspaceVariablesCreate_APIError" ./cmd/tfc/...`
+- Implementation:
+  1. Add test `TestWorkspaceVariablesCreate_APIError` to `workspace_variables_test.go` after `TestWorkspaceVariablesCreate_TerraformCategory`
+  2. Verify test passes with `make test`
+
+**Progress notes (2026-01-21):**
+
+Changes made:
+- `cmd/tfc/workspace_variables_test.go:638-680` - Added `TestWorkspaceVariablesCreate_APIError` test
+
+Verification:
+- `make fmt` - passed
+- `make lint` - passed (with cache warnings)
+- `make build` - passed
+- `make test` - all tests pass
+- `go test -v -run "TestWorkspaceVariablesCreate_APIError" ./cmd/tfc/...` - pass
 
 **Test to add:**
 ```go
@@ -1240,7 +1261,7 @@ format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
 | Create table output | ✅ | - |
 | Create with sensitive/HCL | ✅ | - |
 | Create terraform category | ✅ | - |
-| Create API error | ❌ | #19 |
+| Create API error | ✅ | #19 |
 | Update JSON output | ✅ | - |
 | Update partial (only value) | ✅ | - |
 | Update no fields provided | ✅ | #22 |

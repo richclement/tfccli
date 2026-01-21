@@ -636,6 +636,46 @@ func TestWorkspaceVariablesCreate_TerraformCategory(t *testing.T) {
 	}
 }
 
+// TestWorkspaceVariablesCreate_APIError tests that API errors are surfaced during create.
+func TestWorkspaceVariablesCreate_APIError(t *testing.T) {
+	tmpDir, resolver := setupVariablesTestSettings(t)
+
+	fakeClient := &fakeVariablesClient{
+		createErr: errors.New("variable key already exists"),
+	}
+
+	var buf bytes.Buffer
+	cmd := &WorkspaceVariablesCreateCmd{
+		WorkspaceID:   "ws-123",
+		Key:           "EXISTING_VAR",
+		Value:         "some-value",
+		Category:      "env",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &buf,
+		clientFactory: func(_ tfcapi.ClientConfig) (variablesClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	// Verify it's a RuntimeError for exit code 2
+	var runtimeErr internalcmd.RuntimeError
+	if !errors.As(err, &runtimeErr) {
+		t.Errorf("expected RuntimeError, got %T", err)
+	}
+
+	if !strings.Contains(err.Error(), "failed to create variable") {
+		t.Errorf("expected create failure message, got: %v", err)
+	}
+}
+
 func TestWorkspaceVariablesUpdate_PartialUpdate(t *testing.T) {
 	tmpDir, resolver := setupVariablesTestSettings(t)
 
