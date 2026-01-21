@@ -173,7 +173,7 @@ func (c *WorkspacesListCmd) Run(cli *CLI) error {
 
 	// Validate org is available
 	if org == "" {
-		return fmt.Errorf("organization is required; use --org flag or set default_org in context")
+		return internalcmd.NewRuntimeError(fmt.Errorf("organization is required; use --org flag or set default_org in context"))
 	}
 
 	client, err := c.clientFactory(cfg)
@@ -326,7 +326,7 @@ func (c *WorkspacesCreateCmd) Run(cli *CLI) error {
 
 	// Validate org is available
 	if org == "" {
-		return fmt.Errorf("organization is required; use --org flag or set default_org in context")
+		return internalcmd.NewRuntimeError(fmt.Errorf("organization is required; use --org flag or set default_org in context"))
 	}
 
 	client, err := c.clientFactory(cfg)
