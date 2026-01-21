@@ -55,6 +55,8 @@ Verification:
 
 ### 2. Update Command Allows No-Op API Calls
 
+**Status: DONE** (2026-01-21)
+
 **File:** `cmd/tfc/workspaces.go:413-419`
 
 **Problem:** Unlike `ProjectsUpdateCmd` (see `projects.go:386-388`), the workspaces update command doesn't validate that at least one field is being updated. If a user runs `tfc workspaces update ws-123` with no flags, it sends a no-op API call and prints "Workspace updated" even though nothing changed.
@@ -79,6 +81,27 @@ if c.Name == "" && c.Description == "" {
 ```
 
 **Test to add:** `TestWorkspacesUpdate_FailsWhenNoFields` - verify error message when neither --name nor --description provided.
+
+**Progress notes (2026-01-21):**
+
+Plan:
+- Acceptance criteria: `tfc workspaces update ws-123` (no flags) returns RuntimeError with message "at least one of --name or --description is required"
+- Verification: Add test `TestWorkspacesUpdate_FailsWhenNoFields` that verifies error is returned and is RuntimeError type
+- Implementation:
+  1. Add validation check after defaults setup in `WorkspacesUpdateCmd.Run()`
+  2. Add test case in `workspaces_test.go`
+  3. Run feedback loops
+
+Changes made:
+- `cmd/tfc/workspaces.go:401-403` - Added validation before API call
+- `cmd/tfc/workspaces_test.go:580-622` - Added `TestWorkspacesUpdate_FailsWhenNoFields` test
+
+Verification:
+- `make fmt` - passed
+- `make lint` - passed
+- `make build` - passed
+- `make test` - all tests pass
+- `go test -v -run "TestWorkspacesUpdate_FailsWhenNoFields" ./cmd/tfc/...` - pass
 
 ---
 
@@ -613,7 +636,7 @@ The `resolveFormat` helper is slightly cleaner as it encapsulates the logic and 
 | Create table output | ✅ | - |
 | Create API error | ❌ | #5 |
 | Update JSON | ✅ | - |
-| Update no fields provided | ❌ | #2 |
+| Update no fields provided | ✅ | #2 |
 | Update API error | ❌ | #6 |
 | Delete with confirmation | ✅ | - |
 | Delete rejected | ✅ | - |

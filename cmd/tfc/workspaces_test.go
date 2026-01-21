@@ -577,6 +577,48 @@ func TestWorkspacesUpdate_JSON(t *testing.T) {
 	}
 }
 
+// TestWorkspacesUpdate_FailsWhenNoFields tests that update fails when no fields provided.
+func TestWorkspacesUpdate_FailsWhenNoFields(t *testing.T) {
+	tmpDir, resolver := setupWorkspacesTestSettings(t, "acme")
+	out := &bytes.Buffer{}
+
+	fakeClient := &fakeWorkspacesClient{}
+
+	cmd := &WorkspacesUpdateCmd{
+		ID: "ws-123",
+		// No Name or Description provided
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        out,
+		clientFactory: func(_ tfcapi.ClientConfig) (workspacesClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error when no fields provided, got nil")
+	}
+
+	// Verify it's a RuntimeError for exit code 2
+	var runtimeErr internalcmd.RuntimeError
+	if !errors.As(err, &runtimeErr) {
+		t.Errorf("expected RuntimeError, got %T", err)
+	}
+
+	// Verify error message
+	if !strings.Contains(err.Error(), "at least one of --name or --description is required") {
+		t.Errorf("expected 'at least one of' error message, got: %v", err)
+	}
+
+	// Verify no API call was made
+	if len(fakeClient.updateCalls) != 0 {
+		t.Errorf("expected no update calls, got %d", len(fakeClient.updateCalls))
+	}
+}
+
 // TestWorkspacesDelete_PromptsWithoutForce tests that delete prompts without --force.
 func TestWorkspacesDelete_PromptsWithoutForce(t *testing.T) {
 	tmpDir, resolver := setupWorkspacesTestSettings(t, "acme")

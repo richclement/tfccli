@@ -399,6 +399,11 @@ func (c *WorkspacesUpdateCmd) Run(cli *CLI) error {
 		c.clientFactory = defaultWorkspacesClientFactory
 	}
 
+	// Validate at least one field is being updated
+	if c.Name == "" && c.Description == "" {
+		return internalcmd.NewRuntimeError(fmt.Errorf("at least one of --name or --description is required"))
+	}
+
 	cfg, _, err := resolveWorkspacesClientConfig(cli, c.baseDir, c.tokenResolver)
 	if err != nil {
 		return internalcmd.NewRuntimeError(err)
