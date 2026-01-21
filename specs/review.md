@@ -1702,9 +1702,33 @@ func TestInitCmd_PrompterErrorOnOrg(t *testing.T) {
 
 ### 33. Missing Test: Prompter Error on Log Level Selection
 
+**Status: DONE** (2026-01-21)
+
 **File:** `cmd/tfc/init_test.go`
 
 **Problem:** No test verifies error handling when `prompter.PromptSelect()` returns an error for the log level prompt.
+
+**Plan (2026-01-21):**
+- Acceptance criteria: Test `TestInitCmd_PrompterErrorOnLogLevel` exists and verifies that when prompter.PromptSelect() returns an error during log level prompt, it is wrapped and surfaced as a RuntimeError with message "failed to prompt for log level"
+- Verification: Run `go test -v -run "TestInitCmd_PrompterErrorOnLogLevel" ./cmd/tfc/...`
+- Implementation:
+  1. Add `selectErrorPrompter` type to `testhelpers_test.go` (succeeds on string prompts and confirms, fails on select)
+  2. Add test `TestInitCmd_PrompterErrorOnLogLevel` to `init_test.go`
+  3. Verify RuntimeError type for exit code 2
+  4. Run feedback loops to verify
+
+**Progress notes (2026-01-21):**
+
+Changes made:
+- `cmd/tfc/testhelpers_test.go:92-107` - Added `selectErrorPrompter` type that succeeds on PromptString and Confirm but fails on PromptSelect
+- `cmd/tfc/init_test.go:466-489` - Added `TestInitCmd_PrompterErrorOnLogLevel` test
+
+Verification:
+- `make fmt` - passed
+- `make lint` - passed (with temp caches due to permission issues)
+- `make build` - passed (with temp caches)
+- `make test` - all tests pass
+- `go test -v -run "TestInitCmd_PrompterErrorOnLogLevel" ./cmd/tfc/...` - pass
 
 **Test to add:**
 ```go
@@ -1816,7 +1840,7 @@ func TestInitCmd_SaveError(t *testing.T) {
 | Prompter error on overwrite confirm | ✅ | #30 |
 | Prompter error on address prompt | ✅ | #31 |
 | Prompter error on org prompt | ✅ | #32 |
-| Prompter error on log level prompt | ❌ | #33 |
+| Prompter error on log level prompt | ✅ | #33 |
 | config.Save() failure | ❌ | #34 |
 | os.Stat permission error handling | ✅ | #28 |
 

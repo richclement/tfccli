@@ -463,6 +463,32 @@ func TestInitCmd_PrompterErrorOnOrg(t *testing.T) {
 	}
 }
 
+// TestInitCmd_PrompterErrorOnLogLevel tests prompter error during log level prompt.
+func TestInitCmd_PrompterErrorOnLogLevel(t *testing.T) {
+	tmpHome := t.TempDir()
+
+	cmd := &InitCmd{
+		prompter: &selectErrorPrompter{err: errors.New("EOF")},
+		baseDir:  tmpHome,
+	}
+	cli := &CLI{}
+
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	// Verify it's a RuntimeError for exit code 2
+	var runtimeErr internalcmd.RuntimeError
+	if !errors.As(err, &runtimeErr) {
+		t.Errorf("expected RuntimeError, got %T", err)
+	}
+
+	if !strings.Contains(err.Error(), "failed to prompt for log level") {
+		t.Errorf("expected log level prompt error, got: %v", err)
+	}
+}
+
 // TestInitCmd_StatPermissionError tests that os.Stat permission errors are surfaced.
 func TestInitCmd_StatPermissionError(t *testing.T) {
 	tmpHome := t.TempDir()

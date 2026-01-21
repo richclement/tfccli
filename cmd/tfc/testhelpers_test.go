@@ -87,3 +87,21 @@ func (p *sequentialErrorPrompter) Confirm(_ string, defaultValue bool) (bool, er
 func (p *sequentialErrorPrompter) PromptSelect(_ string, _ []string, defaultValue string) (string, error) {
 	return defaultValue, nil
 }
+
+// selectErrorPrompter succeeds on string prompts and confirms but fails on select.
+// Useful for testing PromptSelect error paths (e.g., log level selection).
+type selectErrorPrompter struct {
+	err error
+}
+
+func (p *selectErrorPrompter) PromptString(_, defaultValue string) (string, error) {
+	return defaultValue, nil
+}
+
+func (p *selectErrorPrompter) Confirm(_ string, defaultValue bool) (bool, error) {
+	return defaultValue, nil
+}
+
+func (p *selectErrorPrompter) PromptSelect(_ string, _ []string, _ string) (string, error) {
+	return "", p.err
+}
