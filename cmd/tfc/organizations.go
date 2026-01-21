@@ -419,7 +419,9 @@ func (c *OrganizationsDeleteCmd) Run(cli *CLI) error {
 		c.prompter = ui.NewStdPrompter(os.Stdin, os.Stdout)
 	}
 
-	// Get force flag from CLI or injected value
+	// Get force flag from CLI or injected test value.
+	// Test injection (forceFlag) takes precedence over CLI flag to enable
+	// deterministic testing without relying on CLI parsing.
 	force := cli.Force
 	if c.forceFlag != nil {
 		force = *c.forceFlag

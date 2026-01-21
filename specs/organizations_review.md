@@ -723,7 +723,7 @@ Commands run:
 
 ### Finding 10: forceFlag and cli.Force interaction undocumented
 
-**Status:** TODO
+**Status:** DONE
 
 **Acceptance Criteria:**
 - Comment added to organizations.go explaining forceFlag precedence
@@ -733,8 +733,21 @@ Commands run:
 - `make lint && make test` green
 
 **Implementation Plan:**
-1. Add explanatory comment at line 422-425 in organizations.go
+1. Update comment at line 422-426 to explain forceFlag is for test injection and takes precedence over cli.Force
 2. Run make fmt/lint/build/test
+
+**Progress Notes:**
+
+**2026-01-21:** DONE
+
+Files changed:
+- `cmd/tfc/organizations.go`: Updated comment at lines 422-426 to clarify that forceFlag is for test injection and takes precedence over cli.Force to enable deterministic testing
+
+Commands run:
+- `make fmt` - passed
+- `make lint` - passed
+- `make build` - passed
+- `make test` - all tests pass
 
 ---
 
