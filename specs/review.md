@@ -1221,9 +1221,36 @@ func TestWorkspaceVariablesUpdate_FailsWhenNoFields(t *testing.T) {
 
 ### 23. Missing Get Subcommand
 
+**Status: DONE** (2026-01-21)
+
 **File:** `cmd/tfc/workspace_variables.go`
 
 **Problem:** The `variablesClient` interface defines a `Read` method (line 68), but there is no `WorkspaceVariablesGetCmd` to retrieve a single variable by ID. This is inconsistent with the workspaces subcommand which has List/Get/Create/Update/Delete.
+
+**Plan (2026-01-21):**
+- Acceptance criteria: `tfc workspace-variables get VAR_ID --workspace-id WS_ID` retrieves and displays a single variable by ID
+- Verification: Add tests `TestWorkspaceVariablesGet_JSON`, `TestWorkspaceVariablesGet_Table`, `TestWorkspaceVariablesGet_NotFound`, `TestWorkspaceVariablesGet_APIError`
+- Implementation:
+  1. Add `Get` to `WorkspaceVariablesCmd` struct
+  2. Add `WorkspaceVariablesGetCmd` struct with `VariableID` (arg) and `WorkspaceID` (flag)
+  3. Implement `Run()` method following `WorkspacesGetCmd` pattern
+  4. Add table output showing FIELD/VALUE pairs for variable details
+  5. Add tests for JSON, Table, NotFound, and API error cases
+  6. Run feedback loops
+
+**Progress notes (2026-01-21):**
+
+Changes made:
+- `cmd/tfc/workspace_variables.go:21` - Added `Get WorkspaceVariablesGetCmd` to command group
+- `cmd/tfc/workspace_variables.go:214-287` - Added `WorkspaceVariablesGetCmd` struct and `Run()` method
+- `cmd/tfc/workspace_variables_test.go:265-431` - Added 4 tests: `TestWorkspaceVariablesGet_JSON`, `TestWorkspaceVariablesGet_Table`, `TestWorkspaceVariablesGet_NotFound`, `TestWorkspaceVariablesGet_APIError`
+
+Verification:
+- `make fmt` - passed
+- `make lint` - passed (with temp caches due to permission issues)
+- `make build` - passed
+- `make test` - all tests pass
+- `go test -v -run "TestWorkspaceVariablesGet" ./cmd/tfc/...` - all 4 tests pass
 
 **Impact:** Users must use `list` and filter client-side to find a specific variable's details.
 
@@ -1343,9 +1370,10 @@ format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
 | List table output | ✅ | - |
 | List API error | ✅ | - |
 | List missing settings | ✅ | - |
-| Get by ID | ❌ | #23 |
-| Get not found (404) | ❌ | #23 |
-| Get generic API error | ❌ | #23 |
+| Get by ID | ✅ | #23 |
+| Get table output | ✅ | #23 |
+| Get not found (404) | ✅ | #23 |
+| Get generic API error | ✅ | #23 |
 | Create JSON output | ✅ | - |
 | Create table output | ✅ | - |
 | Create with sensitive/HCL | ✅ | - |

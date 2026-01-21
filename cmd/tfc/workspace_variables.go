@@ -19,6 +19,7 @@ import (
 // WorkspaceVariablesCmd groups all workspace-variables subcommands.
 type WorkspaceVariablesCmd struct {
 	List   WorkspaceVariablesListCmd   `cmd:"" help:"List variables for a workspace."`
+	Get    WorkspaceVariablesGetCmd    `cmd:"" help:"Get a variable by ID."`
 	Create WorkspaceVariablesCreateCmd `cmd:"" help:"Create a new variable."`
 	Update WorkspaceVariablesUpdateCmd `cmd:"" help:"Update a variable."`
 	Delete WorkspaceVariablesDeleteCmd `cmd:"" help:"Delete a variable."`
@@ -203,6 +204,84 @@ func (c *WorkspaceVariablesListCmd) Run(cli *CLI) error {
 		tw := output.NewTableWriter(c.stdout, []string{"ID", "KEY", "CATEGORY", "SENSITIVE", "HCL"}, isTTY)
 		for _, v := range variables {
 			tw.AddRow(v.ID, v.Key, string(v.Category), fmt.Sprintf("%t", v.Sensitive), fmt.Sprintf("%t", v.HCL))
+		}
+		if _, err := tw.Render(); err != nil {
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to write output: %w", err))
+		}
+	}
+
+	return nil
+}
+
+// WorkspaceVariablesGetCmd retrieves a single variable by ID.
+type WorkspaceVariablesGetCmd struct {
+	VariableID  string `arg:"" help:"ID of the variable to retrieve."`
+	WorkspaceID string `required:"" name:"workspace-id" help:"ID of the workspace."`
+
+	// Dependencies for testing
+	baseDir       string
+	tokenResolver *auth.TokenResolver
+	ttyDetector   output.TTYDetector
+	stdout        io.Writer
+	clientFactory variablesClientFactory
+}
+
+func (c *WorkspaceVariablesGetCmd) Run(cli *CLI) error {
+	// Set defaults
+	if c.ttyDetector == nil {
+		c.ttyDetector = &output.RealTTYDetector{}
+	}
+	if c.stdout == nil {
+		c.stdout = os.Stdout
+	}
+	if c.clientFactory == nil {
+		c.clientFactory = defaultVariablesClientFactory
+	}
+
+	cfg, err := resolveVariablesClientConfig(cli, c.baseDir, c.tokenResolver)
+	if err != nil {
+		return internalcmd.NewRuntimeError(err)
+	}
+
+	client, err := c.clientFactory(cfg)
+	if err != nil {
+		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create client: %w", err))
+	}
+
+	ctx := context.Background()
+	variable, err := client.Read(ctx, c.WorkspaceID, c.VariableID)
+	if err != nil {
+		apiErr, _ := tfcapi.ParseAPIError(err)
+		if apiErr != nil {
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to get variable: %s", apiErr.Error()))
+		}
+		return internalcmd.NewRuntimeError(fmt.Errorf("failed to get variable: %w", err))
+	}
+
+	// Determine output format
+	isTTY := false
+	if f, ok := c.stdout.(*os.File); ok {
+		isTTY = c.ttyDetector.IsTTY(f)
+	}
+	format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
+
+	if format == output.FormatJSON {
+		result := map[string]any{"data": toVariableJSON(variable)}
+		if err := output.WriteJSON(c.stdout, result); err != nil {
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to write output: %w", err))
+		}
+	} else {
+		tw := output.NewTableWriter(c.stdout, []string{"FIELD", "VALUE"}, isTTY)
+		tw.AddRow("ID", variable.ID)
+		tw.AddRow("Key", variable.Key)
+		tw.AddRow("Category", string(variable.Category))
+		tw.AddRow("Sensitive", fmt.Sprintf("%t", variable.Sensitive))
+		tw.AddRow("HCL", fmt.Sprintf("%t", variable.HCL))
+		if variable.Description != "" {
+			tw.AddRow("Description", variable.Description)
+		}
+		if variable.Workspace != nil {
+			tw.AddRow("Workspace ID", variable.Workspace.ID)
 		}
 		if _, err := tw.Render(); err != nil {
 			return internalcmd.NewRuntimeError(fmt.Errorf("failed to write output: %w", err))

@@ -262,6 +262,177 @@ func TestWorkspaceVariablesList_FailsWhenSettingsMissing(t *testing.T) {
 	}
 }
 
+func TestWorkspaceVariablesGet_JSON(t *testing.T) {
+	tmpDir, resolver := setupVariablesTestSettings(t)
+
+	fakeClient := &fakeVariablesClient{
+		variable: &tfe.Variable{
+			ID:          "var-123",
+			Key:         "MY_VAR",
+			Value:       "my-value",
+			Category:    tfe.CategoryEnv,
+			Description: "Test variable",
+			Sensitive:   false,
+			HCL:         false,
+			Workspace:   &tfe.Workspace{ID: "ws-123"},
+		},
+	}
+
+	var buf bytes.Buffer
+	cmd := &WorkspaceVariablesGetCmd{
+		VariableID:    "var-123",
+		WorkspaceID:   "ws-123",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &buf,
+		clientFactory: func(_ tfcapi.ClientConfig) (variablesClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var result map[string]any
+	if err := json.Unmarshal(buf.Bytes(), &result); err != nil {
+		t.Fatalf("failed to parse JSON: %v", err)
+	}
+
+	data, ok := result["data"].(map[string]any)
+	if !ok {
+		t.Fatal("expected data object in output")
+	}
+	if data["id"] != "var-123" {
+		t.Errorf("expected id 'var-123', got %v", data["id"])
+	}
+	if data["key"] != "MY_VAR" {
+		t.Errorf("expected key 'MY_VAR', got %v", data["key"])
+	}
+}
+
+func TestWorkspaceVariablesGet_Table(t *testing.T) {
+	tmpDir, resolver := setupVariablesTestSettings(t)
+
+	fakeClient := &fakeVariablesClient{
+		variable: &tfe.Variable{
+			ID:          "var-123",
+			Key:         "MY_VAR",
+			Value:       "my-value",
+			Category:    tfe.CategoryEnv,
+			Description: "Test variable",
+			Sensitive:   false,
+			HCL:         false,
+			Workspace:   &tfe.Workspace{ID: "ws-123"},
+		},
+	}
+
+	var buf bytes.Buffer
+	cmd := &WorkspaceVariablesGetCmd{
+		VariableID:    "var-123",
+		WorkspaceID:   "ws-123",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &buf,
+		clientFactory: func(_ tfcapi.ClientConfig) (variablesClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "table"}
+	err := cmd.Run(cli)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	out := buf.String()
+	if !strings.Contains(out, "FIELD") || !strings.Contains(out, "VALUE") {
+		t.Error("expected table headers in output")
+	}
+	if !strings.Contains(out, "var-123") {
+		t.Error("expected variable ID in output")
+	}
+	if !strings.Contains(out, "MY_VAR") {
+		t.Error("expected variable key in output")
+	}
+}
+
+func TestWorkspaceVariablesGet_NotFound(t *testing.T) {
+	tmpDir, resolver := setupVariablesTestSettings(t)
+
+	fakeClient := &fakeVariablesClient{
+		readErr: tfe.ErrResourceNotFound,
+	}
+
+	var buf bytes.Buffer
+	cmd := &WorkspaceVariablesGetCmd{
+		VariableID:    "var-nonexistent",
+		WorkspaceID:   "ws-123",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &buf,
+		clientFactory: func(_ tfcapi.ClientConfig) (variablesClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	// Verify it's a RuntimeError for exit code 2
+	var runtimeErr internalcmd.RuntimeError
+	if !errors.As(err, &runtimeErr) {
+		t.Errorf("expected RuntimeError, got %T", err)
+	}
+	if !strings.Contains(err.Error(), "failed to get variable") {
+		t.Errorf("expected 'failed to get variable' in error, got: %v", err)
+	}
+}
+
+func TestWorkspaceVariablesGet_APIError(t *testing.T) {
+	tmpDir, resolver := setupVariablesTestSettings(t)
+
+	fakeClient := &fakeVariablesClient{
+		readErr: errors.New("server error"),
+	}
+
+	var buf bytes.Buffer
+	cmd := &WorkspaceVariablesGetCmd{
+		VariableID:    "var-123",
+		WorkspaceID:   "ws-123",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &buf,
+		clientFactory: func(_ tfcapi.ClientConfig) (variablesClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	// Verify it's a RuntimeError for exit code 2
+	var runtimeErr internalcmd.RuntimeError
+	if !errors.As(err, &runtimeErr) {
+		t.Errorf("expected RuntimeError, got %T", err)
+	}
+	if !strings.Contains(err.Error(), "failed to get variable") {
+		t.Errorf("expected 'failed to get variable' in error, got: %v", err)
+	}
+}
+
 func TestWorkspaceVariablesCreate_JSON(t *testing.T) {
 	tmpDir, resolver := setupVariablesTestSettings(t)
 
