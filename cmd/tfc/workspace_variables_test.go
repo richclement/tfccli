@@ -784,3 +784,42 @@ func TestWorkspaceVariablesDelete_PrompterError(t *testing.T) {
 		t.Errorf("expected prompt error, got: %v", err)
 	}
 }
+
+// TestWorkspaceVariablesUpdate_APIError tests that API errors are surfaced during update.
+func TestWorkspaceVariablesUpdate_APIError(t *testing.T) {
+	tmpDir, resolver := setupVariablesTestSettings(t)
+	var buf bytes.Buffer
+
+	fakeClient := &fakeVariablesClient{
+		updateErr: errors.New("variable not found"),
+	}
+
+	cmd := &WorkspaceVariablesUpdateCmd{
+		VariableID:    "var-nonexistent",
+		WorkspaceID:   "ws-123",
+		Key:           "NEW_KEY",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &buf,
+		clientFactory: func(_ tfcapi.ClientConfig) (variablesClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	// Verify it's a RuntimeError for exit code 2
+	var runtimeErr internalcmd.RuntimeError
+	if !errors.As(err, &runtimeErr) {
+		t.Errorf("expected RuntimeError, got %T", err)
+	}
+
+	if !strings.Contains(err.Error(), "failed to update variable") {
+		t.Errorf("expected update failure message, got: %v", err)
+	}
+}

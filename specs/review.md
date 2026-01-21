@@ -1002,44 +1002,32 @@ func TestWorkspaceVariablesCreate_APIError(t *testing.T) {
 
 ### 20. Missing Test: Update API Error
 
+**Status: DONE** (2026-01-21)
+
 **File:** `cmd/tfc/workspace_variables_test.go`
 
 **Problem:** No test verifies error handling when the Update API call fails.
 
-**Test to add:**
-```go
-// TestWorkspaceVariablesUpdate_APIError tests that API errors are surfaced during update.
-func TestWorkspaceVariablesUpdate_APIError(t *testing.T) {
-    tmpDir, resolver := setupVariablesTestSettings(t)
-    var buf bytes.Buffer
+**Plan (2026-01-21):**
+- Acceptance criteria: Test `TestWorkspaceVariablesUpdate_APIError` exists and verifies that when the Update API call fails, it is wrapped and surfaced as a RuntimeError with message "failed to update variable"
+- Verification: Run `go test -v -run "TestWorkspaceVariablesUpdate_APIError" ./cmd/tfc/...`
+- Implementation:
+  1. Add test `TestWorkspaceVariablesUpdate_APIError` to `workspace_variables_test.go` after `TestWorkspaceVariablesDelete_PrompterError`
+  2. Use `fakeVariablesClient.updateErr` to simulate API failure
+  3. Verify RuntimeError type for exit code 2
+  4. Run feedback loops to verify
 
-    fakeClient := &fakeVariablesClient{
-        updateErr: errors.New("variable not found"),
-    }
+**Progress notes (2026-01-21):**
 
-    cmd := &WorkspaceVariablesUpdateCmd{
-        VariableID:    "var-nonexistent",
-        WorkspaceID:   "ws-123",
-        Key:           "NEW_KEY",
-        baseDir:       tmpDir,
-        tokenResolver: resolver,
-        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
-        stdout:        &buf,
-        clientFactory: func(_ tfcapi.ClientConfig) (variablesClient, error) {
-            return fakeClient, nil
-        },
-    }
+Changes made:
+- `cmd/tfc/workspace_variables_test.go:788-822` - Added `TestWorkspaceVariablesUpdate_APIError` test
 
-    cli := &CLI{OutputFormat: "json"}
-    err := cmd.Run(cli)
-    if err == nil {
-        t.Fatal("expected error, got nil")
-    }
-    if !strings.Contains(err.Error(), "failed to update variable") {
-        t.Errorf("expected update failure message, got: %v", err)
-    }
-}
-```
+Verification:
+- `make fmt` - passed
+- `make lint` - passed (with temp caches due to permission issues)
+- `make build` - passed
+- `make test` - all tests pass
+- `go test -v -run "TestWorkspaceVariablesUpdate_APIError" ./cmd/tfc/...` - pass
 
 ---
 
@@ -1265,7 +1253,7 @@ format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
 | Update JSON output | ✅ | - |
 | Update partial (only value) | ✅ | - |
 | Update no fields provided | ✅ | #22 |
-| Update API error | ❌ | #20 |
+| Update API error | ✅ | #20 |
 | Delete with confirmation | ✅ | - |
 | Delete rejected | ✅ | - |
 | Delete with --force | ✅ | - |
