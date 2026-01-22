@@ -193,11 +193,7 @@ func (c *RunsListCmd) Run(cli *CLI) error {
 	}
 
 	// Determine output format
-	isTTY := false
-	if f, ok := c.stdout.(*os.File); ok {
-		isTTY = c.ttyDetector.IsTTY(f)
-	}
-	format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
+	format, isTTY := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
 
 	if format == output.FormatJSON {
 		result := map[string]any{"data": toRunJSONList(runs)}
@@ -262,11 +258,7 @@ func (c *RunsGetCmd) Run(cli *CLI) error {
 	}
 
 	// Determine output format
-	isTTY := false
-	if f, ok := c.stdout.(*os.File); ok {
-		isTTY = c.ttyDetector.IsTTY(f)
-	}
-	format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
+	format, isTTY := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
 
 	if format == output.FormatJSON {
 		result := map[string]any{"data": toRunJSON(run)}
@@ -348,11 +340,7 @@ func (c *RunsCreateCmd) Run(cli *CLI) error {
 	}
 
 	// Determine output format
-	isTTY := false
-	if f, ok := c.stdout.(*os.File); ok {
-		isTTY = c.ttyDetector.IsTTY(f)
-	}
-	format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
+	format, _ := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
 
 	if format == output.FormatJSON {
 		result := map[string]any{"data": toRunJSON(run)}
@@ -440,11 +428,7 @@ func (c *RunsApplyCmd) Run(cli *CLI) error {
 	}
 
 	// Determine output format
-	isTTY := false
-	if f, ok := c.stdout.(*os.File); ok {
-		isTTY = c.ttyDetector.IsTTY(f)
-	}
-	format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
+	format, _ := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
 
 	if format == output.FormatJSON {
 		if err := output.WriteEmptySuccess(c.stdout, 202); err != nil {
@@ -531,11 +515,7 @@ func (c *RunsDiscardCmd) Run(cli *CLI) error {
 	}
 
 	// Determine output format
-	isTTY := false
-	if f, ok := c.stdout.(*os.File); ok {
-		isTTY = c.ttyDetector.IsTTY(f)
-	}
-	format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
+	format, _ := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
 
 	if format == output.FormatJSON {
 		if err := output.WriteEmptySuccess(c.stdout, 202); err != nil {
@@ -622,11 +602,7 @@ func (c *RunsCancelCmd) Run(cli *CLI) error {
 	}
 
 	// Determine output format
-	isTTY := false
-	if f, ok := c.stdout.(*os.File); ok {
-		isTTY = c.ttyDetector.IsTTY(f)
-	}
-	format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
+	format, _ := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
 
 	if format == output.FormatJSON {
 		if err := output.WriteEmptySuccess(c.stdout, 202); err != nil {
@@ -713,11 +689,7 @@ func (c *RunsForceCancelCmd) Run(cli *CLI) error {
 	}
 
 	// Determine output format
-	isTTY := false
-	if f, ok := c.stdout.(*os.File); ok {
-		isTTY = c.ttyDetector.IsTTY(f)
-	}
-	format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
+	format, _ := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
 
 	if format == output.FormatJSON {
 		if err := output.WriteEmptySuccess(c.stdout, 202); err != nil {

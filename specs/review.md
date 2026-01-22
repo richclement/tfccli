@@ -1,274 +1,25 @@
-# Workspaces Subcommand Code Review
+# Code Review: Runs Subcommand
 
-Review of `cmd/tfc/workspaces.go` and `cmd/tfc/workspaces_test.go`.
+## Files Reviewed
+- `cmd/tfc/runs.go` - Main implementation (732 lines)
+- `cmd/tfc/runs_test.go` - Unit tests (893 lines)
+- `internal/tfcapi/pagination.go` - CollectAllRuns function
+- `cmd/tfc/common.go` - Shared helpers (resolveFormat, resolveClientConfig)
 
 ---
 
-## Edge Cases
+## Issues Found
 
-### 1. Description Cannot Be Cleared
+### 1. [x] Runs commands don't use `resolveFormat` helper
 
 **Status:** DONE
 
-**File:** `cmd/tfc/workspaces.go:341-343` (create) and `417-419` (update)
+**File:** `cmd/tfc/runs.go`
+**Lines:** 196-200, 265-269, 351-355, 443-447, 534-538, 625-629, 715-719
 
-**Problem:** The empty string check `if c.Description != ""` means users cannot clear a workspace description by passing `--description ""`. Once set, a description cannot be removed.
+**Problem:** All runs commands duplicate TTY detection logic inline instead of using the `resolveFormat` helper from `common.go`. Other commands like `doctor`, `projects`, `workspace-variables`, and `workspace-resources` use this helper consistently.
 
-**Current code:**
-```go
-if c.Description != "" {
-    opts.Description = tfe.String(c.Description)
-}
-```
-
-**Impact:** Users have no way to remove a description once it's set.
-
-**Possible fix options:**
-1. Use a pointer type (`*string`) for the Description field and check for nil vs empty
-2. Add a separate `--clear-description` boolean flag
-3. Accept a sentinel value like `"-"` to mean "clear"
-
-**Note:** This same pattern exists in other commands. Decide on a consistent approach across the codebase before fixing.
-
-#### Plan (2026-01-21)
-
-**Acceptance criteria (from PRD Section 12):**
-- Users can clear a workspace description using `tfc workspaces update <id> --clear-description`
-- The flag is mutually exclusive with `--description` (error if both provided)
-- Test verifies clearing description sends empty string to API
-- Test verifies error when both `--description` and `--clear-description` provided
-
-**Verification approach:**
-- `make test` passes
-- New tests cover the --clear-description flag behavior
-- Existing tests still pass
-
-**Implementation steps:**
-1. Add `ClearDescription bool` field to `WorkspacesUpdateCmd` with Kong tag
-2. Update validation: error if both `--description` and `--clear-description` provided
-3. Update logic: if `--clear-description` set, pass empty string to API
-4. Add test: `TestWorkspacesUpdate_ClearDescription`
-5. Add test: `TestWorkspacesUpdate_ClearDescriptionConflict`
-6. Run feedback loops
-
-#### Progress Note (2026-01-21)
-
-**Files changed:**
-- `cmd/tfc/workspaces.go`:
-  - Added `ClearDescription bool` field to `WorkspacesUpdateCmd` struct (line 359)
-  - Added validation for mutual exclusivity of `--description` and `--clear-description` (lines 384-386)
-  - Updated validation error message to include `--clear-description` (line 389)
-  - Added logic to pass empty string to API when `--clear-description` is set (lines 406-408)
-- `cmd/tfc/workspaces_test.go`:
-  - Updated `TestWorkspacesUpdate_FailsWhenNoFields` error message assertion (line 686)
-  - Added `TestWorkspacesUpdate_ClearDescription` - verifies empty string sent to API
-  - Added `TestWorkspacesUpdate_ClearDescriptionConflict` - verifies mutual exclusivity error
-
-**Commands run:**
-- `make fmt` - passed
-- `make lint` - passed
-- `make build` - passed
-- `make test` - passed (all tests green)
-
-**What remains:**
-- Task #1 is DONE
-- Users can now clear workspace descriptions using `tfc workspaces update <id> --clear-description`
-
----
-
-## Code Quality Improvements
-
-### 2. Extract Duplicate `resolveClientConfig` Function
-
-**Status:** DONE
-
-**Files:** `cmd/tfc/workspaces.go:107-145` and `cmd/tfc/projects.go:112-150`
-
-**Problem:** `resolveWorkspacesClientConfig` and `resolveProjectsClientConfig` are identical functions. This violates DRY and increases maintenance burden.
-
-#### Plan (2026-01-21)
-
-**Acceptance criteria:**
-- Shared `resolveClientConfig` helper exists in `cmd/tfc/common.go`
-- `resolveWorkspacesClientConfig` and `resolveProjectsClientConfig` are replaced with calls to shared helper
-- `resolveVariablesClientConfig` and `resolveWorkspaceResourcesClientConfig` are also updated (they have similar duplication)
-- All existing tests pass
-- No behavior changes
-
-**Verification approach:**
-- `make test` passes
-- All command tests still pass
-- Code compiles without errors
-
-**Implementation steps:**
-1. Create `cmd/tfc/common.go` with shared `resolveClientConfig` function
-2. Update `cmd/tfc/workspaces.go` to use shared helper (remove local function)
-3. Update `cmd/tfc/projects.go` to use shared helper (remove local function)
-4. Update `cmd/tfc/workspace_variables.go` to use shared helper
-5. Update `cmd/tfc/workspace_resources.go` to use shared helper
-6. Run feedback loops
-
-#### Progress Note (2026-01-21)
-
-**Files changed:**
-- `cmd/tfc/common.go` (new): Created shared helper file with `resolveClientConfig` and `resolveFormat` functions
-- `cmd/tfc/workspaces.go`: Removed `resolveWorkspacesClientConfig`, updated to use shared `resolveClientConfig`
-- `cmd/tfc/projects.go`: Removed `resolveProjectsClientConfig` and `resolveFormat`, updated to use shared versions
-- `cmd/tfc/workspace_variables.go`: Removed `resolveVariablesClientConfig`, updated to use shared `resolveClientConfig` (ignoring org return)
-- `cmd/tfc/workspace_resources.go`: Removed `resolveWorkspaceResourcesClientConfig`, updated to use shared `resolveClientConfig` (ignoring org return)
-
-**Commands run:**
-- `make fmt` - passed
-- `make lint` - passed
-- `make build` - passed
-- `make test` - passed (all tests green)
-
-**What remains:**
-- Task #2 is DONE
-- Net reduction of ~140 lines of duplicate code
-- Also resolves task #7 (resolveVariablesClientConfig), #29 (resolveWorkspaceResourcesClientConfig), and task #4 (resolveFormat helper moved to common.go)
-
-**Fix:** Create a shared helper in a common location (e.g., `cmd/tfc/common.go` or reuse an existing shared file):
-
-```go
-// resolveClientConfig resolves settings and token for API calls, including org resolution.
-func resolveClientConfig(cli *CLI, baseDir string, tokenResolver *auth.TokenResolver) (tfcapi.ClientConfig, string, error) {
-    settings, err := config.Load(baseDir)
-    if err != nil {
-        return tfcapi.ClientConfig{}, "", err
-    }
-
-    contextName := cli.Context
-    if contextName == "" {
-        contextName = settings.CurrentContext
-    }
-    ctx, exists := settings.Contexts[contextName]
-    if !exists {
-        return tfcapi.ClientConfig{}, "", fmt.Errorf("context %q not found", contextName)
-    }
-
-    resolved := ctx.WithDefaults()
-    if cli.Address != "" {
-        resolved.Address = cli.Address
-    }
-
-    org := cli.Org
-    if org == "" {
-        org = resolved.DefaultOrg
-    }
-
-    if tokenResolver == nil {
-        tokenResolver = auth.NewTokenResolver()
-    }
-    tokenResult, err := tokenResolver.ResolveToken(resolved.Address)
-    if err != nil {
-        return tfcapi.ClientConfig{}, "", err
-    }
-
-    return tfcapi.ClientConfig{
-        Address: resolved.Address,
-        Token:   tokenResult.Token,
-    }, org, nil
-}
-```
-
-Then update both files to use this shared function.
-
----
-
-### 3. Extract Duplicate Test Helper Types
-
-**Status:** DONE
-
-**File:** `cmd/tfc/workspaces_test.go:94-117`
-
-**Problem:** `workspacesTestEnv` and `workspacesTestFS` duplicate the same types defined in other test files. Recent commit `861f345` extracted prompters to `testhelpers_test.go`.
-
-**Fix:** Move these types to `cmd/tfc/testhelpers_test.go`:
-
-```go
-// testEnv implements auth.EnvGetter for testing.
-type testEnv struct {
-    vars map[string]string
-}
-
-func (e *testEnv) Getenv(key string) string {
-    return e.vars[key]
-}
-
-// testFS implements auth.FSReader for testing.
-type testFS struct {
-    files   map[string][]byte
-    homeDir string
-}
-
-func (f *testFS) ReadFile(path string) ([]byte, error) {
-    if data, ok := f.files[path]; ok {
-        return data, nil
-    }
-    return nil, os.ErrNotExist
-}
-
-func (f *testFS) UserHomeDir() (string, error) {
-    return f.homeDir, nil
-}
-```
-
-Then update `workspaces_test.go` and other test files to use the shared types.
-
-#### Plan (2026-01-21)
-
-**Acceptance criteria:**
-- Shared `testEnv` and `testFS` types exist in `cmd/tfc/testhelpers_test.go`
-- All duplicate types removed from test files (`fakeEnv`/`fakeFS`, `workspacesTestEnv`/`workspacesTestFS`, `varsTestEnv`/`varsTestFS`, `wsrTestEnv`/`wsrTestFS`)
-- All prompter duplicates removed from test files (`wsAcceptingPrompter`/`wsRejectingPrompter`/`wsFailingPrompter`, `varsAcceptingPrompter`/`varsRejectingPrompter`)
-- All existing tests pass
-- No behavior changes
-
-**Verification approach:**
-- `make test` passes
-- All command tests still pass
-- Code compiles without errors
-
-**Implementation steps:**
-1. Add `testEnv` and `testFS` types to `cmd/tfc/testhelpers_test.go`
-2. Update `cmd/tfc/doctor_test.go` to use shared types (rename `fakeEnv`/`fakeFS` usage)
-3. Update `cmd/tfc/workspaces_test.go` to use shared types and prompters
-4. Update `cmd/tfc/workspace_variables_test.go` to use shared types and prompters
-5. Update `cmd/tfc/workspace_resources_test.go` to use shared types
-6. Run feedback loops
-
-#### Progress Note (2026-01-21)
-
-**Files changed:**
-- `cmd/tfc/testhelpers_test.go`: Added shared `testEnv` and `testFS` types
-- `cmd/tfc/doctor_test.go`: Removed `fakeEnv`/`fakeFS` definitions, updated to use `testEnv`/`testFS`
-- `cmd/tfc/workspaces_test.go`: Removed `workspacesTestEnv`/`workspacesTestFS`/`wsAcceptingPrompter`/`wsRejectingPrompter`/`wsFailingPrompter`, updated to use shared types
-- `cmd/tfc/workspace_variables_test.go`: Removed `varsTestEnv`/`varsTestFS`/`varsAcceptingPrompter`/`varsRejectingPrompter`, updated to use shared types
-- `cmd/tfc/workspace_resources_test.go`: Removed `wsrTestEnv`/`wsrTestFS`, updated to use shared types
-
-**Commands run:**
-- `make fmt` - passed
-- `make lint` - passed
-- `make build` - passed
-- `make test` - passed (all tests green)
-
-**What remains:**
-- Task #3 is complete
-- Also resolves task #8 (workspace-variables duplicates), #13 (doctor duplicates), #30 (workspace-resources duplicates)
-- Net reduction of ~200 lines of duplicate test helper code across 4 files
-
----
-
-### 4. Reuse `resolveFormat` Helper
-
-**Status:** DONE (fixed as part of #2)
-
-**File:** `cmd/tfc/workspaces.go`
-
-**Problem:** The workspaces commands have inline TTY detection (e.g., lines 195-199), while projects.go has a cleaner `resolveFormat` helper (lines 101-109).
-
-**Current inline code in workspaces:**
+**Current code (repeated 7 times):**
 ```go
 isTTY := false
 if f, ok := c.stdout.(*os.File); ok {
@@ -277,1622 +28,3662 @@ if f, ok := c.stdout.(*os.File); ok {
 format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
 ```
 
-**Fix:** Either:
-1. Move `resolveFormat` from projects.go to a shared location and reuse it
-2. Or inline the same pattern consistently
-
-The `resolveFormat` helper is slightly cleaner as it encapsulates the logic and returns both values needed.
-
----
-
-# Workspace-Variables Subcommand Code Review
-
-Review of `cmd/tfc/workspace_variables.go` and `cmd/tfc/workspace_variables_test.go`.
-
----
-
-## Edge Cases
-
-### 5. Value Cannot Be Cleared
-
-**Status:** DONE
-
-**File:** `cmd/tfc/workspace_variables.go:349-351`
-
-**Problem:** The empty string check `if c.Value != ""` means users cannot clear a variable value by passing `--value ""`. This is more problematic for variables than descriptions since empty values may be legitimate (e.g., disabling a feature flag).
-
-**Current code:**
-```go
-if c.Value != "" {
-    opts.Value = tfe.String(c.Value)
-}
-```
-
-**Impact:** Users cannot set a variable's value to an empty string.
-
-**Possible fix options:**
-1. Use a pointer type (`*string`) for the Value field and check for nil vs empty
-2. Add a separate `--clear-value` boolean flag
-3. Accept a sentinel value like `"-"` to mean "clear"
-
-**Note:** This same pattern exists for Description (line 352-354). Decide on a consistent approach across the codebase before fixing.
-
-#### Plan (2026-01-21)
-
-**Acceptance criteria:**
-- Users can clear a variable value using `tfc workspace-variables update <id> --workspace-id <ws-id> --clear-value`
-- Users can clear a variable description using `tfc workspace-variables update <id> --workspace-id <ws-id> --clear-description`
-- Both flags are mutually exclusive with their respective value flags (error if both provided)
-- Tests verify clearing value/description sends empty string to API
-- Tests verify errors when both flags provided
-- Consistent with workspaces update pattern (task #1)
-
-**Verification approach:**
-- `make test` passes
-- New tests cover --clear-value and --clear-description behavior
-- Existing tests still pass
-
-**Implementation steps:**
-1. Add `ClearValue bool` and `ClearDescription bool` fields to `WorkspaceVariablesUpdateCmd` with Kong tags
-2. Update validation: error if both `--value` and `--clear-value` provided
-3. Update validation: error if both `--description` and `--clear-description` provided
-4. Update validation: include new flags in "at least one field" check
-5. Update logic: if `--clear-value` set, pass empty string to API
-6. Update logic: if `--clear-description` set, pass empty string to API
-7. Add test: `TestWorkspaceVariablesUpdate_ClearValue`
-8. Add test: `TestWorkspaceVariablesUpdate_ClearValueConflict`
-9. Add test: `TestWorkspaceVariablesUpdate_ClearDescription`
-10. Add test: `TestWorkspaceVariablesUpdate_ClearDescriptionConflict`
-11. Update `TestWorkspaceVariablesUpdate_FailsWhenNoFields` error message
-12. Run feedback loops
-
-#### Progress Note (2026-01-21)
-
-**Files changed:**
-- `cmd/tfc/workspace_variables.go`:
-  - Added `ClearValue bool` field to `WorkspaceVariablesUpdateCmd` struct (line 353)
-  - Added `ClearDescription bool` field to `WorkspaceVariablesUpdateCmd` struct (line 355)
-  - Added validation for mutual exclusivity of `--value` and `--clear-value` (lines 380-382)
-  - Added validation for mutual exclusivity of `--description` and `--clear-description` (lines 385-387)
-  - Updated "at least one field" validation to include `--clear-value` and `--clear-description` (lines 390-392)
-  - Added logic to pass empty string to API when `--clear-value` is set (lines 405-407)
-  - Added logic to pass empty string to API when `--clear-description` is set (lines 411-413)
-- `cmd/tfc/workspace_variables_test.go`:
-  - Added `TestWorkspaceVariablesUpdate_ClearValue` - verifies empty string sent to API
-  - Added `TestWorkspaceVariablesUpdate_ClearValueConflict` - verifies mutual exclusivity error
-  - Added `TestWorkspaceVariablesUpdate_ClearDescription` - verifies empty string sent to API
-  - Added `TestWorkspaceVariablesUpdate_ClearDescriptionConflict` - verifies mutual exclusivity error
-
-**Commands run:**
-- `make fmt` - passed
-- `make lint` - passed (with GOCACHE override for sandbox)
-- `make build` - passed
-- `make test` - passed (all tests green)
-- `go test -v -run 'TestWorkspaceVariablesUpdate_Clear' ./cmd/tfc/...` - all 4 new tests pass
-
-**What remains:**
-- Task #5 is DONE
-- Task #6 is also DONE (fixed as part of #5)
-- Users can now clear variable values using `tfc workspace-variables update <id> --workspace-id <ws-id> --clear-value`
-- Users can now clear variable descriptions using `tfc workspace-variables update <id> --workspace-id <ws-id> --clear-description`
-
----
-
-### 6. Description Cannot Be Cleared
-
-**Status:** DONE (fixed as part of #5)
-
-**File:** `cmd/tfc/workspace_variables.go:352-354`
-
-**Problem:** Same issue as #5 and the workspaces command - users cannot clear a variable description by passing `--description ""`.
-
-**Current code:**
-```go
-if c.Description != "" {
-    opts.Description = tfe.String(c.Description)
-}
-```
-
-**Fix:** Same approach as chosen for #5.
-
----
-
-## Code Quality Improvements
-
-### 7. Duplicate `resolveVariablesClientConfig` Function
-
-**Status:** DONE (fixed as part of #2)
-
-**File:** `cmd/tfc/workspace_variables.go:112-144`
-
-**Problem:** `resolveVariablesClientConfig` is nearly identical to `resolveWorkspacesClientConfig` and `resolveProjectsClientConfig`. The only difference is that variables don't return an org (since workspace ID is passed directly).
-
-**Current code:** 33 lines of duplicate config resolution logic.
-
-**Fix:** Create a shared helper in `cmd/tfc/common.go`. The workspace-variables version can call the shared helper and discard the org return value:
-
-```go
-// In workspace_variables.go:
-cfg, _, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
-```
-
-Or create two variants:
-- `resolveClientConfig` - returns (config, org, error) for commands needing org
-- `resolveClientConfigNoOrg` - returns (config, error) for commands that don't need org
-
----
-
-### 8. Duplicate Test Helper Types
-
-**Status:** DONE (fixed as part of #3)
-
-**File:** `cmd/tfc/workspace_variables_test.go:72-126`
-
-**Problem:** The test file defines its own prompter and env/fs types that duplicate existing shared types:
-- `varsTestEnv` duplicates functionality available in other test files
-- `varsTestFS` duplicates functionality available in other test files
-- `varsAcceptingPrompter` duplicates `acceptingPrompter` in `testhelpers_test.go`
-- `varsRejectingPrompter` duplicates `rejectingPrompter` in `testhelpers_test.go`
-
-**Fix:**
-1. Delete `varsAcceptingPrompter` and `varsRejectingPrompter`, use shared types from `testhelpers_test.go`
-2. Move `varsTestEnv` and `varsTestFS` to `testhelpers_test.go` as `testEnv` and `testFS`, then update all test files to use the shared types
-
-**Lines to remove:** 72-126 (after moving env/fs types to shared location)
-
-**Updates needed:**
-```go
-// Replace:
-prompter := &varsRejectingPrompter{}
-// With:
-prompter := &rejectingPrompter{}
-
-// Replace:
-prompter := &varsAcceptingPrompter{}
-// With:
-prompter := &acceptingPrompter{}
-```
-
----
-
-### 9. Inline TTY Detection Pattern
-
-**Status:** DONE
-
-**File:** `cmd/tfc/workspace_variables.go`
-
-**Problem:** Same inline TTY detection pattern repeated 5 times. This could use the `resolveFormat` helper from `common.go`.
-
-**Current inline code (repeated 5 times):**
-```go
-isTTY := false
-if f, ok := c.stdout.(*os.File); ok {
-    isTTY = c.ttyDetector.IsTTY(f)
-}
-format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
-```
-
-**Fix:** Use the shared `resolveFormat` helper from `common.go`.
-
-#### Plan (2026-01-21)
-
-**Acceptance criteria:**
-- All 5 inline TTY detection patterns in workspace_variables.go replaced with `resolveFormat` helper
-- No behavior changes
-- All existing tests pass
-
-**Verification approach:**
-- `make test` passes
-- All workspace-variables tests still pass
-
-**Implementation steps:**
-1. Replace inline TTY detection in `WorkspaceVariablesListCmd.Run()` (lines 155-160)
-2. Replace inline TTY detection in `WorkspaceVariablesGetCmd.Run()` (lines 225-230)
-3. Replace inline TTY detection in `WorkspaceVariablesCreateCmd.Run()` (lines 328-333)
-4. Replace inline TTY detection in `WorkspaceVariablesUpdateCmd.Run()` (lines 435-440)
-5. Replace inline TTY detection in `WorkspaceVariablesDeleteCmd.Run()` (lines 522-527)
-6. Run feedback loops
-
-#### Progress Note (2026-01-21)
-
-**Files changed:**
-- `cmd/tfc/workspace_variables.go`: Replaced all 5 inline TTY detection patterns with calls to `resolveFormat` helper
-  - `WorkspaceVariablesListCmd.Run()`: Uses `format, isTTY := resolveFormat(...)` (isTTY needed for TableWriter)
-  - `WorkspaceVariablesGetCmd.Run()`: Uses `format, isTTY := resolveFormat(...)` (isTTY needed for TableWriter)
-  - `WorkspaceVariablesCreateCmd.Run()`: Uses `format, _ := resolveFormat(...)` (only format needed)
-  - `WorkspaceVariablesUpdateCmd.Run()`: Uses `format, _ := resolveFormat(...)` (only format needed)
-  - `WorkspaceVariablesDeleteCmd.Run()`: Uses `format, _ := resolveFormat(...)` (only format needed)
-
-**Commands run:**
-- `make fmt` - passed
-- `make lint` - passed
-- `make build` - passed
-- `make test` - passed (all tests green)
-
-**What remains:**
-- Task #9 is DONE
-- Net reduction of ~25 lines of duplicate code (5 blocks × 5 lines each)
-
----
-
-# Init Subcommand Code Review
-
-Review of `cmd/tfc/main.go` (InitCmd) and `cmd/tfc/init_test.go`.
-
----
-
-## Edge Cases
-
-### 10. Console Output Not Testable
-
-**Status:** DONE
-
-**File:** `cmd/tfc/main.go:290, 355`
-
-**Problem:** Unlike other commands (e.g., `DoctorCmd`, `WorkspacesListCmd`) that use an injectable `stdout` writer, `InitCmd` writes directly to `os.Stdout` via `fmt.Println()` and `fmt.Printf()`. This makes output untestable and inconsistent with the rest of the codebase.
-
-#### Plan (2026-01-21)
-
-**Acceptance criteria (from PRD Section 14):**
-- InitCmd has an injectable `stdout io.Writer` field like other commands
-- Default to `os.Stdout` when not injected
-- Existing tests still pass
-- New tests can verify output content
-
-**Verification approach:**
-- `make test` passes
-- Existing init tests still pass
-- Add test that injects stdout and verifies message content
-
-**Implementation steps:**
-1. Add `stdout io.Writer` field to `InitCmd` struct
-2. Default to `os.Stdout` in `Run()` if nil
-3. Replace `fmt.Println` with `fmt.Fprintln(c.stdout, ...)`
-4. Replace `fmt.Printf` with `fmt.Fprintf(c.stdout, ...)`
-5. Add test verifying abort message output
-6. Add test verifying success message output
-
-#### Progress Note (2026-01-21)
-
-**Files changed:**
-- `cmd/tfc/main.go`:
-  - Added `stdout io.Writer` field to `InitCmd` struct (line 267)
-  - Added default initialization `if c.stdout == nil { c.stdout = os.Stdout }` in `Run()` (lines 276-278)
-  - Replaced `fmt.Println` with `fmt.Fprintln(c.stdout, ...)` (line 302)
-  - Replaced `fmt.Printf` with `fmt.Fprintf(c.stdout, ...)` (line 372)
-- `cmd/tfc/init_test.go`:
-  - Added `TestInitCmd_OutputAbortMessage` - verifies abort message when user declines overwrite
-  - Added `TestInitCmd_OutputSuccessMessage` - verifies success message with settings path
-
-**Commands run:**
-- `make fmt` - passed
-- `make lint` - passed
-- `make build` - passed
-- `make test` - passed (all 17 init tests green, including 2 new tests)
-
-**What remains:**
-- Task #10 is complete
-- Tests can now inject `stdout` to verify output content
-
----
-
-## Missing Unit Tests
-
-### 11. Missing Test: SettingsPath Error
-
-**Status:** SKIPPED (low priority, difficult to test)
-
-**File:** `cmd/tfc/init_test.go`
-
-**Problem:** No test verifies error handling when `config.SettingsPath()` fails. This is difficult to trigger since `SettingsPath` only fails if `os.UserHomeDir()` fails and no `baseDir` is provided. Consider adding a test with a mock or skip if not feasible.
-
-**Note:** This is a low-priority test since the error path is unlikely in practice (only fails if HOME env var is unset and no baseDir override). The error is properly wrapped with RuntimeError at line 273-274.
-
-**Rationale for skipping:** The code path is properly implemented with correct error wrapping. Testing would require significant infrastructure changes (mocking os.UserHomeDir globally) for minimal benefit. All tests use baseDir override, so this path is effectively unreachable in test scenarios.
-
----
-
-# Doctor Subcommand Code Review
-
-Review of `cmd/tfc/main.go` (DoctorCmd, lines 64-248) and `cmd/tfc/doctor_test.go`.
-
----
-
-## Edge Cases
-
-### 12. Context Not Found Error Message Lacks Guidance
-
-**Status:** DONE
-
-**File:** `cmd/tfc/main.go:135-143`
-
-**Problem:** When a context is not found (either via `--context` flag or misconfigured `current_context`), the error message only says `context "name" not found`. Unlike the settings error which suggests `run 'tfc init'`, this error doesn't guide users toward resolution.
-
-**Current code:**
-```go
-if !exists {
-    result.Checks = append(result.Checks, DoctorCheck{
-        Name:   "context",
-        Status: string(output.StatusFail),
-        Detail: fmt.Sprintf("context %q not found", contextName),
-    })
-    hasFailure = true
-    return d.outputAndError(result, format, isTTY, hasFailure)
-}
-```
-
-**Fix:** Add guidance to the error message:
-```go
-Detail: fmt.Sprintf("context %q not found; run 'tfc contexts list' to see available contexts", contextName),
-```
-
-#### Plan (2026-01-21)
-
-**Acceptance criteria (from PRD Section 8):**
-- Error message for context not found includes actionable guidance
-- Guidance points user to `tfc contexts list` to discover available contexts
-- Consistent with existing pattern (settings error suggests `tfc init`)
-
-**Verification approach:**
-- `make test` passes
-- Existing doctor tests still pass
-- Test verifies error message contains guidance text
-
-**Implementation steps:**
-1. Update error message in `cmd/tfc/main.go:145` to include guidance
-2. Update existing test `TestDoctorCmd_ContextNotFound` to verify guidance text
-3. Run feedback loops
-
-#### Progress Note (2026-01-21)
-
-**Files changed:**
-- `cmd/tfc/main.go:145`: Updated error message from `context %q not found` to `context %q not found; run 'tfc contexts list' to see available contexts`
-- `cmd/tfc/doctor_test.go:712-714`: Added assertion in `TestDoctor_ContextNotFound` to verify guidance text
-
-**Commands run:**
-- `make fmt` - passed
-- `make lint` - passed
-- `make build` - passed
-- `make test` - passed (all tests green)
-
-**What remains:**
-- Task #12 is complete
-- Error now provides actionable guidance consistent with settings error pattern
-
----
-
-## Code Quality Improvements
-
-### 13. Duplicate Test Helper Types
-
-**Status:** DONE (fixed as part of #3)
-
-**File:** `cmd/tfc/doctor_test.go:19-43`
-
-**Problem:** `fakeEnv` and `fakeFS` types in doctor_test.go duplicate similar types in other test files. Recent commit `861f345` extracted prompters to `testhelpers_test.go`, but env/fs helpers were not consolidated.
-
-**Current code (doctor_test.go):**
-```go
-// fakeEnv implements auth.EnvGetter for testing.
-type fakeEnv struct {
-    vars map[string]string
-}
-
-func (e *fakeEnv) Getenv(key string) string {
-    return e.vars[key]
-}
-
-// fakeFS implements auth.FSReader for testing.
-type fakeFS struct {
-    files   map[string][]byte
-    homeDir string
-}
-
-func (f *fakeFS) ReadFile(path string) ([]byte, error) {
-    if data, ok := f.files[path]; ok {
-        return data, nil
-    }
-    return nil, os.ErrNotExist
-}
-
-func (f *fakeFS) UserHomeDir() (string, error) {
-    return f.homeDir, nil
-}
-```
-
-**Fix:** Move these types to `cmd/tfc/testhelpers_test.go` and update all test files to use the shared types. This aligns with finding #3 and #8 which identified the same duplication pattern in other test files.
-
----
-
-### 14. Consider Using `resolveFormat` Helper
-
-**Status:** DONE
-
-**File:** `cmd/tfc/main.go:108-113`
-
-**Problem:** The doctor command has inline TTY detection and format resolution, while `common.go:56-64` has a `resolveFormat` helper that encapsulates this logic. For consistency, the doctor command should use this helper.
-
-**Current code:**
-```go
-// Determine output format (use type assertion for TTY detection)
-isTTY := false
-if f, ok := d.stdout.(*os.File); ok {
-    isTTY = d.ttyDetector.IsTTY(f)
-}
-format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
-```
-
-**Alternative (using shared resolveFormat helper):**
-```go
-format, isTTY := resolveFormat(d.stdout, d.ttyDetector, cli.OutputFormat)
-```
-
-**Note:** The `resolveFormat` helper was moved to `common.go` as part of task #2/#4.
-
-#### Plan (2026-01-21)
-
-**Acceptance criteria:**
-- Inline TTY detection in DoctorCmd.Run() replaced with `resolveFormat` helper call
-- No behavior changes
-- All existing tests pass
-
-**Verification approach:**
-- `make test` passes
-- All doctor tests still pass
-- Code compiles without errors
-
-**Implementation steps:**
-1. Replace inline TTY detection in `cmd/tfc/main.go:108-113` with `resolveFormat` call
-2. Run feedback loops (fmt, lint, build, test)
-3. Update review.md with progress note
-
-#### Progress Note (2026-01-21)
-
-**Files changed:**
-- `cmd/tfc/main.go:108-113`: Replaced 6-line inline TTY detection with single `resolveFormat` call
-- `cmd/tfc/configuration_versions_test.go:823`: Fixed pre-existing lint error (unused `resolver` variable)
-
-**Commands run:**
-- `make fmt` - passed
-- `make lint` - passed (via `GOLANGCI_LINT_CACHE=/tmp/claude/golangci-lint GOCACHE=/tmp/claude/go-build .tools/golangci-lint run`)
-- `make build` - passed (via `GOCACHE=/tmp/claude/go-build go build`)
-- `make test` - passed (via `GOCACHE=/tmp/claude/go-build go test ./...`)
-
-**What remains:**
-- Task #14 is DONE
-- Consistent use of `resolveFormat` helper across doctor, projects, workspaces, workspace-variables, and workspace-resources commands
-
----
-
-# Contexts Subcommand Code Review
-
-Review of `cmd/tfc/main.go` (ContextsCmd, lines 359-540) and `cmd/tfc/contexts_test.go`.
-
----
-
-## Bugs
-
-### 15. No JSON Output Format Support (DONE)
-
-**Status:** DONE
-
-**File:** `cmd/tfc/main.go:381-460` (list), `584-658` (show)
-
-**Problem:** The contexts commands use `fmt.Printf` directly without supporting `--output-format json/table` like other commands. This is inconsistent with the rest of the codebase (projects, workspaces, doctor, etc.) which all support both JSON and table output.
-
-#### Plan (2026-01-21)
-
-**Acceptance criteria (from PRD):**
-- `--output-format table|json` flag works for `contexts list` and `contexts show`
-- Default to JSON when stdout is not a TTY, table when it is
-- JSON output for list: array of objects with `name`, `is_current` fields
-- JSON output for show: object with `name`, `is_current`, `address`, `default_org`, `log_level` fields
-
-**Implementation steps:**
-1. Add `stdout`, `ttyDetector` fields to `ContextsListCmd` and `ContextsShowCmd`
-2. Update `ContextsListCmd.Run()` to accept `cli *CLI` parameter
-3. Update `ContextsShowCmd.Run()` to accept `cli *CLI` parameter
-4. Implement JSON and table output for list command
-5. Implement JSON and table output for show command
-6. Add tests for JSON output format
-
-**Verification:**
-- `make test` passes
-- Existing tests still pass
-- New tests cover JSON output
-
-#### Progress Note (2026-01-21)
-
-**Files changed:**
-- `cmd/tfc/main.go`: Added JSON/table output support to `ContextsListCmd` and `ContextsShowCmd`
-  - Added `stdout`, `ttyDetector` fields for testability
-  - Added `contextListItem` and `contextShowItem` structs for JSON serialization
-  - Updated `Run()` methods to accept `cli *CLI` parameter
-  - List outputs array of items with `name`, `is_current`
-  - Show outputs single item with `name`, `is_current`, `address`, `default_org`, `log_level`
-  - Table output uses `output.NewTableWriter` for consistency
-  - Also fixes #17: Empty default_org now displays "(none)" in table output
-- `cmd/tfc/contexts_test.go`: Updated existing tests and added new JSON output tests
-  - Updated all `Run()` calls to pass `cli *CLI` parameter
-  - Added `TestContextsListCmd_JSONOutput`
-  - Added `TestContextsShowCmd_JSONOutput`
-  - Added `TestContextsShowCmd_EmptyDefaultOrgDisplayed`
-  - Enhanced existing tests to verify output content
-
-**Commands run:**
-- `make fmt` - passed
-- `make lint` - passed
-- `make build` - passed
-- `make test` - passed (all tests green)
-
-**What remains:**
-- Task #15 is complete
-- Task #17 (Empty default org display) was also fixed as part of this change
-
-**Current code (list):**
-```go
-func (c *ContextsListCmd) Run() error {
-    settings, err := config.Load(c.baseDir)
-    // ...
-    for name := range settings.Contexts {
-        marker := "  "
-        if name == settings.CurrentContext {
-            marker = "* "
-        }
-        fmt.Printf("%s%s\n", marker, name)
-    }
-    return nil
-}
-```
-
-**Fix:**
-
-1. Add `stdout`, `ttyDetector` fields to `ContextsListCmd`:
-```go
-type ContextsListCmd struct {
-    baseDir     string
-    stdout      io.Writer
-    ttyDetector output.TTYDetector
-}
-```
-
-2. Add JSON output struct:
-```go
-type contextListItem struct {
-    Name      string `json:"name"`
-    IsCurrent bool   `json:"is_current"`
-}
-```
-
-3. Update Run method to support both formats:
-```go
-func (c *ContextsListCmd) Run(cli *CLI) error {
-    if c.stdout == nil {
-        c.stdout = os.Stdout
-    }
-    if c.ttyDetector == nil {
-        c.ttyDetector = &output.RealTTYDetector{}
-    }
-
-    settings, err := config.Load(c.baseDir)
-    if err != nil {
-        return internalcmd.NewRuntimeError(err)
-    }
-
-    format, isTTY := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
-
-    if format == output.FormatJSON {
-        items := make([]contextListItem, 0, len(settings.Contexts))
-        for name := range settings.Contexts {
-            items = append(items, contextListItem{
-                Name:      name,
-                IsCurrent: name == settings.CurrentContext,
-            })
-        }
-        // Sort for consistent output
-        sort.Slice(items, func(i, j int) bool {
-            return items[i].Name < items[j].Name
-        })
-        return output.WriteJSON(c.stdout, items)
-    }
-
-    // Table output
-    tw := output.NewTableWriter(c.stdout, []string{"", "NAME"}, isTTY)
-    // ... collect and sort names, then render
-}
-```
-
-**Note:** Same fix needed for `ContextsShowCmd`.
-
----
-
-### 16. Console Output Not Testable
-
-**Status:** DONE
-
-**File:** `cmd/tfc/main.go`
-
-**Problem:** Some contexts commands write directly to `os.Stdout` via `fmt.Printf()` and `fmt.Println()`, making output untestable. Other commands (ProjectsListCmd, WorkspacesListCmd, DoctorCmd) have injectable `stdout` fields.
-
-#### Plan (2026-01-21)
-
-**Acceptance criteria:**
-- `ContextsAddCmd`, `ContextsUseCmd`, and `ContextsRemoveCmd` have injectable `stdout io.Writer` fields
-- All `fmt.Printf`/`fmt.Println` replaced with `fmt.Fprintf(c.stdout, ...)`
-- Default to `os.Stdout` when not injected
-- Existing tests still pass
-- New tests can verify output content
-
-#### Progress Note (2026-01-21)
-
-**Files changed:**
-- `cmd/tfc/main.go`:
-  - Added `stdout io.Writer` field to `ContextsAddCmd`
-  - Added `stdout io.Writer` field to `ContextsUseCmd`
-  - Added `stdout io.Writer` field to `ContextsRemoveCmd`
-  - Each `Run()` method defaults `stdout` to `os.Stdout` if nil
-  - Replaced all `fmt.Printf`/`fmt.Println` with `fmt.Fprintf`/`fmt.Fprintln` using `c.stdout`
-
-**Commands run:**
-- `make fmt` - passed
-- `make lint` - passed
-- `make build` - passed
-- `make test` - passed (all tests green)
-
-**What remains:**
-- Task #16 is complete
-- Tests can now use injectable `stdout` to verify output content
-
----
-
-## Edge Cases
-
-### 17. Show Command Displays Empty Default Org (DONE)
-
-**Status:** DONE (fixed as part of #15)
-
-**File:** `cmd/tfc/main.go:537`
-
-**Problem:** When `--default-org` is not set, `ContextsShowCmd` displays `Default Org:` followed by nothing, which looks incomplete and could confuse users.
-
-**Fix applied:** Empty default_org now displays "(none)" in table output. Test added: `TestContextsShowCmd_EmptyDefaultOrgDisplayed`.
-
----
-
-### 18. ContextsListCmd Signature Missing CLI Parameter
-
-**Status:** DONE (fixed as part of #15)
-
-**File:** `cmd/tfc/main.go:373`
-
-**Problem:** `ContextsListCmd.Run()` takes no parameters, unlike other list commands which take `cli *CLI`. This prevents access to the `--output-format` flag, which is why JSON output isn't supported. The same applies to `ContextsShowCmd.Run()`.
-
-**Current code:**
-```go
-func (c *ContextsListCmd) Run() error {
-```
-
-**Fix:** Update signature to accept CLI:
-```go
-func (c *ContextsListCmd) Run(cli *CLI) error {
-```
-
-**Note:** Kong will automatically inject the CLI parameter via the `kong.Bind(&cli)` call in `run()`.
-
----
-
-### 19. ContextsAddCmd Needs CLI Parameter for Consistency
-
-**Status:** DONE
-
-**File:** `cmd/tfc/main.go:399`
-
-**Problem:** `ContextsAddCmd.Run()` and `ContextsUseCmd.Run()` don't take a `cli *CLI` parameter, which is inconsistent with other commands and prevents future enhancements like JSON output confirmation messages.
-
-**Current code:**
-```go
-func (c *ContextsAddCmd) Run() error {
-func (c *ContextsUseCmd) Run() error {
-```
-
-**Fix:** Add CLI parameter for consistency:
-```go
-func (c *ContextsAddCmd) Run(cli *CLI) error {
-func (c *ContextsUseCmd) Run(cli *CLI) error {
-```
-
-#### Plan (2026-01-21)
-
-**Acceptance criteria:**
-- `ContextsAddCmd.Run()` accepts `cli *CLI` parameter
-- `ContextsUseCmd.Run()` accepts `cli *CLI` parameter
-- All tests updated to pass CLI parameter
-- Consistent with other context commands (List, Show, Remove)
-
-**Verification approach:**
-- `make test` passes
-- All contexts tests pass
-- Code compiles without errors
-
-**Implementation steps:**
-1. Update `ContextsAddCmd.Run()` signature to accept `cli *CLI`
-2. Update `ContextsUseCmd.Run()` signature to accept `cli *CLI`
-3. Update all test calls to pass `cli *CLI`
-4. Run feedback loops
-
-#### Progress Note (2026-01-21)
-
-**Files changed:**
-- `cmd/tfc/main.go`:
-  - Line 466: Updated `ContextsAddCmd.Run()` to accept `cli *CLI` parameter
-  - Line 508: Updated `ContextsUseCmd.Run()` to accept `cli *CLI` parameter
-- `cmd/tfc/contexts_test.go`:
-  - Updated 9 test call sites to pass `cli *CLI` parameter:
-    - `TestContextsAddCmd_CreatesNewContext`
-    - `TestContextsAddCmd_ErrorsIfContextExists`
-    - `TestContextsAddCmd_InvalidAddressRejected` (sub-test)
-    - `TestContextsAddCmd_NoSettings`
-    - `TestContextsUseCmd_SwitchesCurrentContext`
-    - `TestContextsUseCmd_ErrorsIfContextNotFound`
-    - `TestContextsUseCmd_NoSettings`
-    - `TestContextsUseCmd_SaveError`
-    - `TestContextsAddCmd_SaveError`
-
-**Commands run:**
-- `make fmt` - passed
-- `make lint` - passed
-- `make build` - passed
-- `make test` - passed (all tests green)
-
-**What remains:**
-- Task #19 is complete
-- All context command `Run()` methods now consistently accept `cli *CLI` parameter
-
----
-
-## Missing Unit Tests
-
-### 20. Missing Test: ContextsRemoveCmd config.Save Failure
-
-**Status:** DONE
-
-**File:** `cmd/tfc/contexts_test.go`
-
-**Problem:** No test verifies error handling when `config.Save()` fails for the remove command.
-
-#### Plan (2026-01-21)
-
-**Acceptance criteria:**
-- Test exists that triggers `config.Save()` failure in `ContextsRemoveCmd.Run()`
-- Test verifies error message contains "failed to save settings"
-- Test uses same pattern as `TestContextsUseCmd_SaveError` for consistency
-
-**Verification approach:**
-- `make test` passes
-- New test specifically tests the save failure code path (main.go:585-587)
-
-**Implementation steps:**
-1. Add `TestContextsRemoveCmd_SaveError` test following pattern from `TestContextsUseCmd_SaveError`
-2. Create settings with two contexts (default and prod)
-3. Make settings file read-only to cause save failure
-4. Attempt to remove non-current context with --force
-5. Verify error contains "failed to save settings"
-6. Run feedback loops
-
-#### Progress Note (2026-01-21)
-
-**Files changed:**
-- `cmd/tfc/contexts_test.go`: Added `TestContextsRemoveCmd_SaveError` test (lines 682-714)
-  - Creates test settings with "default" and "prod" contexts
-  - Makes settings file read-only (0o400) to trigger save failure
-  - Uses `forceFlag: &forceVal` to bypass confirmation prompt
-  - Verifies error contains "failed to save settings"
-
-**Commands run:**
-- `make fmt` - passed
-- `make lint` - passed
-- `make build` - passed
-- `make test` - passed (all tests green)
-- `go test -v -run TestContextsRemoveCmd_SaveError ./cmd/tfc/...` - passed
-
-**What remains:**
-- Task #20 is complete
-- Test coverage now includes save failure path for ContextsRemoveCmd
-
-**Test to add:**
-```go
-// TestContextsRemoveCmd_SaveError tests that save errors are properly surfaced.
-func TestContextsRemoveCmd_SaveError(t *testing.T) {
-    tmpHome := t.TempDir()
-
-    settings := &config.Settings{
-        CurrentContext: "default",
-        Contexts: map[string]config.Context{
-            "default": {Address: "app.terraform.io", LogLevel: "info"},
-            "prod":    {Address: "tfe.example.com", LogLevel: "warn"},
-        },
-    }
-    createTestSettings(t, tmpHome, settings)
-
-    // Make directory read-only
-    tfccliDir := filepath.Join(tmpHome, ".tfccli")
-    if err := os.Chmod(tfccliDir, 0o500); err != nil {
-        t.Fatalf("Failed to chmod: %v", err)
-    }
-    t.Cleanup(func() {
-        os.Chmod(tfccliDir, 0o700)
-    })
-
-    forceVal := true
-    cmd := &ContextsRemoveCmd{
-        Name:      "prod",
-        baseDir:   tmpHome,
-        forceFlag: &forceVal,
-    }
-    cli := &CLI{}
-
-    err := cmd.Run(cli)
-    if err == nil {
-        t.Fatal("expected error when save fails, got nil")
-    }
-    if !strings.Contains(err.Error(), "failed to save settings") {
-        t.Errorf("expected save failure message, got: %v", err)
-    }
-}
-```
-
----
-
-### 21. Tests Don't Verify Output Content
-
-**Status:** DONE
-
-**File:** `cmd/tfc/contexts_test.go:18-38, 306-326`
-
-**Problem:** Several tests pass but include comments noting they don't verify stdout content. After fixing #16 (injectable stdout), these tests should be updated to capture and verify output.
-
-**Tests that need output verification:**
-- `TestContextsListCmd_ListsAllContexts` (line 18)
-- `TestContextsShowCmd_ShowsCurrentContext` (line 306)
-- `TestContextsShowCmd_ShowsNamedContext` (line 328)
-
-#### Plan (2026-01-21)
-
-**Acceptance criteria:**
-- `TestContextsListCmd_ListsAllContexts` verifies `*` marker appears for current context
-- `TestContextsShowCmd_ShowsCurrentContext` verifies address and log_level fields in output
-- `TestContextsShowCmd_ShowsNamedContext` verifies address, log_level, and absence of `(current)` marker
-
-**Verification approach:**
-- `make test` passes
-- All enhanced tests verify output content
-
-**Implementation steps:**
-1. Add `*` marker assertion to `TestContextsListCmd_ListsAllContexts`
-2. Add address and log_level assertions to `TestContextsShowCmd_ShowsCurrentContext`
-3. Add address, log_level, and non-current verification to `TestContextsShowCmd_ShowsNamedContext`
-4. Run feedback loops
-
-#### Progress Note (2026-01-21)
-
-**Files changed:**
-- `cmd/tfc/contexts_test.go`:
-  - `TestContextsListCmd_ListsAllContexts`: Added assertion for `*` marker for current context
-  - `TestContextsShowCmd_ShowsCurrentContext`: Added assertions for `app.terraform.io` address and `info` log level
-  - `TestContextsShowCmd_ShowsNamedContext`: Added assertions for `tfe.example.com` address, `warn` log level, and verification that `(current)` marker is absent
-
-**Commands run:**
-- `make fmt` - passed
-- `make lint` - passed (with GOCACHE override for sandbox)
-- `make build` - passed
-- `make test` - passed (all tests green)
-
-**What remains:**
-- Task #21 is complete
-- Tests now comprehensively verify output content including markers, all displayed fields, and correct absence of markers for non-current contexts
-
-**Example fix for `TestContextsListCmd_ListsAllContexts`:**
-```go
-func TestContextsListCmd_ListsAllContexts(t *testing.T) {
-    tmpHome := t.TempDir()
-    out := &bytes.Buffer{}
-
-    settings := &config.Settings{
-        CurrentContext: "default",
-        Contexts: map[string]config.Context{
-            "default": {Address: "app.terraform.io", LogLevel: "info"},
-            "prod":    {Address: "tfe.example.com", LogLevel: "warn"},
-        },
-    }
-    createTestSettings(t, tmpHome, settings)
-
-    cmd := &ContextsListCmd{
-        baseDir: tmpHome,
-        stdout:  out,
-    }
-
-    err := cmd.Run()
-    if err != nil {
-        t.Fatalf("Run() error = %v", err)
-    }
-
-    output := out.String()
-    if !strings.Contains(output, "* default") {
-        t.Errorf("expected current context marked with *, got: %s", output)
-    }
-    if !strings.Contains(output, "prod") {
-        t.Errorf("expected 'prod' in output, got: %s", output)
-    }
-}
-```
-
----
-
-### 22. Missing Test: ContextsListCmd JSON Output
-
-**Status:** DONE (added as part of #15)
-
-**File:** `cmd/tfc/contexts_test.go`
-
-**Problem:** After implementing JSON output support (#15), needs tests for JSON format.
-
-**Test to add (after #15 is fixed):**
-```go
-// TestContextsListCmd_JSONOutput tests JSON output format.
-func TestContextsListCmd_JSONOutput(t *testing.T) {
-    tmpHome := t.TempDir()
-    out := &bytes.Buffer{}
-
-    settings := &config.Settings{
-        CurrentContext: "default",
-        Contexts: map[string]config.Context{
-            "default": {Address: "app.terraform.io", LogLevel: "info"},
-            "prod":    {Address: "tfe.example.com", LogLevel: "warn"},
-        },
-    }
-    createTestSettings(t, tmpHome, settings)
-
-    cmd := &ContextsListCmd{
-        baseDir:     tmpHome,
-        stdout:      out,
-        ttyDetector: &output.FakeTTYDetector{IsTTYValue: false},
-    }
-    cli := &CLI{OutputFormat: "json"}
-
-    err := cmd.Run(cli)
-    if err != nil {
-        t.Fatalf("Run() error = %v", err)
-    }
-
-    var items []map[string]interface{}
-    if err := json.Unmarshal(out.Bytes(), &items); err != nil {
-        t.Fatalf("failed to parse JSON: %v", err)
-    }
-
-    if len(items) != 2 {
-        t.Errorf("expected 2 items, got %d", len(items))
-    }
-}
-```
-
----
-
-### 23. Missing Test: ContextsShowCmd JSON Output
-
-**Status:** DONE (added as part of #15)
-
-**File:** `cmd/tfc/contexts_test.go`
-
-**Problem:** After implementing JSON output support, needs test for JSON format in show command.
-
-**Test to add (after #15 is fixed):**
-```go
-// TestContextsShowCmd_JSONOutput tests JSON output format.
-func TestContextsShowCmd_JSONOutput(t *testing.T) {
-    tmpHome := t.TempDir()
-    out := &bytes.Buffer{}
-
-    settings := &config.Settings{
-        CurrentContext: "default",
-        Contexts: map[string]config.Context{
-            "default": {Address: "app.terraform.io", DefaultOrg: "acme", LogLevel: "info"},
-        },
-    }
-    createTestSettings(t, tmpHome, settings)
-
-    cmd := &ContextsShowCmd{
-        baseDir:     tmpHome,
-        stdout:      out,
-        ttyDetector: &output.FakeTTYDetector{IsTTYValue: false},
-    }
-    cli := &CLI{OutputFormat: "json"}
-
-    err := cmd.Run(cli)
-    if err != nil {
-        t.Fatalf("Run() error = %v", err)
-    }
-
-    var result map[string]interface{}
-    if err := json.Unmarshal(out.Bytes(), &result); err != nil {
-        t.Fatalf("failed to parse JSON: %v", err)
-    }
-
-    if result["name"] != "default" {
-        t.Errorf("expected name 'default', got: %v", result["name"])
-    }
-}
-```
-
----
-
-# Workspace-Resources Subcommand Code Review
-
-Review of `cmd/tfc/workspace_resources.go` and `cmd/tfc/workspace_resources_test.go`.
-
----
-
-## Missing Features
-
-### 24. Missing Get Subcommand
-
-**Status:** BLOCKED
-
-**File:** `cmd/tfc/workspace_resources.go:18-21`
-
-**Problem:** The `WorkspaceResourcesCmd` only implements a `List` subcommand. Unlike other resource commands (`ProjectsCmd`, `WorkspacesCmd`, `WorkspaceVariablesCmd`) which have Get/Read operations, there's no way to retrieve a single workspace resource by ID.
-
-**Blocker (2026-01-21):** The Terraform Cloud API does not provide a single-resource GET endpoint for workspace resources. The only available endpoint is `GET /workspaces/:workspace_id/resources` which lists all resources. The `github.com/hashicorp/go-tfe` library reflects this - `WorkspaceResources` interface only has a `List` method, no `Read` method. See https://developer.hashicorp.com/terraform/cloud-docs/api-docs/workspace-resources
-
-**TODO:** This feature cannot be implemented until HashiCorp adds a single-resource endpoint to the TFC API. Mark as out of scope for v1.
-
-**Current code:**
-```go
-type WorkspaceResourcesCmd struct {
-    List WorkspaceResourcesListCmd `cmd:"" help:"List resources in a workspace."`
-}
-```
-
-**Impact:** Users must list all resources and filter client-side to find a specific resource's details.
-
-**Fix:** Add a `WorkspaceResourcesGetCmd`:
-
-```go
-type WorkspaceResourcesCmd struct {
-    List WorkspaceResourcesListCmd `cmd:"" help:"List resources in a workspace."`
-    Get  WorkspaceResourcesGetCmd  `cmd:"" help:"Get a resource by ID."`
-}
-
-// WorkspaceResourcesGetCmd retrieves a single workspace resource.
-type WorkspaceResourcesGetCmd struct {
-    ResourceID  string `arg:"" help:"ID of the resource to retrieve."`
-    WorkspaceID string `required:"" name:"workspace-id" help:"ID of the workspace."`
-
-    // Dependencies for testing
-    baseDir       string
-    tokenResolver *auth.TokenResolver
-    ttyDetector   output.TTYDetector
-    stdout        io.Writer
-    clientFactory workspaceResourcesClientFactory
-}
-```
-
-**Note:** Also need to add `Read` method to the `workspaceResourcesClient` interface:
-```go
-type workspaceResourcesClient interface {
-    List(ctx context.Context, workspaceID string, opts *tfe.WorkspaceResourceListOptions) ([]*tfe.WorkspaceResource, error)
-    Read(ctx context.Context, workspaceID string, resourceID string) (*tfe.WorkspaceResource, error)
-}
-```
-
-**Tests to add:** `TestWorkspaceResourcesGet_JSON`, `TestWorkspaceResourcesGet_Table`, `TestWorkspaceResourcesGet_NotFound`, `TestWorkspaceResourcesGet_APIError`.
-
----
-
-## Missing Unit Tests
-
-### 25. Missing Test: Client Factory Error
-
-**Status:** DONE
-
-**File:** `cmd/tfc/workspace_resources_test.go`
-
-**Problem:** No test verifies error handling when `clientFactory` returns an error. This tests lines 148-151 in the Run method.
-
-#### Plan (2026-01-21)
-
-**Acceptance criteria:**
-- Test exists that triggers `clientFactory` failure in `WorkspaceResourcesListCmd.Run()`
-- Test verifies error message contains "failed to create client"
-- Test uses same pattern as other error tests in the file (e.g., `TestWorkspaceResourcesList_APIError`)
-
-**Verification approach:**
-- `make test` passes
-- New test specifically tests lines 148-151 in workspace_resources.go
-
-**Implementation steps:**
-1. Add `TestWorkspaceResourcesList_ClientFactoryError` test following pattern from review.md
-2. Run feedback loops
-3. Update review.md with results
-
-#### Progress Note (2026-01-21)
-
-**Files changed:**
-- `cmd/tfc/workspace_resources_test.go`: Added `TestWorkspaceResourcesList_ClientFactoryError` test (lines 400-421)
-  - Reuses `setupWorkspaceResourcesTestSettings` helper for consistency
-  - Injects a `clientFactory` that returns an error
-  - Verifies error contains "failed to create client"
-
-**Commands run:**
-- `make fmt` - passed
-- `make lint` - passed
-- `make build` - passed
-- `make test` - passed (all tests green)
-- `go test -v -run TestWorkspaceResourcesList_ClientFactoryError ./cmd/tfc/...` - passed
-
-**What remains:**
-- Task #25 is complete
-- Test coverage now includes client factory failure path (workspace_resources.go:148-151)
-
-**Test to add:**
-```go
-// TestWorkspaceResourcesList_ClientFactoryError tests error when client factory fails.
-func TestWorkspaceResourcesList_ClientFactoryError(t *testing.T) {
-    tmpDir, resolver := setupWorkspaceResourcesTestSettings(t)
-
-    var buf bytes.Buffer
-    cmd := &WorkspaceResourcesListCmd{
-        WorkspaceID:   "ws-123",
-        baseDir:       tmpDir,
-        tokenResolver: resolver,
-        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
-        stdout:        &buf,
-        clientFactory: func(_ tfcapi.ClientConfig) (workspaceResourcesClient, error) {
-            return nil, errors.New("failed to initialize TFC client")
-        },
-    }
-
-    cli := &CLI{OutputFormat: "json"}
-    err := cmd.Run(cli)
-    if err == nil {
-        t.Fatal("expected error, got nil")
-    }
-    if !strings.Contains(err.Error(), "failed to create client") {
-        t.Errorf("expected 'failed to create client' in error, got: %v", err)
-    }
-}
-```
-
----
-
-### 26. Missing Test: Context Not Found
-
-**Status:** DONE
-
-**File:** `cmd/tfc/workspace_resources_test.go`
-
-**Problem:** No test verifies error handling when the specified `--context` flag references a non-existent context.
-
-#### Plan (2026-01-21)
-
-**Acceptance criteria (from PRD Section 6):**
-- Test exists that triggers "context not found" error in `WorkspaceResourcesListCmd.Run()`
-- Test verifies error message contains "context" and "not found"
-- Test uses same pattern as other error tests in the file (e.g., `TestWorkspaceResourcesList_FailsWhenSettingsMissing`)
-
-**Verification approach:**
-- `make test` passes
-- New test specifically tests line 96-98 in workspace_resources.go (context lookup failure)
-
-**Implementation steps:**
-1. Add `TestWorkspaceResourcesList_ContextNotFound` test following pattern from review.md
-2. Create settings with only "default" context
-3. Use `cli.Context = "nonexistent"` to trigger context not found
-4. Verify error contains "context" and "not found"
-5. Run feedback loops
-6. Update review.md with results
-
-#### Progress Note (2026-01-21)
-
-**Files changed:**
-- `cmd/tfc/workspace_resources_test.go`: Added `TestWorkspaceResourcesList_ContextNotFound` test (lines 426-474)
-  - Creates test settings with only "default" context
-  - Uses `cli.Context = "nonexistent"` to trigger context lookup failure
-  - Verifies error contains "context" and "not found"
-  - Follows same pattern as other error tests in file
-
-**Commands run:**
-- `make fmt` - passed
-- `make lint` - passed
-- `make build` - passed
-- `make test` - passed (all tests green)
-- `go test -v -run TestWorkspaceResourcesList_ContextNotFound ./cmd/tfc/...` - passed
-
-**What remains:**
-- Task #26 is complete
-- Test coverage now includes context not found error path (workspace_resources.go:96-98)
-
-**Test to add:**
-```go
-// TestWorkspaceResourcesList_ContextNotFound tests error when context doesn't exist.
-func TestWorkspaceResourcesList_ContextNotFound(t *testing.T) {
-    tmpDir := t.TempDir()
-
-    // Create settings with only "default" context
-    settings := &config.Settings{
-        CurrentContext: "default",
-        Contexts: map[string]config.Context{
-            "default": {
-                Address:  "app.terraform.io",
-                LogLevel: "info",
-            },
-        },
-    }
-    if err := config.Save(settings, tmpDir); err != nil {
-        t.Fatalf("failed to save test settings: %v", err)
-    }
-
-    fakeEnv := &wsrTestEnv{
-        vars: map[string]string{
-            "TF_TOKEN_app_terraform_io": "test-token",
-        },
-    }
-    fakeFS := &wsrTestFS{
-        homeDir: tmpDir,
-        files:   make(map[string][]byte),
-    }
-    resolver := &auth.TokenResolver{Env: fakeEnv, FS: fakeFS}
-
-    var buf bytes.Buffer
-    cmd := &WorkspaceResourcesListCmd{
-        WorkspaceID:   "ws-123",
-        baseDir:       tmpDir,
-        tokenResolver: resolver,
-        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
-        stdout:        &buf,
-        clientFactory: func(_ tfcapi.ClientConfig) (workspaceResourcesClient, error) {
-            return &fakeWorkspaceResourcesClient{}, nil
-        },
-    }
-
-    // Use --context flag to select nonexistent context
-    cli := &CLI{OutputFormat: "json", Context: "nonexistent"}
-    err := cmd.Run(cli)
-    if err == nil {
-        t.Fatal("expected error when context not found, got nil")
-    }
-    if !strings.Contains(err.Error(), "context") || !strings.Contains(err.Error(), "not found") {
-        t.Errorf("expected 'context not found' error, got: %v", err)
-    }
-}
-```
-
----
-
-### 27. Missing Test: Token Resolution Error
-
-**Status:** DONE
-
-**File:** `cmd/tfc/workspace_resources_test.go`
-
-**Problem:** No test verifies error handling when token resolution fails (e.g., no token available for the address).
-
-#### Plan (2026-01-21)
-
-**Acceptance criteria (from PRD Section 8):**
-- Test exists that triggers token resolution error in `WorkspaceResourcesListCmd.Run()`
-- Test verifies error message indicates no token found
-- Test uses same pattern as other error tests in the file (e.g., `TestWorkspaceResourcesList_FailsWhenSettingsMissing`)
-
-**Verification approach:**
-- `make test` passes
-- New test specifically tests line 104-107 in workspace_resources.go (token resolution failure)
-
-**Implementation steps:**
-1. Add `TestWorkspaceResourcesList_TokenResolutionError` test following pattern from review.md
-2. Create settings with valid context
-3. Create resolver with no tokens available (empty env vars and no credentials file)
-4. Verify error message indicates token discovery failure
-5. Run feedback loops
-6. Update review.md with results
-
-**Test to add:**
-```go
-// TestWorkspaceResourcesList_TokenResolutionError tests error when no token is available.
-func TestWorkspaceResourcesList_TokenResolutionError(t *testing.T) {
-    tmpDir := t.TempDir()
-
-    settings := &config.Settings{
-        CurrentContext: "default",
-        Contexts: map[string]config.Context{
-            "default": {
-                Address:  "app.terraform.io",
-                LogLevel: "info",
-            },
-        },
-    }
-    if err := config.Save(settings, tmpDir); err != nil {
-        t.Fatalf("failed to save test settings: %v", err)
-    }
-
-    // Create resolver with no tokens available
-    fakeEnv := &wsrTestEnv{
-        vars: map[string]string{}, // No tokens
-    }
-    fakeFS := &wsrTestFS{
-        homeDir: tmpDir,
-        files:   make(map[string][]byte), // No credentials file
-    }
-    resolver := &auth.TokenResolver{Env: fakeEnv, FS: fakeFS}
-
-    var buf bytes.Buffer
-    cmd := &WorkspaceResourcesListCmd{
-        WorkspaceID:   "ws-123",
-        baseDir:       tmpDir,
-        tokenResolver: resolver,
-        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
-        stdout:        &buf,
-        clientFactory: func(_ tfcapi.ClientConfig) (workspaceResourcesClient, error) {
-            return &fakeWorkspaceResourcesClient{}, nil
-        },
-    }
-
-    cli := &CLI{OutputFormat: "json"}
-    err := cmd.Run(cli)
-    if err == nil {
-        t.Fatal("expected error when no token available, got nil")
-    }
-    if !strings.Contains(err.Error(), "token") {
-        t.Errorf("expected token-related error, got: %v", err)
-    }
-}
-```
-
-#### Progress Note (2026-01-21)
-
-**Files changed:**
-- `cmd/tfc/workspace_resources_test.go`: Added `TestWorkspaceResourcesList_TokenResolutionError` test (lines 479-522)
-  - Creates test settings with valid "default" context
-  - Creates resolver with empty environment variables and no credentials files
-  - Verifies error message contains "token" indicating token discovery failure
-
-**Commands run:**
-- `make fmt` - passed
-- `make lint` - passed
-- `make build` - passed
-- `make test` - passed (all tests green)
-- `go test -v -run TestWorkspaceResourcesList_TokenResolutionError ./cmd/tfc/...` - passed
-
-**What remains:**
-- Task #27 is complete
-- Test coverage now includes token resolution failure path (workspace_resources.go:104-107)
-
----
-
-### 28. Missing Test: Table Output Column Verification
-
-**Status:** DONE
-
-**File:** `cmd/tfc/workspace_resources_test.go:144-180`
-
-**Problem:** `TestWorkspaceResourcesList_Table` only verifies that headers and resource ID/name appear in output, but doesn't verify the actual column order or that the correct data appears in the correct columns.
-
-#### Plan (2026-01-21)
-
-**Acceptance criteria (from PRD Section 6):**
-- Test exists that verifies table columns have correct headers in expected order
-- Test verifies data appears in correct columns (ID maps to resource ID, RESOURCE-TYPE to ProviderType, NAME to Name, PROVIDER to Provider)
-- Test verifies multiple rows render correctly
-
-**Verification approach:**
-- `make test` passes
-- New test specifically validates column structure and data alignment
-
-**Implementation steps:**
-1. Add `TestWorkspaceResourcesList_Table_ColumnVerification` test
-2. Create resources with distinct, non-overlapping values per column (to verify correct column placement)
-3. Verify header row contains columns in correct order
-4. Verify data rows contain expected values
-5. Run feedback loops
-6. Update review.md with results
-
-#### Progress Note (2026-01-21)
-
-**Files changed:**
-- `cmd/tfc/workspace_resources_test.go`: Added `TestWorkspaceResourcesList_Table_ColumnVerification` test (lines 527-609)
-  - Creates two resources with distinct values per column to verify correct placement
-  - Verifies header contains columns in order: ID, RESOURCE-TYPE, NAME, PROVIDER
-  - Verifies separator line exists between header and data
-  - Verifies first data row contains: res-abc, aws_instance, webserver, hashicorp/aws
-  - Verifies second data row contains: res-xyz, google_compute_instance, database, hashicorp/google
-
-**Commands run:**
-- `make fmt` - passed
-- `make lint` - passed
-- `make build` - passed
-- `make test` - passed (all tests green)
-- `go test -v -run TestWorkspaceResourcesList_Table_ColumnVerification ./cmd/tfc/...` - passed
-
-**What remains:**
-- Task #28 is complete
-- Test coverage now includes table column structure and data alignment verification
-
----
-
-## Code Quality Improvements
-
-### 29. Duplicate `resolveWorkspaceResourcesClientConfig` Function
-
-**Status:** DONE (fixed as part of #2)
-
-**File:** `cmd/tfc/workspace_resources.go:84-117`
-
-**Problem:** `resolveWorkspaceResourcesClientConfig` is nearly identical to `resolveVariablesClientConfig` in `workspace_variables.go` and similar functions in other command files. The only difference is that workspace-resources and workspace-variables don't return an org (since workspace ID is passed directly).
-
-**Current code:** 33 lines of duplicate config resolution logic.
-
-**Fix:** Use the shared helper pattern suggested in finding #7. After creating a shared `resolveClientConfig` helper, update workspace_resources.go:
-
-```go
-// In workspace_resources.go:
-cfg, _, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
-if err != nil {
-    return internalcmd.NewRuntimeError(err)
-}
-```
-
-Or if a `resolveClientConfigNoOrg` variant is created:
-```go
-cfg, err := resolveClientConfigNoOrg(cli, c.baseDir, c.tokenResolver)
-```
-
----
-
-### 30. Duplicate Test Helper Types
-
-**Status:** DONE (fixed as part of #3)
-
-**File:** `cmd/tfc/workspace_resources_test.go:33-57`
-
-**Problem:** `wsrTestEnv` and `wsrTestFS` duplicate the same types defined in other test files (`workspaces_test.go`, `workspace_variables_test.go`, `doctor_test.go`). Recent commit `861f345` extracted prompters to `testhelpers_test.go`, but env/fs helpers were not consolidated.
-
-**Current code:**
-```go
-// wsrTestEnv implements auth.EnvGetter for testing.
-type wsrTestEnv struct {
-    vars map[string]string
-}
-
-func (e *wsrTestEnv) Getenv(key string) string {
-    return e.vars[key]
-}
-
-// wsrTestFS implements auth.FSReader for testing.
-type wsrTestFS struct {
-    files   map[string][]byte
-    homeDir string
-}
-
-func (f *wsrTestFS) ReadFile(path string) ([]byte, error) {
-    if data, ok := f.files[path]; ok {
-        return data, nil
-    }
-    return nil, os.ErrNotExist
-}
-
-func (f *wsrTestFS) UserHomeDir() (string, error) {
-    return f.homeDir, nil
-}
-```
-
-**Fix:** Move these types to `cmd/tfc/testhelpers_test.go` as `testEnv` and `testFS`, then update all test files to use the shared types. This aligns with findings #3, #8, and #13 which identified the same duplication pattern.
-
----
-
-### 31. Inline TTY Detection Pattern
-
-**Status:** DONE
-
-**File:** `cmd/tfc/workspace_resources.go:127-128`
-
-**Problem:** The code had inline TTY detection and format resolution instead of using the `resolveFormat` helper defined in `common.go:56-64`.
-
-**Current inline code (before fix):**
-```go
-// Determine output format
-isTTY := false
-if f, ok := c.stdout.(*os.File); ok {
-    isTTY = c.ttyDetector.IsTTY(f)
-}
-format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
-```
-
-**Fix:** Use the shared `resolveFormat` helper from `common.go`:
-
+**Fix:** Replace with:
 ```go
 format, isTTY := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
 ```
 
-#### Plan (2026-01-21)
+#### Plan
+- Acceptance criteria: All 7 runs commands use `resolveFormat` helper instead of inline TTY detection.
+- Verification: `make fmt && make lint && make test` passes; no functional change in behavior.
+- Implementation steps:
+  1. Replace inline TTY detection in RunsListCmd.Run (lines 196-200)
+  2. Replace inline TTY detection in RunsGetCmd.Run (lines 265-269)
+  3. Replace inline TTY detection in RunsCreateCmd.Run (lines 351-355)
+  4. Replace inline TTY detection in RunsApplyCmd.Run (lines 443-447)
+  5. Replace inline TTY detection in RunsDiscardCmd.Run (lines 534-538)
+  6. Replace inline TTY detection in RunsCancelCmd.Run (lines 625-629)
+  7. Replace inline TTY detection in RunsForceCancelCmd.Run (lines 715-719)
 
-**Acceptance criteria:**
-- Inline TTY detection pattern in `workspace_resources.go:127-132` replaced with `resolveFormat` helper
-- No behavior changes
-- All existing tests pass
+#### Progress Notes
 
-**Verification approach:**
-- `make test` passes
-- All workspace-resources tests still pass
-
-**Implementation steps:**
-1. Replace inline TTY detection in `WorkspaceResourcesListCmd.Run()` with `resolveFormat` call
-2. Run feedback loops
-3. Update review.md with progress note
-
-#### Progress Note (2026-01-21)
-
-**Files changed:**
-- `cmd/tfc/workspace_resources.go:127-128`: Replaced 5-line inline TTY detection with single `resolveFormat` call
-
-**Commands run:**
-- `make fmt` - passed
-- `make lint` - passed
-- `make build` - passed
-- `make test` - passed (all tests green)
-- `go test -v -run 'TestWorkspaceResources' ./cmd/tfc/...` - all 11 workspace-resources tests pass
-
-**What remains:**
-- Task #31 is complete
-- Consistent use of `resolveFormat` helper across all command files
+**2026-01-22:** Completed refactor.
+- Changed: `cmd/tfc/runs.go` - replaced 7 instances of inline TTY detection with `resolveFormat` helper
+- Commands: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Result: Code is now consistent with other commands (doctor, projects, workspace-variables, workspace-resources)
 
 ---
 
-# Summary
+### 2. [ ] `runJSON` struct missing workspace_id field
 
-## Remaining Tasks by Category
+**File:** `cmd/tfc/runs.go`
+**Lines:** 32-38, 41-48
 
-### Edge Cases (Cannot clear values)
-- #1: Workspaces - Description cannot be cleared
-- #5: Workspace-Variables - Value cannot be cleared
-- #6: Workspace-Variables - Description cannot be cleared
+**Problem:** The `runJSON` struct doesn't include workspace ID, but `RunsGetCmd` table output shows it (lines 283-285). This creates inconsistent output between JSON and table formats.
 
-### Console Output Not Testable
-- #10: InitCmd - Console output not testable
-- #16: Contexts commands - Console output not testable
+**Fix:** Add workspace_id to the struct:
+```go
+type runJSON struct {
+    ID          string `json:"id"`
+    Status      string `json:"status"`
+    Message     string `json:"message,omitempty"`
+    CreatedAt   string `json:"created_at"`
+    Source      string `json:"source,omitempty"`
+    WorkspaceID string `json:"workspace_id,omitempty"` // Add this
+}
+```
 
-### Missing JSON Output Support
-- #15: Contexts - No JSON output format support
+And update `toRunJSON`:
+```go
+func toRunJSON(run *tfe.Run) *runJSON {
+    r := &runJSON{
+        ID:        run.ID,
+        Status:    string(run.Status),
+        Message:   run.Message,
+        CreatedAt: run.CreatedAt.Format(time.RFC3339),
+        Source:    string(run.Source),
+    }
+    if run.Workspace != nil {
+        r.WorkspaceID = run.Workspace.ID
+    }
+    return r
+}
+```
 
-### Error Message Improvements
-- #12: Doctor - Context not found error lacks guidance
-- #17: Contexts show - Empty default org display
+---
 
-### Method Signature Consistency
-- #18: ContextsListCmd missing CLI parameter
-- #19: ContextsAddCmd/ContextsUseCmd missing CLI parameter
+### 3. [ ] `fakeRunsClient.forceCancel` field naming inconsistency
 
-### Missing Unit Tests
-- #11: Init - SettingsPath error (low priority)
-- #20: ContextsRemoveCmd - config.Save failure
-- #21: Contexts tests - Output content verification
-- #22: ContextsListCmd - JSON output test
-- #23: ContextsShowCmd - JSON output test
-- #25: WorkspaceResources - Client factory error
-- #26: WorkspaceResources - Context not found
-- #27: WorkspaceResources - Token resolution error
-- #28: WorkspaceResources - Table column verification
+**File:** `cmd/tfc/runs_test.go`
+**Line:** 32
 
-### Missing Features
-- #24: WorkspaceResources - Missing Get subcommand
+**Problem:** The error field is named `forceCancel` but all other error fields follow the pattern `<action>Err` (e.g., `applyErr`, `discardErr`, `cancelErr`).
 
-### Code Quality (DRY violations)
-- #2: Extract duplicate resolveClientConfig
-- #3: Extract duplicate test helper types (workspaces)
-- #4: Reuse resolveFormat helper (workspaces)
-- #7: Duplicate resolveVariablesClientConfig
-- #8: Duplicate test helper types (workspace-variables)
-- #9: Inline TTY detection pattern (workspace-variables)
-- #13: Duplicate test helper types (doctor)
-- #14: Consider using resolveFormat helper (doctor)
-- #29: Duplicate resolveWorkspaceResourcesClientConfig
-- #30: Duplicate test helper types (workspace-resources)
-- #31: Inline TTY detection pattern (workspace-resources)
+**Current:**
+```go
+forceCancel       error
+```
+
+**Fix:** Rename to match convention:
+```go
+forceCancelErr    error
+```
+
+Also update line 79:
+```go
+return c.forceCancelErr
+```
+
+---
+
+### 4. [ ] `fakeRunsClient` doesn't capture parameters for verification
+
+**File:** `cmd/tfc/runs_test.go`
+**Lines:** 40-79
+
+**Problem:** The fake client ignores most parameters (workspaceID, runID, options), making it impossible to verify that commands pass correct values to the API. Only `createOpts` is captured.
+
+**Fix:** Add fields to capture parameters:
+```go
+type fakeRunsClient struct {
+    // ... existing fields ...
+
+    // Captured parameters for verification
+    listWorkspaceID   string
+    listOpts          *tfe.RunListOptions
+    readRunID         string
+    applyRunID        string
+    applyOpts         tfe.RunApplyOptions
+    discardRunID      string
+    discardOpts       tfe.RunDiscardOptions
+    cancelRunID       string
+    cancelOpts        tfe.RunCancelOptions
+    forceCancelRunID  string
+    forceCancelOpts   tfe.RunForceCancelOptions
+}
+```
+
+Then update the methods to capture these values.
+
+---
+
+### 5. [ ] Missing test: `RunsGet` table output
+
+**File:** `cmd/tfc/runs_test.go`
+
+**Problem:** There's `TestRunsGet_JSON` but no test for table output format, which has different logic (field/value pairs instead of data object).
+
+**Fix:** Add test:
+```go
+func TestRunsGet_Table(t *testing.T) {
+    tmpDir, resolver := setupRunsTest(t)
+
+    createdAt := time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC)
+    fakeClient := &fakeRunsClient{
+        run: &tfe.Run{
+            ID:        "run-1",
+            Status:    tfe.RunPlanned,
+            Message:   "Test run",
+            CreatedAt: createdAt,
+            Source:    tfe.RunSourceAPI,
+            Workspace: &tfe.Workspace{ID: "ws-test"},
+        },
+    }
+
+    var stdout bytes.Buffer
+    cmd := &RunsGetCmd{
+        ID:            "run-1",
+        baseDir:       tmpDir,
+        tokenResolver: resolver,
+        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+        stdout:        &stdout,
+        clientFactory: func(_ tfcapi.ClientConfig) (runsClient, error) {
+            return fakeClient, nil
+        },
+    }
+
+    cli := &CLI{OutputFormat: "table"}
+    err := cmd.Run(cli)
+    if err != nil {
+        t.Fatalf("unexpected error: %v", err)
+    }
+
+    out := stdout.String()
+    if !strings.Contains(out, "run-1") {
+        t.Errorf("expected run ID in output, got: %s", out)
+    }
+    if !strings.Contains(out, "Workspace ID") {
+        t.Errorf("expected Workspace ID field, got: %s", out)
+    }
+}
+```
+
+---
+
+### 6. [ ] Missing test: empty runs list
+
+**File:** `cmd/tfc/runs_test.go`
+
+**Problem:** No test verifies behavior when workspace has zero runs. Both JSON and table output should handle empty results gracefully.
+
+**Fix:** Add test:
+```go
+func TestRunsList_EmptyList(t *testing.T) {
+    tmpDir, resolver := setupRunsTest(t)
+
+    fakeClient := &fakeRunsClient{
+        runs: []*tfe.Run{}, // Empty list
+    }
+
+    var stdout bytes.Buffer
+    cmd := &RunsListCmd{
+        WorkspaceID:   "ws-empty",
+        baseDir:       tmpDir,
+        tokenResolver: resolver,
+        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+        stdout:        &stdout,
+        clientFactory: func(_ tfcapi.ClientConfig) (runsClient, error) {
+            return fakeClient, nil
+        },
+    }
+
+    cli := &CLI{OutputFormat: "json"}
+    err := cmd.Run(cli)
+    if err != nil {
+        t.Fatalf("unexpected error: %v", err)
+    }
+
+    var result map[string]any
+    if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+        t.Fatalf("failed to parse JSON: %v", err)
+    }
+
+    data, ok := result["data"].([]any)
+    if !ok {
+        t.Fatalf("expected data array, got %T", result["data"])
+    }
+    if len(data) != 0 {
+        t.Errorf("expected 0 runs, got %d", len(data))
+    }
+}
+```
+
+---
+
+### 7. [ ] Missing test: `RunsCreate` API error
+
+**File:** `cmd/tfc/runs_test.go`
+
+**Problem:** While `TestRunsList_APIError` tests list failure, there's no equivalent for `RunsCreate`.
+
+**Fix:** Add test:
+```go
+func TestRunsCreate_APIError(t *testing.T) {
+    tmpDir, resolver := setupRunsTest(t)
+
+    fakeClient := &fakeRunsClient{
+        createErr: errors.New("workspace not found"),
+    }
+
+    var stdout bytes.Buffer
+    cmd := &RunsCreateCmd{
+        WorkspaceID:   "ws-invalid",
+        baseDir:       tmpDir,
+        tokenResolver: resolver,
+        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+        stdout:        &stdout,
+        clientFactory: func(_ tfcapi.ClientConfig) (runsClient, error) {
+            return fakeClient, nil
+        },
+    }
+
+    cli := &CLI{}
+    err := cmd.Run(cli)
+    if err == nil {
+        t.Fatal("expected error for API failure")
+    }
+    if !strings.Contains(err.Error(), "workspace not found") {
+        t.Errorf("expected error message, got: %v", err)
+    }
+}
+```
+
+---
+
+### 8. [ ] Missing test: Comment option passed to Apply/Discard/Cancel/ForceCancel
+
+**File:** `cmd/tfc/runs_test.go`
+
+**Problem:** The `--comment` flag functionality is not tested. We don't verify the comment is actually passed to the API.
+
+**Fix:** Add a test (example for Apply, repeat pattern for others):
+```go
+func TestRunsApply_WithComment(t *testing.T) {
+    tmpDir, resolver := setupRunsTest(t)
+
+    fakeClient := &fakeRunsClient{}
+
+    var stdout bytes.Buffer
+    forceFlag := true
+    cmd := &RunsApplyCmd{
+        ID:            "run-1",
+        Comment:       "LGTM, applying",
+        baseDir:       tmpDir,
+        tokenResolver: resolver,
+        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+        stdout:        &stdout,
+        clientFactory: func(_ tfcapi.ClientConfig) (runsClient, error) {
+            return fakeClient, nil
+        },
+        forceFlag: &forceFlag,
+    }
+
+    cli := &CLI{}
+    err := cmd.Run(cli)
+    if err != nil {
+        t.Fatalf("unexpected error: %v", err)
+    }
+
+    // Requires fakeRunsClient to capture applyOpts (see issue #4)
+    if fakeClient.applyOpts.Comment == nil || *fakeClient.applyOpts.Comment != "LGTM, applying" {
+        t.Error("expected comment to be passed to API")
+    }
+}
+```
+
+---
+
+### 9. [ ] Missing test: client factory returns error
+
+**File:** `cmd/tfc/runs_test.go`
+
+**Problem:** No test verifies error handling when `clientFactory` returns an error.
+
+**Fix:** Add test:
+```go
+func TestRunsList_ClientFactoryError(t *testing.T) {
+    tmpDir, resolver := setupRunsTest(t)
+
+    var stdout bytes.Buffer
+    cmd := &RunsListCmd{
+        WorkspaceID:   "ws-test",
+        baseDir:       tmpDir,
+        tokenResolver: resolver,
+        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+        stdout:        &stdout,
+        clientFactory: func(_ tfcapi.ClientConfig) (runsClient, error) {
+            return nil, errors.New("failed to create TFC client")
+        },
+    }
+
+    cli := &CLI{}
+    err := cmd.Run(cli)
+    if err == nil {
+        t.Fatal("expected error for client factory failure")
+    }
+    if !strings.Contains(err.Error(), "failed to create client") {
+        t.Errorf("expected client error message, got: %v", err)
+    }
+}
+```
+
+---
+
+### 10. [ ] Missing test: invalid context specified via --context flag
+
+**File:** `cmd/tfc/runs_test.go`
+
+**Problem:** `TestRunsList_FailsWhenSettingsMissing` tests missing settings file, but no test for when `--context` flag specifies a non-existent context.
+
+**Fix:** Add test:
+```go
+func TestRunsList_InvalidContext(t *testing.T) {
+    tmpDir, resolver := setupRunsTest(t)
+
+    var stdout bytes.Buffer
+    cmd := &RunsListCmd{
+        WorkspaceID:   "ws-test",
+        baseDir:       tmpDir,
+        tokenResolver: resolver,
+        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+        stdout:        &stdout,
+        clientFactory: func(_ tfcapi.ClientConfig) (runsClient, error) {
+            return &fakeRunsClient{}, nil
+        },
+    }
+
+    cli := &CLI{Context: "nonexistent"}
+    err := cmd.Run(cli)
+    if err == nil {
+        t.Fatal("expected error for invalid context")
+    }
+    if !strings.Contains(err.Error(), "not found") {
+        t.Errorf("expected context not found error, got: %v", err)
+    }
+}
+```
+
+---
+
+### 11. [ ] Missing test: prompter error handling
+
+**File:** `cmd/tfc/runs_test.go`
+
+**Problem:** While `runsFailingPrompter` verifies prompts are bypassed with `--force`, there's no test that verifies error handling when `prompter.Confirm` fails and returns an error during normal (non-force) flow.
+
+**Fix:** Add a prompter that returns an error:
+```go
+type runsErrorPrompter struct{}
+
+func (p *runsErrorPrompter) PromptString(_, _ string) (string, error) {
+    return "", errors.New("stdin closed")
+}
+
+func (p *runsErrorPrompter) Confirm(_ string, _ bool) (bool, error) {
+    return false, errors.New("stdin closed")
+}
+
+func (p *runsErrorPrompter) PromptSelect(_ string, _ []string, _ string) (string, error) {
+    return "", errors.New("stdin closed")
+}
+
+func TestRunsApply_PrompterError(t *testing.T) {
+    tmpDir, resolver := setupRunsTest(t)
+
+    fakeClient := &fakeRunsClient{}
+
+    var stdout bytes.Buffer
+    cmd := &RunsApplyCmd{
+        ID:            "run-1",
+        baseDir:       tmpDir,
+        tokenResolver: resolver,
+        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+        stdout:        &stdout,
+        clientFactory: func(_ tfcapi.ClientConfig) (runsClient, error) {
+            return fakeClient, nil
+        },
+        prompter: &runsErrorPrompter{},
+    }
+
+    cli := &CLI{Force: false}
+    err := cmd.Run(cli)
+    if err == nil {
+        t.Fatal("expected error for prompter failure")
+    }
+    if !strings.Contains(err.Error(), "failed to prompt") {
+        t.Errorf("expected prompt error, got: %v", err)
+    }
+    if fakeClient.applyCalled {
+        t.Error("apply should not be called when prompt fails")
+    }
+}
+```
+
+---
+
+### 12. [ ] Inconsistent success message for Apply command
+
+**File:** `cmd/tfc/runs.go`
+**Line:** 454
+
+**Problem:** Apply says "apply initiated" while other actions use past tense ("discarded", "cancelled", "force-cancelled"). This inconsistency could confuse users.
+
+**Current:**
+- Apply: `Run %q apply initiated.`
+- Discard: `Run %q discarded.`
+- Cancel: `Run %q cancelled.`
+- ForceCancel: `Run %q force-cancelled.`
+
+**Fix:** Either change Apply to `Run %q applied.` or change others to match "initiated" style if that's intentional (Apply is async). Document the reason if intentional.
+
+---
+
+### 13. [ ] `RunsListCmd` lacks `--limit` flag for large workspaces
+
+**File:** `cmd/tfc/runs.go`
+**Lines:** 151-161, 185-186
+
+**Problem:** `RunsListCmd` always fetches ALL runs via `CollectAllRuns`. For workspaces with thousands of runs, this is slow and memory-intensive. Users can't limit results.
+
+**Fix:** Add a `--limit` flag:
+```go
+type RunsListCmd struct {
+    WorkspaceID string `name:"workspace-id" required:"" help:"ID of the workspace."`
+    Limit       int    `help:"Maximum number of runs to return (0 = all)." default:"0"`
+    // ... other fields
+}
+```
+
+Then implement pagination limit in the Run method, or add a separate `CollectRunsWithLimit` function.
+
+---
+
+### 14. [ ] Test assertion uses fragile type assertion
+
+**File:** `cmd/tfc/runs_test.go`
+**Lines:** 469-471
+
+**Problem:** The test uses `meta["status"].(float64)` which will panic if the type changes or is missing, rather than failing gracefully.
+
+**Current:**
+```go
+meta := result["meta"].(map[string]any)
+if meta["status"].(float64) != 202 {
+```
+
+**Fix:** Use safer pattern:
+```go
+meta, ok := result["meta"].(map[string]any)
+if !ok {
+    t.Fatal("expected meta object in response")
+}
+status, ok := meta["status"].(float64)
+if !ok {
+    t.Fatalf("expected status to be number, got %T", meta["status"])
+}
+if status != 202 {
+    t.Errorf("expected status 202, got %v", status)
+}
+```
+
+---
+
+### 15. [ ] Missing test: verify correct run ID passed to Read/Apply/Discard/Cancel/ForceCancel
+
+**File:** `cmd/tfc/runs_test.go`
+
+**Problem:** Tests verify the API methods are called, but don't verify the correct run ID is passed. If a bug caused the wrong ID to be used, tests would still pass.
+
+**Fix:** After fixing issue #4 (capture parameters), add assertions:
+```go
+// In TestRunsApply_WithForce
+if fakeClient.applyRunID != "run-1" {
+    t.Errorf("expected run ID run-1, got %s", fakeClient.applyRunID)
+}
+```
+
+---
+
+### 16. [ ] Missing test: verify correct workspace ID passed to List
+
+**File:** `cmd/tfc/runs_test.go`
+
+**Problem:** Same as #15, but for the List command. The test doesn't verify that the workspace ID is correctly passed to the API.
+
+**Fix:** After fixing issue #4, add assertion:
+```go
+// In TestRunsList_JSON
+if fakeClient.listWorkspaceID != "ws-test" {
+    t.Errorf("expected workspace ID ws-test, got %s", fakeClient.listWorkspaceID)
+}
+```
+
+---
+
+# Code Review: Plans Subcommand
+
+## Files Reviewed
+- `cmd/tfc/plans.go` - Main implementation (390 lines)
+- `cmd/tfc/plans_test.go` - Unit tests (710 lines)
+- `cmd/tfc/common.go` - Shared helpers (resolveFormat, resolveClientConfig)
+
+---
+
+## Issues Found
+
+### 17. [ ] Plans commands don't use `resolveFormat` helper
+
+**File:** `cmd/tfc/plans.go`
+**Lines:** 163-167, 237-241, 339-343
+
+**Problem:** All three plans commands (`PlansGetCmd`, `PlansJSONOutputCmd`, `PlansSanitizedPlanCmd`) duplicate TTY detection logic inline instead of using the `resolveFormat` helper from `common.go`. Other commands like `doctor`, `projects`, `workspace-variables`, and `workspace-resources` use this helper consistently.
+
+**Current code (repeated 3 times):**
+```go
+isTTY := false
+if f, ok := c.stdout.(*os.File); ok {
+    isTTY = c.ttyDetector.IsTTY(f)
+}
+format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
+```
+
+**Fix:** Replace with:
+```go
+format, isTTY := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
+```
+
+---
+
+### 18. [ ] `resolvePlansClientConfig` duplicates `resolveClientConfig` from common.go
+
+**File:** `cmd/tfc/plans.go`
+**Lines:** 84-116
+
+**Problem:** The `resolvePlansClientConfig` function is nearly identical to `resolveClientConfig` in `common.go`, minus the organization resolution. This duplicates ~30 lines of code and creates maintenance burden.
+
+**Current:** Two separate functions with identical context/settings/token resolution logic.
+
+**Fix:** Either:
+1. Refactor `resolveClientConfig` to make org optional (return empty string if not needed)
+2. Create a shared helper that both functions use
+3. Use `resolveClientConfig` and ignore the org return value:
+```go
+cfg, _, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
+```
+
+---
+
+### 19. [ ] `planJSON` missing `LogReadURL` in table output
+
+**File:** `cmd/tfc/plans.go`
+**Lines:** 27-36, 175-185
+
+**Problem:** The `planJSON` struct includes `LogReadURL` field (line 35), and JSON output includes it. However, table output (lines 175-185) doesn't display LogReadURL, creating inconsistency between formats.
+
+**Fix:** Add LogReadURL to table output:
+```go
+tw.AddRow("Imports", fmt.Sprintf("%d", plan.ResourceImports))
+if plan.LogReadURL != "" {
+    tw.AddRow("Log URL", plan.LogReadURL)
+}
+```
+
+---
+
+### 20. [ ] `defaultDownloadClient` doesn't include response body in error
+
+**File:** `cmd/tfc/plans.go`
+**Lines:** 377-389
+
+**Problem:** When the HTTP status code is not 200, the function returns a generic error with just the status code. The response body (which often contains useful error details from the server) is discarded.
+
+**Current:**
+```go
+if resp.StatusCode != http.StatusOK {
+    return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+}
+```
+
+**Fix:** Read and include the response body in the error:
+```go
+if resp.StatusCode != http.StatusOK {
+    body, _ := io.ReadAll(resp.Body)
+    if len(body) > 0 {
+        return nil, fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, string(body))
+    }
+    return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+}
+```
+
+---
+
+### 21. [ ] Misleading error message when `sanitized-plan` link has wrong type
+
+**File:** `cmd/tfc/plans.go`
+**Lines:** 327-329
+
+**Problem:** The type assertion `plan.Links["sanitized-plan"].(string)` returns `ok=false` both when the key is missing AND when the value is not a string. The error message "sanitized plan not available" is misleading if the link exists but has the wrong type (e.g., an integer or object).
+
+**Current:**
+```go
+sanitizedPlanLink, ok := plan.Links["sanitized-plan"].(string)
+if !ok || sanitizedPlanLink == "" {
+    return internalcmd.NewRuntimeError(fmt.Errorf("sanitized plan not available for this plan (HYOK feature)"))
+}
+```
+
+**Fix:** Check for existence separately from type:
+```go
+linkVal, exists := plan.Links["sanitized-plan"]
+if !exists {
+    return internalcmd.NewRuntimeError(fmt.Errorf("sanitized plan not available for this plan (HYOK feature)"))
+}
+sanitizedPlanLink, ok := linkVal.(string)
+if !ok || sanitizedPlanLink == "" {
+    return internalcmd.NewRuntimeError(fmt.Errorf("sanitized plan link has unexpected type: %T", linkVal))
+}
+```
+
+---
+
+### 22. [ ] `fakePlansClient` doesn't capture `planID` for verification
+
+**File:** `cmd/tfc/plans_test.go`
+**Lines:** 22-41
+
+**Problem:** The fake client ignores the `planID` parameter in `Read` and `ReadJSONOutput`, making it impossible to verify that commands pass the correct plan ID to the API.
+
+**Current:**
+```go
+func (f *fakePlansClient) Read(_ context.Context, _ string) (*tfe.Plan, error) {
+```
+
+**Fix:** Add fields to capture parameters:
+```go
+type fakePlansClient struct {
+    plan       *tfe.Plan
+    jsonOutput []byte
+    readErr    error
+    jsonErr    error
+
+    // Captured parameters for verification
+    readPlanID       string
+    jsonOutputPlanID string
+}
+
+func (f *fakePlansClient) Read(_ context.Context, planID string) (*tfe.Plan, error) {
+    f.readPlanID = planID
+    if f.readErr != nil {
+        return nil, f.readErr
+    }
+    return f.plan, nil
+}
+
+func (f *fakePlansClient) ReadJSONOutput(_ context.Context, planID string) ([]byte, error) {
+    f.jsonOutputPlanID = planID
+    if f.jsonErr != nil {
+        return nil, f.jsonErr
+    }
+    return f.jsonOutput, nil
+}
+```
+
+Then add assertions in tests:
+```go
+// In TestPlansGet_JSON
+if fakeClient.readPlanID != "plan-123" {
+    t.Errorf("expected plan ID plan-123, got %s", fakeClient.readPlanID)
+}
+```
+
+---
+
+### 23. [ ] Missing test: client factory returns error
+
+**File:** `cmd/tfc/plans_test.go`
+
+**Problem:** No test verifies error handling when `clientFactory` returns an error for any of the three commands (`PlansGetCmd`, `PlansJSONOutputCmd`, `PlansSanitizedPlanCmd`).
+
+**Fix:** Add test:
+```go
+func TestPlansGet_ClientFactoryError(t *testing.T) {
+    tmpDir, resolver := setupPlansTest(t)
+
+    var stdout bytes.Buffer
+    cmd := &PlansGetCmd{
+        ID:            "plan-123",
+        baseDir:       tmpDir,
+        tokenResolver: resolver,
+        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+        stdout:        &stdout,
+        clientFactory: func(_ tfcapi.ClientConfig) (plansClient, error) {
+            return nil, errors.New("failed to create TFC client")
+        },
+    }
+
+    cli := &CLI{OutputFormat: "json"}
+    err := cmd.Run(cli)
+    if err == nil {
+        t.Fatal("expected error for client factory failure")
+    }
+    if !strings.Contains(err.Error(), "failed to create client") {
+        t.Errorf("expected client error message, got: %v", err)
+    }
+}
+```
+
+---
+
+### 24. [ ] Missing test: invalid context specified via --context flag
+
+**File:** `cmd/tfc/plans_test.go`
+
+**Problem:** `TestPlansGet_FailsWhenSettingsMissing` tests missing settings file, but no test for when `--context` flag specifies a non-existent context.
+
+**Fix:** Add test:
+```go
+func TestPlansGet_InvalidContext(t *testing.T) {
+    tmpDir, resolver := setupPlansTest(t)
+
+    var stdout bytes.Buffer
+    cmd := &PlansGetCmd{
+        ID:            "plan-123",
+        baseDir:       tmpDir,
+        tokenResolver: resolver,
+        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+        stdout:        &stdout,
+        clientFactory: func(_ tfcapi.ClientConfig) (plansClient, error) {
+            return &fakePlansClient{}, nil
+        },
+    }
+
+    cli := &CLI{Context: "nonexistent", OutputFormat: "json"}
+    err := cmd.Run(cli)
+    if err == nil {
+        t.Fatal("expected error for invalid context")
+    }
+    if !strings.Contains(err.Error(), "not found") {
+        t.Errorf("expected context not found error, got: %v", err)
+    }
+}
+```
+
+---
+
+### 25. [ ] Missing test: plan with `LogReadURL` field populated
+
+**File:** `cmd/tfc/plans_test.go`
+
+**Problem:** No test verifies that `LogReadURL` is correctly included in JSON output when present. The existing tests don't set this field.
+
+**Fix:** Add test:
+```go
+func TestPlansGet_WithLogReadURL(t *testing.T) {
+    tmpDir, resolver := setupPlansTest(t)
+
+    fakeClient := &fakePlansClient{
+        plan: &tfe.Plan{
+            ID:         "plan-123",
+            Status:     tfe.PlanFinished,
+            HasChanges: true,
+            LogReadURL: "https://archivist.example/logs/plan-123",
+        },
+    }
+
+    var stdout bytes.Buffer
+    cmd := &PlansGetCmd{
+        ID:            "plan-123",
+        baseDir:       tmpDir,
+        tokenResolver: resolver,
+        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+        stdout:        &stdout,
+        clientFactory: func(_ tfcapi.ClientConfig) (plansClient, error) {
+            return fakeClient, nil
+        },
+    }
+
+    cli := &CLI{OutputFormat: "json"}
+    err := cmd.Run(cli)
+    if err != nil {
+        t.Fatalf("unexpected error: %v", err)
+    }
+
+    var result map[string]any
+    if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+        t.Fatalf("failed to parse JSON: %v", err)
+    }
+
+    data := result["data"].(map[string]any)
+    if data["log_read_url"] != "https://archivist.example/logs/plan-123" {
+        t.Errorf("expected log_read_url in output, got: %v", data["log_read_url"])
+    }
+}
+```
+
+---
+
+### 26. [ ] Missing test: file write error (permission denied, directory doesn't exist)
+
+**File:** `cmd/tfc/plans_test.go`
+
+**Problem:** No test verifies error handling when `os.WriteFile` fails (e.g., writing to a non-existent directory or read-only location).
+
+**Fix:** Add test:
+```go
+func TestPlansJSONOutput_FileWriteError(t *testing.T) {
+    tmpDir, resolver := setupPlansTest(t)
+
+    fakeClient := &fakePlansClient{
+        jsonOutput: []byte(`{"test":"data"}`),
+    }
+
+    var stdout bytes.Buffer
+    cmd := &PlansJSONOutputCmd{
+        ID:            "plan-123",
+        Out:           "/nonexistent/directory/out.json", // Invalid path
+        baseDir:       tmpDir,
+        tokenResolver: resolver,
+        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+        stdout:        &stdout,
+        clientFactory: func(_ tfcapi.ClientConfig) (plansClient, error) {
+            return fakeClient, nil
+        },
+    }
+
+    cli := &CLI{OutputFormat: "json"}
+    err := cmd.Run(cli)
+    if err == nil {
+        t.Fatal("expected error for invalid file path")
+    }
+    if !strings.Contains(err.Error(), "failed to write file") {
+        t.Errorf("expected file write error, got: %v", err)
+    }
+}
+```
+
+---
+
+### 27. [ ] Missing test: `sanitized-plan` link is non-string type
+
+**File:** `cmd/tfc/plans_test.go`
+
+**Problem:** `TestPlansSanitizedPlan_NoLinkAvailable` tests when the key is missing (empty map), but no test verifies behavior when the `sanitized-plan` key exists but has an unexpected type (e.g., integer, object).
+
+**Fix:** Add test:
+```go
+func TestPlansSanitizedPlan_LinkWrongType(t *testing.T) {
+    tmpDir, resolver := setupPlansTest(t)
+
+    fakeClient := &fakePlansClient{
+        plan: &tfe.Plan{
+            ID: "plan-bad-link",
+            Links: map[string]interface{}{
+                "sanitized-plan": 12345, // Wrong type (int instead of string)
+            },
+        },
+    }
+
+    var stdout bytes.Buffer
+    cmd := &PlansSanitizedPlanCmd{
+        ID:            "plan-bad-link",
+        baseDir:       tmpDir,
+        tokenResolver: resolver,
+        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+        stdout:        &stdout,
+        clientFactory: func(_ tfcapi.ClientConfig) (plansClient, error) {
+            return fakeClient, nil
+        },
+    }
+
+    cli := &CLI{}
+    err := cmd.Run(cli)
+    if err == nil {
+        t.Fatal("expected error when sanitized plan link has wrong type")
+    }
+    // After fixing issue #21, this should mention the type
+    if !strings.Contains(err.Error(), "sanitized plan") {
+        t.Errorf("expected sanitized plan error, got: %v", err)
+    }
+}
+```
+
+---
+
+### 28. [ ] Missing test: `plan.Links` is nil
+
+**File:** `cmd/tfc/plans_test.go`
+
+**Problem:** `TestPlansSanitizedPlan_NoLinkAvailable` tests with an empty map `Links: map[string]interface{}{}`, but not when `Links` is nil. Accessing a nil map in Go returns the zero value and doesn't panic, but testing this edge case ensures consistent behavior.
+
+**Fix:** Add test:
+```go
+func TestPlansSanitizedPlan_NilLinks(t *testing.T) {
+    tmpDir, resolver := setupPlansTest(t)
+
+    fakeClient := &fakePlansClient{
+        plan: &tfe.Plan{
+            ID:    "plan-nil-links",
+            Links: nil, // nil instead of empty map
+        },
+    }
+
+    var stdout bytes.Buffer
+    cmd := &PlansSanitizedPlanCmd{
+        ID:            "plan-nil-links",
+        baseDir:       tmpDir,
+        tokenResolver: resolver,
+        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+        stdout:        &stdout,
+        clientFactory: func(_ tfcapi.ClientConfig) (plansClient, error) {
+            return fakeClient, nil
+        },
+    }
+
+    cli := &CLI{}
+    err := cmd.Run(cli)
+    if err == nil {
+        t.Fatal("expected error when Links is nil")
+    }
+    if !strings.Contains(err.Error(), "sanitized plan not available") {
+        t.Errorf("expected sanitized plan not available error, got: %v", err)
+    }
+}
+```
+
+---
+
+### 29. [ ] Missing test: empty JSON output from `ReadJSONOutput`
+
+**File:** `cmd/tfc/plans_test.go`
+
+**Problem:** No test verifies behavior when `ReadJSONOutput` returns an empty byte slice. This could happen if the plan has no JSON output yet.
+
+**Fix:** Add test:
+```go
+func TestPlansJSONOutput_EmptyOutput(t *testing.T) {
+    tmpDir, resolver := setupPlansTest(t)
+
+    fakeClient := &fakePlansClient{
+        jsonOutput: []byte{}, // Empty
+    }
+
+    var stdout bytes.Buffer
+    cmd := &PlansJSONOutputCmd{
+        ID:            "plan-empty",
+        baseDir:       tmpDir,
+        tokenResolver: resolver,
+        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+        stdout:        &stdout,
+        clientFactory: func(_ tfcapi.ClientConfig) (plansClient, error) {
+            return fakeClient, nil
+        },
+    }
+
+    cli := &CLI{}
+    err := cmd.Run(cli)
+    if err != nil {
+        t.Fatalf("unexpected error: %v", err)
+    }
+
+    if stdout.Len() != 0 {
+        t.Errorf("expected empty output, got %d bytes", stdout.Len())
+    }
+}
+```
+
+---
+
+### 30. [ ] Missing test: verify correct plan ID passed to API
+
+**File:** `cmd/tfc/plans_test.go`
+
+**Problem:** Tests verify that API methods are called and return expected results, but don't verify the correct plan ID is passed. After fixing issue #22 (capture parameters), assertions should be added.
+
+**Fix:** After updating `fakePlansClient` per issue #22, add assertions:
+```go
+// In TestPlansGet_JSON
+if fakeClient.readPlanID != "plan-123" {
+    t.Errorf("expected plan ID plan-123, got %s", fakeClient.readPlanID)
+}
+
+// In TestPlansJSONOutput_WritesToStdout
+if fakeClient.jsonOutputPlanID != "plan-123" {
+    t.Errorf("expected plan ID plan-123, got %s", fakeClient.jsonOutputPlanID)
+}
+```
+
+---
+
+### 31. [ ] Missing test: verify download URL passed correctly to `downloadClient`
+
+**File:** `cmd/tfc/plans_test.go`
+
+**Problem:** While `TestPlansSanitizedPlan_NoAuthorizationForwarded` captures and verifies the download URL, other sanitized plan tests don't verify this, missing potential bugs where the wrong URL could be used.
+
+**Fix:** Add URL verification to other sanitized plan tests:
+```go
+// In TestPlansSanitizedPlan_WritesToFile
+var downloadedURL string
+cmd := &PlansSanitizedPlanCmd{
+    // ... other fields ...
+    downloadClient: func(url string) ([]byte, error) {
+        downloadedURL = url
+        return []byte(sanitizedContent), nil
+    },
+}
+// ... run test ...
+if downloadedURL != "https://archivist.example/sanitized.json" {
+    t.Errorf("expected download URL, got %s", downloadedURL)
+}
+```
+
+---
+
+### 32. [ ] `plansClient` interface missing `ReadSanitizedJSON` method
+
+**File:** `cmd/tfc/plans.go`
+**Lines:** 52-56
+
+**Problem:** The `plansClient` interface doesn't include a method for reading sanitized plans. Instead, `PlansSanitizedPlanCmd` fetches the plan, extracts the link, and uses a separate HTTP download client. While this works, it creates inconsistency with how other API operations are abstracted.
+
+The TFC API (`go-tfe`) does provide `Plans.ReadSanitizedJSONOutput()` which could be used instead of manual HTTP downloading.
+
+**Note:** This may be intentional if the sanitized plan endpoint requires special handling (no auth header forwarding). Document the reason if this is the case.
+
+**Fix (if standardization is desired):**
+```go
+type plansClient interface {
+    Read(ctx context.Context, planID string) (*tfe.Plan, error)
+    ReadJSONOutput(ctx context.Context, planID string) ([]byte, error)
+    ReadSanitizedJSONOutput(ctx context.Context, planID string) ([]byte, error) // Add this
+}
+```
+
+---
+
+### 33. [ ] No integration test for `defaultDownloadClient`
+
+**File:** `cmd/tfc/plans_test.go`
+
+**Problem:** The `defaultDownloadClient` function (lines 377-389 in plans.go) that performs actual HTTP requests is never tested. All tests inject a mock `downloadClient`. This means HTTP error handling, status code checking, and response body reading are untested.
+
+**Fix:** Add an integration-style test using `httptest.Server`:
+```go
+func TestDefaultDownloadClient(t *testing.T) {
+    // Test successful download
+    t.Run("success", func(t *testing.T) {
+        server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+            w.WriteHeader(http.StatusOK)
+            w.Write([]byte(`{"sanitized":"data"}`))
+        }))
+        defer server.Close()
+
+        cmd := &PlansSanitizedPlanCmd{
+            httpClient: server.Client(),
+        }
+        cmd.downloadClient = cmd.defaultDownloadClient
+
+        data, err := cmd.downloadClient(server.URL)
+        if err != nil {
+            t.Fatalf("unexpected error: %v", err)
+        }
+        if string(data) != `{"sanitized":"data"}` {
+            t.Errorf("unexpected data: %s", string(data))
+        }
+    })
+
+    // Test non-200 status
+    t.Run("non200status", func(t *testing.T) {
+        server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+            w.WriteHeader(http.StatusForbidden)
+        }))
+        defer server.Close()
+
+        cmd := &PlansSanitizedPlanCmd{
+            httpClient: server.Client(),
+        }
+        cmd.downloadClient = cmd.defaultDownloadClient
+
+        _, err := cmd.downloadClient(server.URL)
+        if err == nil {
+            t.Fatal("expected error for non-200 status")
+        }
+        if !strings.Contains(err.Error(), "403") {
+            t.Errorf("expected 403 in error, got: %v", err)
+        }
+    })
+}
+```
+
+---
+
+# Code Review: Configuration-Versions Subcommand
+
+## Files Reviewed
+- `cmd/tfc/configuration_versions.go` - Main implementation (660 lines)
+- `cmd/tfc/configuration_versions_test.go` - Unit tests (861 lines)
+- `cmd/tfc/common.go` - Shared helpers (resolveFormat, resolveClientConfig)
+
+---
+
+## Issues Found
+
+### 34. [ ] `realCVClient.Upload` ignores the `reader` parameter (BUG)
+
+**File:** `cmd/tfc/configuration_versions.go`
+**Lines:** 84-86
+
+**Problem:** The `Upload` method receives an `io.Reader` parameter but completely ignores it, passing an empty string to the underlying API call. This means uploads will always fail or upload empty content.
+
+**Current:**
+```go
+func (c *realCVClient) Upload(ctx context.Context, uploadURL string, reader io.Reader) error {
+    return c.client.ConfigurationVersions.Upload(ctx, uploadURL, "")
+}
+```
+
+**Analysis:** The `go-tfe` library's `Upload` method expects a file path as the second parameter, but the interface signature uses `io.Reader`. This architectural mismatch means either:
+1. The interface should accept a file path (string), or
+2. A different approach is needed (the code uses `uploadClient` directly anyway)
+
+**Fix:** Since `CVUploadCmd` uses a custom `uploadClient` function instead of the `cvClient.Upload` method, consider either:
+1. Removing `Upload` from the interface since it's unused, or
+2. Fixing the implementation to match the interface:
+```go
+func (c *realCVClient) Upload(ctx context.Context, uploadURL string, reader io.Reader) error {
+    // Create a temp file from reader, upload it, then clean up
+    tmpFile, err := os.CreateTemp("", "cv-upload-*.tar.gz")
+    if err != nil {
+        return err
+    }
+    defer os.Remove(tmpFile.Name())
+    defer tmpFile.Close()
+
+    if _, err := io.Copy(tmpFile, reader); err != nil {
+        return err
+    }
+
+    return c.client.ConfigurationVersions.Upload(ctx, uploadURL, tmpFile.Name())
+}
+```
+
+---
+
+### 35. [ ] Configuration-versions commands don't use `resolveFormat` helper
+
+**File:** `cmd/tfc/configuration_versions.go`
+**Lines:** 184-189, 257-262, 343-348, 435-440, 540-545, 637-642
+
+**Problem:** All six CV commands duplicate TTY detection logic inline instead of using the `resolveFormat` helper from `common.go`. Other commands like `doctor`, `projects`, `workspace-variables`, and `workspace-resources` use this helper consistently.
+
+**Current code (repeated 6 times):**
+```go
+isTTY := false
+if f, ok := c.stdout.(*os.File); ok {
+    isTTY = c.ttyDetector.IsTTY(f)
+}
+format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
+```
+
+**Fix:** Replace with:
+```go
+format, isTTY := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
+```
+
+---
+
+### 36. [ ] `resolveCVClientConfig` duplicates `resolveClientConfig` from common.go
+
+**File:** `cmd/tfc/configuration_versions.go`
+**Lines:** 105-138
+
+**Problem:** The `resolveCVClientConfig` function is nearly identical to `resolveClientConfig` in `common.go`, minus the organization resolution. This duplicates ~30 lines of code and creates maintenance burden.
+
+**Current:** Two separate functions with identical context/settings/token resolution logic.
+
+**Fix:** Use `resolveClientConfig` and ignore the org return value:
+```go
+cfg, _, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
+```
+
+Then delete `resolveCVClientConfig` entirely.
+
+---
+
+### 37. [ ] `defaultUploadClient` doesn't include response body in error
+
+**File:** `cmd/tfc/configuration_versions.go`
+**Lines:** 477-479
+
+**Problem:** When the HTTP status code indicates failure, the function returns a generic error with just the status code. The response body (which often contains useful error details from the server) is discarded.
+
+**Current:**
+```go
+if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusNoContent {
+    return fmt.Errorf("upload failed with status code: %d", resp.StatusCode)
+}
+```
+
+**Fix:** Read and include the response body in the error:
+```go
+if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusNoContent {
+    body, _ := io.ReadAll(resp.Body)
+    if len(body) > 0 {
+        return fmt.Errorf("upload failed with status code %d: %s", resp.StatusCode, string(body))
+    }
+    return fmt.Errorf("upload failed with status code: %d", resp.StatusCode)
+}
+```
+
+---
+
+### 38. [ ] `cvJSON` struct missing `created_at` timestamp
+
+**File:** `cmd/tfc/configuration_versions.go`
+**Lines:** 30-39, 41-52
+
+**Problem:** The `cvJSON` struct doesn't include `CreatedAt` timestamp, but configuration versions have this field. This creates inconsistency with other commands (like runs) that include timestamps in their JSON output.
+
+**Fix:** Add `created_at` to the struct:
+```go
+type cvJSON struct {
+    ID            string `json:"id"`
+    Status        string `json:"status"`
+    Source        string `json:"source,omitempty"`
+    AutoQueueRuns bool   `json:"auto_queue_runs"`
+    Speculative   bool   `json:"speculative"`
+    ErrorMessage  string `json:"error_message,omitempty"`
+    UploadURL     string `json:"upload_url,omitempty"`
+    CreatedAt     string `json:"created_at,omitempty"` // Add this
+}
+```
+
+And update `toCVJSON`:
+```go
+func toCVJSON(cv *tfe.ConfigurationVersion) *cvJSON {
+    r := &cvJSON{
+        ID:            cv.ID,
+        Status:        string(cv.Status),
+        Source:        string(cv.Source),
+        AutoQueueRuns: cv.AutoQueueRuns,
+        Speculative:   cv.Speculative,
+        ErrorMessage:  cv.ErrorMessage,
+        UploadURL:     cv.UploadURL,
+    }
+    if !cv.CreatedAt.IsZero() {
+        r.CreatedAt = cv.CreatedAt.Format(time.RFC3339)
+    }
+    return r
+}
+```
+
+---
+
+### 39. [ ] `CVDownloadCmd` writes binary content to stdout without TTY warning
+
+**File:** `cmd/tfc/configuration_versions.go`
+**Lines:** 567-571
+
+**Problem:** When no `--out` flag is specified, the command writes raw tar.gz binary content directly to stdout. If stdout is a TTY, this can corrupt the terminal display. Many CLI tools warn or refuse to write binary to a TTY.
+
+**Current:**
+```go
+} else {
+    // Write to stdout
+    if _, err := c.stdout.Write(content); err != nil {
+        return internalcmd.NewRuntimeError(fmt.Errorf("failed to write output: %w", err))
+    }
+}
+```
+
+**Fix:** Check if stdout is a TTY and warn or require `--out`:
+```go
+} else {
+    // Check if stdout is a TTY - binary content may corrupt display
+    if f, ok := c.stdout.(*os.File); ok && c.ttyDetector.IsTTY(f) {
+        return internalcmd.NewRuntimeError(fmt.Errorf("refusing to write binary content to terminal; use --out to specify output file"))
+    }
+    // Write to stdout
+    if _, err := c.stdout.Write(content); err != nil {
+        return internalcmd.NewRuntimeError(fmt.Errorf("failed to write output: %w", err))
+    }
+}
+```
+
+---
+
+### 40. [ ] Missing test: client factory returns error
+
+**File:** `cmd/tfc/configuration_versions_test.go`
+
+**Problem:** No test verifies error handling when `clientFactory` returns an error for any CV command.
+
+**Fix:** Add test:
+```go
+func TestCVList_ClientFactoryError(t *testing.T) {
+    tmpDir, resolver := setupCVTest(t)
+
+    var stdout bytes.Buffer
+    cmd := &CVListCmd{
+        WorkspaceID:   "ws-123",
+        baseDir:       tmpDir,
+        tokenResolver: resolver,
+        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+        stdout:        &stdout,
+        clientFactory: func(_ tfcapi.ClientConfig) (cvClient, error) {
+            return nil, errors.New("failed to create TFC client")
+        },
+    }
+
+    cli := &CLI{OutputFormat: "json"}
+    err := cmd.Run(cli)
+    if err == nil {
+        t.Fatal("expected error for client factory failure")
+    }
+    if !strings.Contains(err.Error(), "failed to create client") {
+        t.Errorf("expected client error message, got: %v", err)
+    }
+}
+```
+
+---
+
+### 41. [ ] Missing test: invalid context specified via --context flag
+
+**File:** `cmd/tfc/configuration_versions_test.go`
+
+**Problem:** `TestCVList_FailsWhenSettingsMissing` tests missing settings file, but no test for when `--context` flag specifies a non-existent context.
+
+**Fix:** Add test:
+```go
+func TestCVList_InvalidContext(t *testing.T) {
+    tmpDir, resolver := setupCVTest(t)
+
+    var stdout bytes.Buffer
+    cmd := &CVListCmd{
+        WorkspaceID:   "ws-123",
+        baseDir:       tmpDir,
+        tokenResolver: resolver,
+        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+        stdout:        &stdout,
+        clientFactory: func(_ tfcapi.ClientConfig) (cvClient, error) {
+            return &fakeCVClient{}, nil
+        },
+    }
+
+    cli := &CLI{Context: "nonexistent", OutputFormat: "json"}
+    err := cmd.Run(cli)
+    if err == nil {
+        t.Fatal("expected error for invalid context")
+    }
+    if !strings.Contains(err.Error(), "not found") {
+        t.Errorf("expected context not found error, got: %v", err)
+    }
+}
+```
+
+---
+
+### 42. [ ] Missing test: empty configuration versions list
+
+**File:** `cmd/tfc/configuration_versions_test.go`
+
+**Problem:** No test verifies behavior when workspace has zero configuration versions. Both JSON and table output should handle empty results gracefully.
+
+**Fix:** Add test:
+```go
+func TestCVList_EmptyList(t *testing.T) {
+    baseDir, resolver := setupCVTest(t)
+
+    fakeClient := &fakeCVClient{
+        ListFunc: func(_ context.Context, _ string, _ *tfe.ConfigurationVersionListOptions) ([]*tfe.ConfigurationVersion, error) {
+            return []*tfe.ConfigurationVersion{}, nil // Empty list
+        },
+    }
+
+    var stdout bytes.Buffer
+    cmd := &CVListCmd{
+        WorkspaceID:   "ws-empty",
+        baseDir:       baseDir,
+        tokenResolver: resolver,
+        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+        stdout:        &stdout,
+        clientFactory: func(_ tfcapi.ClientConfig) (cvClient, error) {
+            return fakeClient, nil
+        },
+    }
+
+    cli := &CLI{OutputFormat: "json"}
+    err := cmd.Run(cli)
+    if err != nil {
+        t.Fatalf("unexpected error: %v", err)
+    }
+
+    var result map[string]any
+    if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+        t.Fatalf("failed to parse JSON: %v", err)
+    }
+
+    data, ok := result["data"].([]any)
+    if !ok {
+        t.Fatalf("expected data array, got %T", result["data"])
+    }
+    if len(data) != 0 {
+        t.Errorf("expected 0 CVs, got %d", len(data))
+    }
+}
+```
+
+---
+
+### 43. [ ] Missing test: CVCreate API error
+
+**File:** `cmd/tfc/configuration_versions_test.go`
+
+**Problem:** While `TestCVList_APIError` and `TestCVGet_NotFound` test API failures for those commands, there's no equivalent for `CVCreateCmd`.
+
+**Fix:** Add test:
+```go
+func TestCVCreate_APIError(t *testing.T) {
+    baseDir, resolver := setupCVTest(t)
+
+    fakeClient := &fakeCVClient{
+        CreateFunc: func(_ context.Context, _ string, _ tfe.ConfigurationVersionCreateOptions) (*tfe.ConfigurationVersion, error) {
+            return nil, errors.New("workspace not found")
+        },
+    }
+
+    var stdout bytes.Buffer
+    cmd := &CVCreateCmd{
+        WorkspaceID:   "ws-invalid",
+        baseDir:       baseDir,
+        tokenResolver: resolver,
+        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+        stdout:        &stdout,
+        clientFactory: func(_ tfcapi.ClientConfig) (cvClient, error) {
+            return fakeClient, nil
+        },
+    }
+
+    cli := &CLI{OutputFormat: "json"}
+    err := cmd.Run(cli)
+    if err == nil {
+        t.Fatal("expected error for API failure")
+    }
+    if !strings.Contains(err.Error(), "workspace not found") {
+        t.Errorf("expected error message, got: %v", err)
+    }
+}
+```
+
+---
+
+### 44. [ ] Missing test: CVUpload file read error
+
+**File:** `cmd/tfc/configuration_versions_test.go`
+
+**Problem:** No test verifies error handling when the file specified by `--file` cannot be read (doesn't exist, permission denied, etc.).
+
+**Fix:** Add test:
+```go
+func TestCVUpload_FileReadError(t *testing.T) {
+    baseDir, resolver := setupCVTest(t)
+
+    fakeClient := &fakeCVClient{
+        ReadFunc: func(_ context.Context, cvID string) (*tfe.ConfigurationVersion, error) {
+            return &tfe.ConfigurationVersion{
+                ID:        cvID,
+                Status:    tfe.ConfigurationPending,
+                UploadURL: "https://archivist.example.com/upload",
+            }, nil
+        },
+    }
+
+    var stdout bytes.Buffer
+    cmd := &CVUploadCmd{
+        ID:            "cv-123",
+        File:          "/nonexistent/path/config.tar.gz",
+        baseDir:       baseDir,
+        tokenResolver: resolver,
+        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+        stdout:        &stdout,
+        clientFactory: func(_ tfcapi.ClientConfig) (cvClient, error) {
+            return fakeClient, nil
+        },
+        fileReader: func(path string) ([]byte, error) {
+            return nil, os.ErrNotExist
+        },
+    }
+
+    cli := &CLI{OutputFormat: "json"}
+    err := cmd.Run(cli)
+    if err == nil {
+        t.Fatal("expected error for file read failure")
+    }
+    if !strings.Contains(err.Error(), "failed to read file") {
+        t.Errorf("expected file read error, got: %v", err)
+    }
+}
+```
+
+---
+
+### 45. [ ] Missing test: CVDownload file write error
+
+**File:** `cmd/tfc/configuration_versions_test.go`
+
+**Problem:** No test verifies error handling when `os.WriteFile` fails for `CVDownloadCmd` (e.g., writing to a non-existent directory).
+
+**Fix:** Add test:
+```go
+func TestCVDownload_FileWriteError(t *testing.T) {
+    baseDir, resolver := setupCVTest(t)
+
+    fakeClient := &fakeCVClient{
+        DownloadFunc: func(_ context.Context, _ string) ([]byte, error) {
+            return []byte("downloaded-content"), nil
+        },
+    }
+
+    var stdout bytes.Buffer
+    cmd := &CVDownloadCmd{
+        ID:            "cv-123",
+        Out:           "/nonexistent/directory/output.tar.gz", // Invalid path
+        baseDir:       baseDir,
+        tokenResolver: resolver,
+        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+        stdout:        &stdout,
+        clientFactory: func(_ tfcapi.ClientConfig) (cvClient, error) {
+            return fakeClient, nil
+        },
+    }
+
+    cli := &CLI{OutputFormat: "json"}
+    err := cmd.Run(cli)
+    if err == nil {
+        t.Fatal("expected error for invalid file path")
+    }
+    if !strings.Contains(err.Error(), "failed to write file") {
+        t.Errorf("expected file write error, got: %v", err)
+    }
+}
+```
+
+---
+
+### 46. [ ] Missing test: CVArchive prompter error
+
+**File:** `cmd/tfc/configuration_versions_test.go`
+
+**Problem:** While tests verify both "yes" and "no" confirmation paths, there's no test for when `prompter.Confirm` returns an error (e.g., stdin closed).
+
+**Fix:** Add test:
+```go
+type cvErrorPrompter struct{}
+
+func (p *cvErrorPrompter) PromptString(_, _ string) (string, error) {
+    return "", errors.New("stdin closed")
+}
+
+func (p *cvErrorPrompter) Confirm(_ string, _ bool) (bool, error) {
+    return false, errors.New("stdin closed")
+}
+
+func (p *cvErrorPrompter) PromptSelect(_ string, _ []string, _ string) (string, error) {
+    return "", errors.New("stdin closed")
+}
+
+func TestCVArchive_PrompterError(t *testing.T) {
+    baseDir, resolver := setupCVTest(t)
+
+    archiveCalled := false
+    fakeClient := &fakeCVClient{
+        ArchiveFunc: func(_ context.Context, _ string) error {
+            archiveCalled = true
+            return nil
+        },
+    }
+
+    var stdout bytes.Buffer
+    cmd := &CVArchiveCmd{
+        ID:            "cv-123",
+        baseDir:       baseDir,
+        tokenResolver: resolver,
+        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+        stdout:        &stdout,
+        clientFactory: func(_ tfcapi.ClientConfig) (cvClient, error) {
+            return fakeClient, nil
+        },
+        prompter: &cvErrorPrompter{},
+    }
+
+    cli := &CLI{Force: false}
+    err := cmd.Run(cli)
+    if err == nil {
+        t.Fatal("expected error for prompter failure")
+    }
+    if !strings.Contains(err.Error(), "failed to prompt") {
+        t.Errorf("expected prompt error, got: %v", err)
+    }
+    if archiveCalled {
+        t.Error("archive should not be called when prompt fails")
+    }
+}
+```
+
+---
+
+### 47. [ ] Missing test: uploadClient HTTP error
+
+**File:** `cmd/tfc/configuration_versions_test.go`
+
+**Problem:** No test verifies error handling when the `uploadClient` function fails (network error, HTTP error status, etc.).
+
+**Fix:** Add test:
+```go
+func TestCVUpload_UploadClientError(t *testing.T) {
+    baseDir, resolver := setupCVTest(t)
+
+    fakeClient := &fakeCVClient{
+        ReadFunc: func(_ context.Context, cvID string) (*tfe.ConfigurationVersion, error) {
+            return &tfe.ConfigurationVersion{
+                ID:        cvID,
+                Status:    tfe.ConfigurationPending,
+                UploadURL: "https://archivist.example.com/upload",
+            }, nil
+        },
+    }
+
+    var stdout bytes.Buffer
+    cmd := &CVUploadCmd{
+        ID:            "cv-123",
+        File:          "/path/to/config.tar.gz",
+        baseDir:       baseDir,
+        tokenResolver: resolver,
+        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+        stdout:        &stdout,
+        clientFactory: func(_ tfcapi.ClientConfig) (cvClient, error) {
+            return fakeClient, nil
+        },
+        fileReader: func(path string) ([]byte, error) {
+            return []byte("fake-content"), nil
+        },
+        uploadClient: func(url string, content []byte) error {
+            return errors.New("upload failed with status code: 403")
+        },
+    }
+
+    cli := &CLI{OutputFormat: "json"}
+    err := cmd.Run(cli)
+    if err == nil {
+        t.Fatal("expected error for upload failure")
+    }
+    if !strings.Contains(err.Error(), "failed to upload") {
+        t.Errorf("expected upload error, got: %v", err)
+    }
+}
+```
+
+---
+
+### 48. [ ] Missing test: CVGet table output
+
+**File:** `cmd/tfc/configuration_versions_test.go`
+
+**Problem:** There's `TestCVGet_JSON` but no test for table output format, which has different logic (field/value pairs with conditional rows for ErrorMessage and UploadURL).
+
+**Fix:** Add test:
+```go
+func TestCVGet_Table(t *testing.T) {
+    baseDir, resolver := setupCVTest(t)
+
+    fakeClient := &fakeCVClient{
+        ReadFunc: func(_ context.Context, cvID string) (*tfe.ConfigurationVersion, error) {
+            return &tfe.ConfigurationVersion{
+                ID:            "cv-123",
+                Status:        tfe.ConfigurationErrored,
+                Source:        tfe.ConfigurationSourceAPI,
+                AutoQueueRuns: false,
+                Speculative:   true,
+                ErrorMessage:  "Invalid HCL syntax",
+                UploadURL:     "", // No upload URL for errored state
+            }, nil
+        },
+    }
+
+    var stdout bytes.Buffer
+    cmd := &CVGetCmd{
+        ID:            "cv-123",
+        baseDir:       baseDir,
+        tokenResolver: resolver,
+        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+        stdout:        &stdout,
+        clientFactory: func(_ tfcapi.ClientConfig) (cvClient, error) {
+            return fakeClient, nil
+        },
+    }
+
+    cli := &CLI{OutputFormat: "table"}
+    err := cmd.Run(cli)
+    if err != nil {
+        t.Fatalf("unexpected error: %v", err)
+    }
+
+    out := stdout.String()
+    if !strings.Contains(out, "cv-123") {
+        t.Errorf("expected CV ID in output, got: %s", out)
+    }
+    if !strings.Contains(out, "Error Message") {
+        t.Errorf("expected Error Message field for errored CV, got: %s", out)
+    }
+    if !strings.Contains(out, "Invalid HCL syntax") {
+        t.Errorf("expected error message content, got: %s", out)
+    }
+}
+```
+
+---
+
+### 49. [ ] Missing test: CVCreate table output
+
+**File:** `cmd/tfc/configuration_versions_test.go`
+
+**Problem:** `TestCVCreate_JSON` and `TestCVCreate_WithSpeculative` only test JSON output. No test verifies the table/text output format.
+
+**Fix:** Add test:
+```go
+func TestCVCreate_TableOutput(t *testing.T) {
+    baseDir, resolver := setupCVTest(t)
+
+    fakeClient := &fakeCVClient{
+        CreateFunc: func(_ context.Context, _ string, _ tfe.ConfigurationVersionCreateOptions) (*tfe.ConfigurationVersion, error) {
+            return &tfe.ConfigurationVersion{
+                ID:        "cv-new",
+                Status:    tfe.ConfigurationPending,
+                UploadURL: "https://archivist.example.com/upload/cv-new",
+            }, nil
+        },
+    }
+
+    var stdout bytes.Buffer
+    cmd := &CVCreateCmd{
+        WorkspaceID:   "ws-123",
+        baseDir:       baseDir,
+        tokenResolver: resolver,
+        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+        stdout:        &stdout,
+        clientFactory: func(_ tfcapi.ClientConfig) (cvClient, error) {
+            return fakeClient, nil
+        },
+    }
+
+    cli := &CLI{OutputFormat: "table"}
+    err := cmd.Run(cli)
+    if err != nil {
+        t.Fatalf("unexpected error: %v", err)
+    }
+
+    out := stdout.String()
+    if !strings.Contains(out, "cv-new") {
+        t.Errorf("expected CV ID in output, got: %s", out)
+    }
+    if !strings.Contains(out, "created") {
+        t.Errorf("expected 'created' message, got: %s", out)
+    }
+    if !strings.Contains(out, "Upload URL") {
+        t.Errorf("expected Upload URL in output, got: %s", out)
+    }
+}
+```
+
+---
+
+### 50. [ ] No integration test for `defaultUploadClient`
+
+**File:** `cmd/tfc/configuration_versions_test.go`
+
+**Problem:** The `defaultUploadClient` function (lines 461-482) that performs actual HTTP PUT requests is never tested. All tests inject a mock `uploadClient`. This means HTTP error handling, status code checking, and response body reading are untested.
+
+**Fix:** Add an integration-style test using `httptest.Server`:
+```go
+func TestDefaultUploadClient(t *testing.T) {
+    // Test successful upload
+    t.Run("success", func(t *testing.T) {
+        var receivedContent []byte
+        server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+            if r.Method != http.MethodPut {
+                t.Errorf("expected PUT, got %s", r.Method)
+            }
+            receivedContent, _ = io.ReadAll(r.Body)
+            w.WriteHeader(http.StatusOK)
+        }))
+        defer server.Close()
+
+        content := []byte("test-upload-content")
+        err := defaultUploadClient(server.URL, content)
+        if err != nil {
+            t.Fatalf("unexpected error: %v", err)
+        }
+        if string(receivedContent) != string(content) {
+            t.Errorf("expected content %q, got %q", string(content), string(receivedContent))
+        }
+    })
+
+    // Test non-success status
+    t.Run("non200status", func(t *testing.T) {
+        server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+            w.WriteHeader(http.StatusForbidden)
+        }))
+        defer server.Close()
+
+        err := defaultUploadClient(server.URL, []byte("test"))
+        if err == nil {
+            t.Fatal("expected error for non-200 status")
+        }
+        if !strings.Contains(err.Error(), "403") {
+            t.Errorf("expected 403 in error, got: %v", err)
+        }
+    })
+
+    // Test 201 Created is accepted
+    t.Run("status201", func(t *testing.T) {
+        server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+            w.WriteHeader(http.StatusCreated)
+        }))
+        defer server.Close()
+
+        err := defaultUploadClient(server.URL, []byte("test"))
+        if err != nil {
+            t.Fatalf("unexpected error for 201 status: %v", err)
+        }
+    })
+
+    // Test 204 No Content is accepted
+    t.Run("status204", func(t *testing.T) {
+        server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+            w.WriteHeader(http.StatusNoContent)
+        }))
+        defer server.Close()
+
+        err := defaultUploadClient(server.URL, []byte("test"))
+        if err != nil {
+            t.Fatalf("unexpected error for 204 status: %v", err)
+        }
+    })
+}
+```
+
+---
+
+### 51. [ ] Missing test: CVArchive API error
+
+**File:** `cmd/tfc/configuration_versions_test.go`
+
+**Problem:** No test verifies error handling when the Archive API call fails.
+
+**Fix:** Add test:
+```go
+func TestCVArchive_APIError(t *testing.T) {
+    baseDir, resolver := setupCVTest(t)
+
+    fakeClient := &fakeCVClient{
+        ArchiveFunc: func(_ context.Context, _ string) error {
+            return errors.New("configuration version is in use by an active run")
+        },
+    }
+
+    var stdout bytes.Buffer
+    cmd := &CVArchiveCmd{
+        ID:            "cv-123",
+        baseDir:       baseDir,
+        tokenResolver: resolver,
+        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+        stdout:        &stdout,
+        clientFactory: func(_ tfcapi.ClientConfig) (cvClient, error) {
+            return fakeClient, nil
+        },
+    }
+
+    cli := &CLI{Force: true, OutputFormat: "json"}
+    err := cmd.Run(cli)
+    if err == nil {
+        t.Fatal("expected error for API failure")
+    }
+    if !strings.Contains(err.Error(), "configuration version is in use") {
+        t.Errorf("expected specific error message, got: %v", err)
+    }
+}
+```
+
+---
+
+### 52. [ ] Missing test: CVDownload API error
+
+**File:** `cmd/tfc/configuration_versions_test.go`
+
+**Problem:** No test verifies error handling when the Download API call fails.
+
+**Fix:** Add test:
+```go
+func TestCVDownload_APIError(t *testing.T) {
+    baseDir, resolver := setupCVTest(t)
+
+    fakeClient := &fakeCVClient{
+        DownloadFunc: func(_ context.Context, _ string) ([]byte, error) {
+            return nil, errors.New("configuration version not found")
+        },
+    }
+
+    var stdout bytes.Buffer
+    cmd := &CVDownloadCmd{
+        ID:            "cv-nonexistent",
+        baseDir:       baseDir,
+        tokenResolver: resolver,
+        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+        stdout:        &stdout,
+        clientFactory: func(_ tfcapi.ClientConfig) (cvClient, error) {
+            return fakeClient, nil
+        },
+    }
+
+    cli := &CLI{OutputFormat: "json"}
+    err := cmd.Run(cli)
+    if err == nil {
+        t.Fatal("expected error for API failure")
+    }
+    if !strings.Contains(err.Error(), "configuration version not found") {
+        t.Errorf("expected error message, got: %v", err)
+    }
+}
+```
+
+---
+
+# Code Review: Users Subcommand
+
+## Files Reviewed
+- `cmd/tfc/users.go` - Main implementation (232 lines)
+- `cmd/tfc/users_test.go` - Unit tests (406 lines)
+- `cmd/tfc/common.go` - Shared helpers (resolveFormat, resolveClientConfig)
+
+---
+
+## Issues Found
+
+### 53. [ ] Users command doesn't use `resolveFormat` helper
+
+**File:** `cmd/tfc/users.go`
+**Lines:** 206-210
+
+**Problem:** The `UsersGetCmd` duplicates TTY detection logic inline instead of using the `resolveFormat` helper from `common.go`. Other commands like `doctor`, `projects`, `workspace-variables`, and `workspace-resources` use this helper consistently.
+
+**Current code:**
+```go
+isTTY := false
+if f, ok := c.stdout.(*os.File); ok {
+    isTTY = c.ttyDetector.IsTTY(f)
+}
+format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
+```
+
+**Fix:** Replace with:
+```go
+format, isTTY := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
+```
+
+---
+
+### 54. [ ] `resolveUsersClientConfig` duplicates `resolveClientConfig` from common.go
+
+**File:** `cmd/tfc/users.go`
+**Lines:** 127-159
+
+**Problem:** The `resolveUsersClientConfig` function is nearly identical to `resolveClientConfig` in `common.go`, minus the organization resolution. This duplicates ~30 lines of code and creates maintenance burden.
+
+**Current:** Two separate functions with identical context/settings/token resolution logic.
+
+**Fix:** Use `resolveClientConfig` and ignore the org return value:
+```go
+cfg, _, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
+```
+
+Then delete `resolveUsersClientConfig` entirely.
+
+---
+
+### 55. [ ] `fakeUsersClient` doesn't capture `userID` for verification
+
+**File:** `cmd/tfc/users_test.go`
+**Lines:** 17-28
+
+**Problem:** The fake client ignores the `userID` parameter in `Read`, making it impossible to verify that commands pass the correct user ID to the API.
+
+**Current:**
+```go
+func (c *fakeUsersClient) Read(_ context.Context, _ string) (*UserResponse, error) {
+    if c.err != nil {
+        return nil, c.err
+    }
+    return c.user, nil
+}
+```
+
+**Fix:** Add field to capture parameter:
+```go
+type fakeUsersClient struct {
+    user *UserResponse
+    err  error
+
+    // Captured parameters for verification
+    readUserID string
+}
+
+func (c *fakeUsersClient) Read(_ context.Context, userID string) (*UserResponse, error) {
+    c.readUserID = userID
+    if c.err != nil {
+        return nil, c.err
+    }
+    return c.user, nil
+}
+```
+
+Then add assertions in tests:
+```go
+// In TestUsersGet_JSON
+if fakeClient.readUserID != "user-abc123" {
+    t.Errorf("expected user ID user-abc123, got %s", fakeClient.readUserID)
+}
+```
+
+---
+
+### 56. [ ] Missing test: client factory returns error
+
+**File:** `cmd/tfc/users_test.go`
+
+**Problem:** No test verifies error handling when `clientFactory` returns an error.
+
+**Fix:** Add test:
+```go
+func TestUsersGet_ClientFactoryError(t *testing.T) {
+    baseDir, tokenResolver := setupUsersTestSettings(t)
+
+    var stdout bytes.Buffer
+    cmd := &UsersGetCmd{
+        UserID:        "user-123",
+        baseDir:       baseDir,
+        tokenResolver: tokenResolver,
+        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+        stdout:        &stdout,
+        clientFactory: func(_ tfcapi.ClientConfig) (usersClient, error) {
+            return nil, errors.New("failed to create TFC client")
+        },
+    }
+
+    cli := &CLI{OutputFormat: "json"}
+    err := cmd.Run(cli)
+    if err == nil {
+        t.Fatal("expected error for client factory failure")
+    }
+    if !strings.Contains(err.Error(), "failed to create client") {
+        t.Errorf("expected client error message, got: %v", err)
+    }
+}
+```
+
+---
+
+### 57. [ ] Missing test: invalid context specified via --context flag
+
+**File:** `cmd/tfc/users_test.go`
+
+**Problem:** `TestUsersGet_FailsWhenSettingsMissing` tests missing settings file, but no test for when `--context` flag specifies a non-existent context.
+
+**Fix:** Add test:
+```go
+func TestUsersGet_InvalidContext(t *testing.T) {
+    baseDir, tokenResolver := setupUsersTestSettings(t)
+
+    var stdout bytes.Buffer
+    cmd := &UsersGetCmd{
+        UserID:        "user-123",
+        baseDir:       baseDir,
+        tokenResolver: tokenResolver,
+        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+        stdout:        &stdout,
+        clientFactory: func(_ tfcapi.ClientConfig) (usersClient, error) {
+            return &fakeUsersClient{}, nil
+        },
+    }
+
+    cli := &CLI{Context: "nonexistent", OutputFormat: "json"}
+    err := cmd.Run(cli)
+    if err == nil {
+        t.Fatal("expected error for invalid context")
+    }
+    if !strings.Contains(err.Error(), "not found") {
+        t.Errorf("expected context not found error, got: %v", err)
+    }
+}
+```
+
+---
+
+### 58. [ ] `realUsersClient.Read` doesn't validate empty userID
+
+**File:** `cmd/tfc/users.go`
+**Lines:** 61-110
+
+**Problem:** If an empty string is passed as `userID`, the function will make a request to `/api/v2/users/` (note: trailing slash with empty ID). This may return an unexpected response or error from the API. Validating input early provides clearer error messages.
+
+**Current:**
+```go
+func (c *realUsersClient) Read(ctx context.Context, userID string) (*UserResponse, error) {
+    apiURL := fmt.Sprintf("%s/api/v2/users/%s", c.baseURL, url.PathEscape(userID))
+    // ...
+}
+```
+
+**Fix:** Add validation at the start of the function:
+```go
+func (c *realUsersClient) Read(ctx context.Context, userID string) (*UserResponse, error) {
+    if userID == "" {
+        return nil, fmt.Errorf("user ID is required")
+    }
+    apiURL := fmt.Sprintf("%s/api/v2/users/%s", c.baseURL, url.PathEscape(userID))
+    // ...
+}
+```
+
+---
+
+### 59. [ ] `V2Only` field not displayed in table output
+
+**File:** `cmd/tfc/users.go`
+**Lines:** 47, 218-227
+
+**Problem:** The `UserAttributes` struct includes `V2Only` field (line 47), and JSON output includes it. However, table output (lines 218-227) doesn't display `V2Only`, creating inconsistency between JSON and table formats.
+
+**Current table output:**
+```go
+tw.AddRow("ID", user.Data.ID)
+tw.AddRow("Username", user.Data.Attributes.Username)
+tw.AddRow("Email", user.Data.Attributes.Email)
+tw.AddRow("Avatar URL", user.Data.Attributes.AvatarURL)
+tw.AddRow("Service Account", fmt.Sprintf("%t", user.Data.Attributes.IsServiceAccount))
+```
+
+**Fix:** Add `V2Only` to table output for consistency:
+```go
+tw.AddRow("ID", user.Data.ID)
+tw.AddRow("Username", user.Data.Attributes.Username)
+tw.AddRow("Email", user.Data.Attributes.Email)
+tw.AddRow("Avatar URL", user.Data.Attributes.AvatarURL)
+tw.AddRow("Service Account", fmt.Sprintf("%t", user.Data.Attributes.IsServiceAccount))
+tw.AddRow("V2 Only", fmt.Sprintf("%t", user.Data.Attributes.V2Only))
+```
+
+---
+
+### 60. [ ] `realUsersClient.Read` doesn't handle 403 Forbidden status separately
+
+**File:** `cmd/tfc/users.go`
+**Lines:** 83-101
+
+**Problem:** The function handles 404 (Not Found) and 401 (Unauthorized) with specific error messages, but 403 (Forbidden) falls through to the generic error handler. A 403 typically means the user exists but the authenticated user lacks permission to view them. Other commands like `invoices.go` handle 403 specifically.
+
+**Current:**
+```go
+if resp.StatusCode == http.StatusNotFound {
+    return nil, fmt.Errorf("user not found: %s", userID)
+}
+if resp.StatusCode == http.StatusUnauthorized {
+    return nil, fmt.Errorf("unauthorized: invalid or missing API token")
+}
+if resp.StatusCode != http.StatusOK {
+    // Generic error handling...
+}
+```
+
+**Fix:** Add specific handling for 403:
+```go
+if resp.StatusCode == http.StatusNotFound {
+    return nil, fmt.Errorf("user not found: %s", userID)
+}
+if resp.StatusCode == http.StatusUnauthorized {
+    return nil, fmt.Errorf("unauthorized: invalid or missing API token")
+}
+if resp.StatusCode == http.StatusForbidden {
+    return nil, fmt.Errorf("forbidden: insufficient permissions to view user %s", userID)
+}
+if resp.StatusCode != http.StatusOK {
+    // Generic error handling...
+}
+```
+
+---
+
+### 61. [ ] Missing test: service account user
+
+**File:** `cmd/tfc/users_test.go`
+
+**Problem:** No test verifies the output when `IsServiceAccount` is `true`. This is an important field that distinguishes human users from service accounts.
+
+**Fix:** Add test:
+```go
+func TestUsersGet_ServiceAccount(t *testing.T) {
+    baseDir, tokenResolver := setupUsersTestSettings(t)
+
+    user := &UserResponse{
+        Data: UserData{
+            ID:   "user-svc123",
+            Type: "users",
+            Attributes: UserAttributes{
+                Username:         "my-service-account",
+                Email:            "", // Service accounts often have no email
+                IsServiceAccount: true,
+                V2Only:           true,
+            },
+        },
+    }
+
+    var stdout bytes.Buffer
+    cmd := &UsersGetCmd{
+        UserID:        "user-svc123",
+        baseDir:       baseDir,
+        tokenResolver: tokenResolver,
+        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+        stdout:        &stdout,
+        clientFactory: func(_ tfcapi.ClientConfig) (usersClient, error) {
+            return &fakeUsersClient{user: user}, nil
+        },
+    }
+
+    cli := &CLI{OutputFormat: "json"}
+    err := cmd.Run(cli)
+    if err != nil {
+        t.Fatalf("unexpected error: %v", err)
+    }
+
+    var result UserResponse
+    if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+        t.Fatalf("failed to parse JSON output: %v", err)
+    }
+
+    if !result.Data.Attributes.IsServiceAccount {
+        t.Error("expected IsServiceAccount to be true")
+    }
+    if result.Data.Attributes.Email != "" {
+        t.Errorf("expected empty email for service account, got %q", result.Data.Attributes.Email)
+    }
+}
+```
+
+---
+
+### 62. [ ] Missing test: empty email and avatar fields
+
+**File:** `cmd/tfc/users_test.go`
+
+**Problem:** The `UserAttributes` struct uses `omitempty` for Email and AvatarURL, suggesting these can be empty. No test verifies this displays correctly in both JSON and table output.
+
+**Fix:** Add test:
+```go
+func TestUsersGet_EmptyOptionalFields(t *testing.T) {
+    baseDir, tokenResolver := setupUsersTestSettings(t)
+
+    user := &UserResponse{
+        Data: UserData{
+            ID:   "user-minimal",
+            Type: "users",
+            Attributes: UserAttributes{
+                Username:         "minimaluser",
+                Email:            "", // Empty
+                AvatarURL:        "", // Empty
+                IsServiceAccount: false,
+            },
+        },
+    }
+
+    t.Run("JSON", func(t *testing.T) {
+        var stdout bytes.Buffer
+        cmd := &UsersGetCmd{
+            UserID:        "user-minimal",
+            baseDir:       baseDir,
+            tokenResolver: tokenResolver,
+            ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+            stdout:        &stdout,
+            clientFactory: func(_ tfcapi.ClientConfig) (usersClient, error) {
+                return &fakeUsersClient{user: user}, nil
+            },
+        }
+
+        cli := &CLI{OutputFormat: "json"}
+        err := cmd.Run(cli)
+        if err != nil {
+            t.Fatalf("unexpected error: %v", err)
+        }
+
+        // Verify omitempty works - empty fields should not appear in JSON
+        output := stdout.String()
+        if strings.Contains(output, `"email":""`) {
+            t.Error("expected empty email to be omitted from JSON")
+        }
+    })
+
+    t.Run("Table", func(t *testing.T) {
+        var stdout bytes.Buffer
+        cmd := &UsersGetCmd{
+            UserID:        "user-minimal",
+            baseDir:       baseDir,
+            tokenResolver: tokenResolver,
+            ttyDetector:   &output.FakeTTYDetector{IsTTYValue: true},
+            stdout:        &stdout,
+            clientFactory: func(_ tfcapi.ClientConfig) (usersClient, error) {
+                return &fakeUsersClient{user: user}, nil
+            },
+        }
+
+        cli := &CLI{OutputFormat: "table"}
+        err := cmd.Run(cli)
+        if err != nil {
+            t.Fatalf("unexpected error: %v", err)
+        }
+
+        // Table should still show the row even if empty
+        out := stdout.String()
+        if !strings.Contains(out, "Email") {
+            t.Error("expected Email field in table output")
+        }
+    })
+}
+```
+
+---
+
+### 63. [ ] Missing test: JSON:API error response parsing
+
+**File:** `cmd/tfc/users_test.go`
+
+**Problem:** Lines 90-100 in `users.go` attempt to parse JSON:API error responses from the server, but there's no test verifying this code path works correctly. This error parsing logic could silently fail.
+
+**Fix:** Add test that verifies JSON:API error details are extracted:
+```go
+func TestUsersGet_JSONAPIErrorResponse(t *testing.T) {
+    baseDir, tokenResolver := setupUsersTestSettings(t)
+
+    // This test requires testing the realUsersClient with httptest
+    // or creating an error type that simulates JSON:API errors
+
+    var stdout bytes.Buffer
+    cmd := &UsersGetCmd{
+        UserID:        "user-err",
+        baseDir:       baseDir,
+        tokenResolver: tokenResolver,
+        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+        stdout:        &stdout,
+        clientFactory: func(_ tfcapi.ClientConfig) (usersClient, error) {
+            // Simulate a JSON:API formatted error
+            return &fakeUsersClient{
+                err: errors.New("Invalid user ID: user ID must start with 'user-'"),
+            }, nil
+        },
+    }
+
+    cli := &CLI{OutputFormat: "json"}
+    err := cmd.Run(cli)
+    if err == nil {
+        t.Fatal("expected error")
+    }
+
+    errStr := err.Error()
+    if !strings.Contains(errStr, "Invalid user ID") {
+        t.Errorf("expected detailed error message, got: %s", errStr)
+    }
+}
+```
+
+---
+
+### 64. [ ] Missing test: malformed JSON response from API
+
+**File:** `cmd/tfc/users_test.go`
+
+**Problem:** No test verifies error handling when the API returns invalid JSON that cannot be parsed. Lines 104-107 in `users.go` handle this, but the path is untested.
+
+**Fix:** Since this requires testing the real HTTP client, add an integration-style test using `httptest.Server`:
+```go
+func TestRealUsersClient_MalformedJSON(t *testing.T) {
+    server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        w.WriteHeader(http.StatusOK)
+        w.Write([]byte(`{invalid json`))
+    }))
+    defer server.Close()
+
+    client := &realUsersClient{
+        baseURL:    server.URL,
+        token:      "test-token",
+        httpClient: server.Client(),
+    }
+
+    _, err := client.Read(context.Background(), "user-123")
+    if err == nil {
+        t.Fatal("expected error for malformed JSON")
+    }
+    if !strings.Contains(err.Error(), "failed to parse response") {
+        t.Errorf("expected parse error, got: %v", err)
+    }
+}
+```
+
+---
+
+### 65. [ ] Missing test: output write failure
+
+**File:** `cmd/tfc/users_test.go`
+
+**Problem:** No test verifies error handling when writing to stdout fails. Lines 214-216 and 225-227 in `users.go` handle write errors, but this path is untested.
+
+**Fix:** Add test with a writer that fails:
+```go
+type failingWriter struct {
+    failAfter int
+    written   int
+}
+
+func (w *failingWriter) Write(p []byte) (int, error) {
+    if w.written >= w.failAfter {
+        return 0, errors.New("write failed: disk full")
+    }
+    w.written += len(p)
+    return len(p), nil
+}
+
+func TestUsersGet_OutputWriteError(t *testing.T) {
+    baseDir, tokenResolver := setupUsersTestSettings(t)
+
+    user := &UserResponse{
+        Data: UserData{
+            ID:   "user-123",
+            Type: "users",
+            Attributes: UserAttributes{
+                Username: "testuser",
+            },
+        },
+    }
+
+    cmd := &UsersGetCmd{
+        UserID:        "user-123",
+        baseDir:       baseDir,
+        tokenResolver: tokenResolver,
+        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+        stdout:        &failingWriter{failAfter: 0}, // Fail immediately
+        clientFactory: func(_ tfcapi.ClientConfig) (usersClient, error) {
+            return &fakeUsersClient{user: user}, nil
+        },
+    }
+
+    cli := &CLI{OutputFormat: "json"}
+    err := cmd.Run(cli)
+    if err == nil {
+        t.Fatal("expected error for write failure")
+    }
+    if !strings.Contains(err.Error(), "failed to write output") {
+        t.Errorf("expected write error, got: %v", err)
+    }
+}
+```
+
+---
+
+### 66. [ ] No integration test for `realUsersClient`
+
+**File:** `cmd/tfc/users_test.go`
+
+**Problem:** The `realUsersClient` struct and its HTTP handling logic are never directly tested. All tests inject `fakeUsersClient`. This means HTTP request construction, header setting, status code handling, and response parsing are untested.
+
+**Fix:** Add integration-style tests using `httptest.Server`:
+```go
+func TestRealUsersClient_Success(t *testing.T) {
+    server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        // Verify request
+        if r.Method != "GET" {
+            t.Errorf("expected GET, got %s", r.Method)
+        }
+        if r.URL.Path != "/api/v2/users/user-123" {
+            t.Errorf("expected path /api/v2/users/user-123, got %s", r.URL.Path)
+        }
+        if r.Header.Get("Authorization") != "Bearer test-token" {
+            t.Errorf("expected Bearer token, got %s", r.Header.Get("Authorization"))
+        }
+        if r.Header.Get("Content-Type") != "application/vnd.api+json" {
+            t.Errorf("expected JSON:API content type, got %s", r.Header.Get("Content-Type"))
+        }
+
+        w.WriteHeader(http.StatusOK)
+        json.NewEncoder(w).Encode(UserResponse{
+            Data: UserData{
+                ID:   "user-123",
+                Type: "users",
+                Attributes: UserAttributes{
+                    Username: "testuser",
+                    Email:    "test@example.com",
+                },
+            },
+        })
+    }))
+    defer server.Close()
+
+    client := &realUsersClient{
+        baseURL:    server.URL,
+        token:      "test-token",
+        httpClient: server.Client(),
+    }
+
+    user, err := client.Read(context.Background(), "user-123")
+    if err != nil {
+        t.Fatalf("unexpected error: %v", err)
+    }
+    if user.Data.ID != "user-123" {
+        t.Errorf("expected user-123, got %s", user.Data.ID)
+    }
+}
+
+func TestRealUsersClient_NotFound(t *testing.T) {
+    server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        w.WriteHeader(http.StatusNotFound)
+    }))
+    defer server.Close()
+
+    client := &realUsersClient{
+        baseURL:    server.URL,
+        token:      "test-token",
+        httpClient: server.Client(),
+    }
+
+    _, err := client.Read(context.Background(), "user-404")
+    if err == nil {
+        t.Fatal("expected error for 404")
+    }
+    if !strings.Contains(err.Error(), "not found") {
+        t.Errorf("expected not found error, got: %v", err)
+    }
+}
+
+func TestRealUsersClient_Unauthorized(t *testing.T) {
+    server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        w.WriteHeader(http.StatusUnauthorized)
+    }))
+    defer server.Close()
+
+    client := &realUsersClient{
+        baseURL:    server.URL,
+        token:      "bad-token",
+        httpClient: server.Client(),
+    }
+
+    _, err := client.Read(context.Background(), "user-123")
+    if err == nil {
+        t.Fatal("expected error for 401")
+    }
+    if !strings.Contains(err.Error(), "unauthorized") {
+        t.Errorf("expected unauthorized error, got: %v", err)
+    }
+}
+
+func TestRealUsersClient_JSONAPIError(t *testing.T) {
+    server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        w.WriteHeader(http.StatusBadRequest)
+        w.Write([]byte(`{
+            "errors": [{
+                "status": "400",
+                "title": "Bad Request",
+                "detail": "Invalid user ID format"
+            }]
+        }`))
+    }))
+    defer server.Close()
+
+    client := &realUsersClient{
+        baseURL:    server.URL,
+        token:      "test-token",
+        httpClient: server.Client(),
+    }
+
+    _, err := client.Read(context.Background(), "invalid")
+    if err == nil {
+        t.Fatal("expected error for 400")
+    }
+    if !strings.Contains(err.Error(), "Bad Request") || !strings.Contains(err.Error(), "Invalid user ID format") {
+        t.Errorf("expected JSON:API error details, got: %v", err)
+    }
+}
+```
+
+---
+
+### 67. [ ] Missing test: verify correct user ID passed to Read
+
+**File:** `cmd/tfc/users_test.go`
+
+**Problem:** Tests verify the API methods are called and return expected results, but don't verify the correct user ID is passed. After fixing issue #55 (capture parameters), assertions should be added.
+
+**Fix:** After updating `fakeUsersClient` per issue #55, add assertions to existing tests:
+```go
+// In TestUsersGet_JSON, after running cmd.Run():
+if fakeClient.readUserID != "user-abc123" {
+    t.Errorf("expected user ID user-abc123, got %s", fakeClient.readUserID)
+}
+```
+
+Note: This requires modifying tests to keep a reference to the fakeClient:
+```go
+fakeClient := &fakeUsersClient{user: user}
+cmd := &UsersGetCmd{
+    // ...
+    clientFactory: func(_ tfcapi.ClientConfig) (usersClient, error) {
+        return fakeClient, nil
+    },
+}
+// Run test...
+if fakeClient.readUserID != "user-abc123" {
+    t.Errorf(...)
+}
+```
+
+---
+
+### 68. [ ] `realUsersClient` creates new http.Client for each command invocation
+
+**File:** `cmd/tfc/users.go`
+**Line:** 122
+
+**Problem:** The `defaultUsersClientFactory` creates a new `http.Client{}` for each command invocation. While not a bug for CLI usage, this prevents connection reuse and could impact performance for batch operations or scripts that invoke the command multiple times.
+
+**Current:**
+```go
+return &realUsersClient{
+    baseURL:    baseURL,
+    token:      cfg.Token,
+    httpClient: &http.Client{},
+}, nil
+```
+
+**Note:** This is a minor issue for CLI tools. However, if a timeout is needed, it should be configured:
+```go
+httpClient: &http.Client{
+    Timeout: 30 * time.Second,
+},
+```
+
+---
+
+### 69. [ ] Missing test: userID with special characters
+
+**File:** `cmd/tfc/users_test.go`
+
+**Problem:** Line 62 in `users.go` uses `url.PathEscape(userID)` to escape the user ID in the URL path. However, no test verifies this escaping works correctly for user IDs with special characters that need escaping.
+
+**Fix:** Add test:
+```go
+func TestRealUsersClient_UserIDWithSpecialChars(t *testing.T) {
+    var requestedPath string
+    server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        requestedPath = r.URL.Path
+        w.WriteHeader(http.StatusOK)
+        json.NewEncoder(w).Encode(UserResponse{
+            Data: UserData{ID: "user-123", Type: "users"},
+        })
+    }))
+    defer server.Close()
+
+    client := &realUsersClient{
+        baseURL:    server.URL,
+        token:      "test-token",
+        httpClient: server.Client(),
+    }
+
+    // Test with a user ID that has characters needing escaping
+    _, err := client.Read(context.Background(), "user/with/slashes")
+    if err != nil {
+        t.Fatalf("unexpected error: %v", err)
+    }
+
+    // Verify slashes were escaped
+    if requestedPath != "/api/v2/users/user%2Fwith%2Fslashes" {
+        t.Errorf("expected escaped path, got %s", requestedPath)
+    }
+}
+```
+
+---
+
+# Code Review: Invoices Subcommand
+
+## Files Reviewed
+- `cmd/tfc/invoices.go` - Main implementation (442 lines)
+- `cmd/tfc/invoices_test.go` - Unit tests (662 lines)
+- `cmd/tfc/common.go` - Shared helpers (resolveFormat, resolveClientConfig)
+
+---
+
+## Issues Found
+
+### 70. [ ] Invoices commands don't use `resolveFormat` helper
+
+**File:** `cmd/tfc/invoices.go`
+**Lines:** 316-320, 404-409
+
+**Problem:** Both `InvoicesListCmd` and `InvoicesNextCmd` duplicate TTY detection logic inline instead of using the `resolveFormat` helper from `common.go`. Other commands like `doctor`, `projects`, `workspace-variables`, and `workspace-resources` use this helper consistently.
+
+**Current code (repeated 2 times):**
+```go
+isTTY := false
+if f, ok := c.stdout.(*os.File); ok {
+    isTTY = c.ttyDetector.IsTTY(f)
+}
+format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
+```
+
+**Fix:** Replace with:
+```go
+format, isTTY := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
+```
+
+---
+
+### 71. [ ] `resolveInvoicesClientConfig` duplicates `resolveClientConfig` from common.go
+
+**File:** `cmd/tfc/invoices.go`
+**Lines:** 223-262
+
+**Problem:** The `resolveInvoicesClientConfig` function is nearly identical to `resolveClientConfig` in `common.go`. This duplicates ~40 lines of code and creates maintenance burden.
+
+**Current:** Two separate functions with identical context/settings/token/org resolution logic.
+
+**Fix:** Use `resolveClientConfig` directly:
+```go
+cfg, org, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
+```
+
+Then delete `resolveInvoicesClientConfig` entirely.
+
+---
+
+### 72. [ ] `realInvoicesClient.List` pagination loop lacks infinite loop protection
+
+**File:** `cmd/tfc/invoices.go`
+**Lines:** 82-123
+
+**Problem:** The pagination loop in `List` continues while `listResp.Meta.Continuation` is non-empty. If the API incorrectly returns the same continuation token repeatedly (due to a bug or network issue), this creates an infinite loop. There's no maximum iteration count or duplicate token detection.
+
+**Current:**
+```go
+for {
+    // ... make request ...
+    if listResp.Meta == nil || listResp.Meta.Continuation == "" {
+        break
+    }
+    continuation = listResp.Meta.Continuation
+}
+```
+
+**Fix:** Add safeguards:
+```go
+const maxPages = 100 // Reasonable limit
+seen := make(map[string]bool)
+for page := 0; page < maxPages; page++ {
+    // ... make request ...
+    if listResp.Meta == nil || listResp.Meta.Continuation == "" {
+        break
+    }
+    if seen[listResp.Meta.Continuation] {
+        // Duplicate token - API bug, break to avoid infinite loop
+        break
+    }
+    seen[listResp.Meta.Continuation] = true
+    continuation = listResp.Meta.Continuation
+}
+```
+
+---
+
+### 73. [ ] `realInvoicesClient` missing HTTP timeout
+
+**File:** `cmd/tfc/invoices.go`
+**Line:** 219
+
+**Problem:** The `defaultInvoicesClientFactory` creates an `http.Client{}` with no timeout configured. This means requests could hang indefinitely if the server doesn't respond.
+
+**Current:**
+```go
+return &realInvoicesClient{
+    baseURL:    baseURL,
+    token:      cfg.Token,
+    httpClient: &http.Client{},
+}, nil
+```
+
+**Fix:** Add a reasonable timeout:
+```go
+return &realInvoicesClient{
+    baseURL:    baseURL,
+    token:      cfg.Token,
+    httpClient: &http.Client{
+        Timeout: 30 * time.Second,
+    },
+}, nil
+```
+
+---
+
+### 74. [ ] `handleErrorResponse` uses fragile string matching for "invoices not available"
+
+**File:** `cmd/tfc/invoices.go`
+**Lines:** 168-175
+
+**Problem:** The code checks for "invoices not available" by doing string matching on the response body (`strings.Contains(string(body), "invoices")`). This is fragile - any response containing the word "invoices" could be misclassified. The error detection should be more precise.
+
+**Current:**
+```go
+if statusCode == http.StatusNotFound {
+    if strings.Contains(string(body), "invoices") ||
+        strings.Contains(string(body), "not found") ||
+        strings.Contains(string(body), "Not Found") {
+        return &invoicesNotAvailableError{}
+    }
+    return fmt.Errorf("resource not found")
+}
+```
+
+**Fix:** Parse the JSON:API error structure first, then check for specific error codes/titles:
+```go
+if statusCode == http.StatusNotFound {
+    var errResp struct {
+        Errors []struct {
+            Status string `json:"status"`
+            Title  string `json:"title"`
+            Detail string `json:"detail"`
+        } `json:"errors"`
+    }
+    if err := json.Unmarshal(body, &errResp); err == nil && len(errResp.Errors) > 0 {
+        // Check for specific API error indicating invoices not available
+        for _, e := range errResp.Errors {
+            if strings.Contains(strings.ToLower(e.Title), "not found") ||
+               strings.Contains(strings.ToLower(e.Detail), "invoices") {
+                return &invoicesNotAvailableError{}
+            }
+        }
+        return fmt.Errorf("%s: %s", errResp.Errors[0].Title, errResp.Errors[0].Detail)
+    }
+    return fmt.Errorf("resource not found")
+}
+```
+
+---
+
+### 75. [ ] `InvoicesList` table output doesn't include ExternalLink
+
+**File:** `cmd/tfc/invoices.go`
+**Lines:** 329-344
+
+**Problem:** The `InvoicesListCmd` table output doesn't include the `ExternalLink` field, but the JSON output does. The `InvoicesNextCmd` table output (lines 432-434) conditionally shows ExternalLink. This creates inconsistency between commands and formats.
+
+**Current table columns:**
+```go
+tw := output.NewTableWriter(c.stdout, []string{"ID", "STATUS", "NUMBER", "TOTAL", "PAID", "CREATED"}, isTTY)
+```
+
+**Fix:** Add ExternalLink column to list table output:
+```go
+tw := output.NewTableWriter(c.stdout, []string{"ID", "STATUS", "NUMBER", "TOTAL", "PAID", "CREATED", "EXTERNAL LINK"}, isTTY)
+for _, inv := range invoices.Data {
+    // ... existing code ...
+    externalLink := inv.Attributes.ExternalLink
+    if externalLink == "" {
+        externalLink = "-"
+    }
+    tw.AddRow(
+        inv.ID,
+        inv.Attributes.Status,
+        inv.Attributes.Number,
+        totalDollars,
+        paid,
+        inv.Attributes.CreatedAt.Format("2006-01-02"),
+        externalLink,
+    )
+}
+```
+
+---
+
+### 76. [ ] `fakeInvoicesClient` doesn't capture parameters for verification
+
+**File:** `cmd/tfc/invoices_test.go`
+**Lines:** 19-37
+
+**Problem:** The fake client ignores the `org` parameter in both `List` and `GetNext`, making it impossible to verify that commands pass the correct organization to the API.
+
+**Current:**
+```go
+func (c *fakeInvoicesClient) List(_ context.Context, _ string) (*InvoicesListResponse, error) {
+    if c.err != nil {
+        return nil, c.err
+    }
+    return c.listResponse, nil
+}
+```
+
+**Fix:** Add fields to capture parameters:
+```go
+type fakeInvoicesClient struct {
+    listResponse *InvoicesListResponse
+    nextResponse *InvoiceResponse
+    err          error
+
+    // Captured parameters for verification
+    listOrg    string
+    getNextOrg string
+}
+
+func (c *fakeInvoicesClient) List(_ context.Context, org string) (*InvoicesListResponse, error) {
+    c.listOrg = org
+    if c.err != nil {
+        return nil, c.err
+    }
+    return c.listResponse, nil
+}
+
+func (c *fakeInvoicesClient) GetNext(_ context.Context, org string) (*InvoiceResponse, error) {
+    c.getNextOrg = org
+    if c.err != nil {
+        return nil, c.err
+    }
+    return c.nextResponse, nil
+}
+```
+
+---
+
+### 77. [ ] `TestInvoicesList_UsesOrgFlag` doesn't actually verify captured org
+
+**File:** `cmd/tfc/invoices_test.go`
+**Lines:** 262-297
+
+**Problem:** The test creates an `orgCapturingInvoicesClient` and captures the org, but never asserts that the captured value equals "custom-org". The comment on line 295-296 acknowledges this: "we'd need to verify via the client call".
+
+**Current:**
+```go
+cli := &CLI{Org: "custom-org", OutputFormat: "json"}
+err := cmd.Run(cli)
+if err != nil {
+    t.Fatalf("unexpected error: %v", err)
+}
+// The org is used in the command, but we'd need to verify via the client call
+// For this test, we just verify it doesn't error
+```
+
+**Fix:** Add assertion:
+```go
+cli := &CLI{Org: "custom-org", OutputFormat: "json"}
+err := cmd.Run(cli)
+if err != nil {
+    t.Fatalf("unexpected error: %v", err)
+}
+
+if capturedOrg != "custom-org" {
+    t.Errorf("expected org 'custom-org', got %q", capturedOrg)
+}
+```
+
+---
+
+### 78. [ ] Missing test: client factory returns error
+
+**File:** `cmd/tfc/invoices_test.go`
+
+**Problem:** No test verifies error handling when `clientFactory` returns an error.
+
+**Fix:** Add test:
+```go
+func TestInvoicesList_ClientFactoryError(t *testing.T) {
+    baseDir, tokenResolver := setupInvoicesTestSettings(t)
+
+    var stdout bytes.Buffer
+    cmd := &InvoicesListCmd{
+        baseDir:       baseDir,
+        tokenResolver: tokenResolver,
+        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+        stdout:        &stdout,
+        clientFactory: func(_ tfcapi.ClientConfig) (invoicesClient, error) {
+            return nil, errors.New("failed to create TFC client")
+        },
+    }
+
+    cli := &CLI{OutputFormat: "json"}
+    err := cmd.Run(cli)
+    if err == nil {
+        t.Fatal("expected error for client factory failure")
+    }
+    if !strings.Contains(err.Error(), "failed to create client") {
+        t.Errorf("expected client error message, got: %v", err)
+    }
+}
+```
+
+---
+
+### 79. [ ] Missing test: invalid context specified via --context flag
+
+**File:** `cmd/tfc/invoices_test.go`
+
+**Problem:** `TestInvoicesList_FailsWhenSettingsMissing` tests missing settings file, but no test for when `--context` flag specifies a non-existent context.
+
+**Fix:** Add test:
+```go
+func TestInvoicesList_InvalidContext(t *testing.T) {
+    baseDir, tokenResolver := setupInvoicesTestSettings(t)
+
+    var stdout bytes.Buffer
+    cmd := &InvoicesListCmd{
+        baseDir:       baseDir,
+        tokenResolver: tokenResolver,
+        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+        stdout:        &stdout,
+        clientFactory: func(_ tfcapi.ClientConfig) (invoicesClient, error) {
+            return &fakeInvoicesClient{}, nil
+        },
+    }
+
+    cli := &CLI{Context: "nonexistent", OutputFormat: "json"}
+    err := cmd.Run(cli)
+    if err == nil {
+        t.Fatal("expected error for invalid context")
+    }
+    if !strings.Contains(err.Error(), "not found") {
+        t.Errorf("expected context not found error, got: %v", err)
+    }
+}
+```
+
+---
+
+### 80. [ ] Missing test: pagination with continuation token
+
+**File:** `cmd/tfc/invoices_test.go`
+
+**Problem:** No test verifies that the pagination loop in `List` correctly handles continuation tokens. The implementation has a pagination loop (lines 82-123 in invoices.go), but there's no test that exercises multiple pages.
+
+**Fix:** Add integration test using `httptest.Server`:
+```go
+func TestRealInvoicesClient_Pagination(t *testing.T) {
+    page := 0
+    server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        page++
+        var resp InvoicesListResponse
+        if page == 1 {
+            resp = InvoicesListResponse{
+                Data: []InvoiceData{{ID: "inv-1", Type: "billing-invoices"}},
+                Meta: &InvoiceListMeta{Continuation: "cursor-page2"},
+            }
+        } else {
+            resp = InvoicesListResponse{
+                Data: []InvoiceData{{ID: "inv-2", Type: "billing-invoices"}},
+                Meta: nil, // No more pages
+            }
+        }
+        json.NewEncoder(w).Encode(resp)
+    }))
+    defer server.Close()
+
+    client := &realInvoicesClient{
+        baseURL:    server.URL,
+        token:      "test-token",
+        httpClient: server.Client(),
+    }
+
+    result, err := client.List(context.Background(), "test-org")
+    if err != nil {
+        t.Fatalf("unexpected error: %v", err)
+    }
+
+    if len(result.Data) != 2 {
+        t.Errorf("expected 2 invoices from 2 pages, got %d", len(result.Data))
+    }
+    if page != 2 {
+        t.Errorf("expected 2 page requests, got %d", page)
+    }
+}
+```
+
+---
+
+### 81. [ ] Missing test: `handleErrorResponse` JSON:API error parsing
+
+**File:** `cmd/tfc/invoices_test.go`
+
+**Problem:** Lines 187-197 in `invoices.go` attempt to parse JSON:API error responses, but there's no test verifying this code path works correctly.
+
+**Fix:** Add integration test:
+```go
+func TestRealInvoicesClient_JSONAPIError(t *testing.T) {
+    server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        w.WriteHeader(http.StatusBadRequest)
+        w.Write([]byte(`{
+            "errors": [{
+                "status": "400",
+                "title": "Bad Request",
+                "detail": "Invalid organization name"
+            }]
+        }`))
+    }))
+    defer server.Close()
+
+    client := &realInvoicesClient{
+        baseURL:    server.URL,
+        token:      "test-token",
+        httpClient: server.Client(),
+    }
+
+    _, err := client.List(context.Background(), "invalid-org")
+    if err == nil {
+        t.Fatal("expected error for 400")
+    }
+    if !strings.Contains(err.Error(), "Bad Request") || !strings.Contains(err.Error(), "Invalid organization name") {
+        t.Errorf("expected JSON:API error details, got: %v", err)
+    }
+}
+```
+
+---
+
+### 82. [ ] Missing test: verify correct org passed to API
+
+**File:** `cmd/tfc/invoices_test.go`
+
+**Problem:** Tests verify API methods are called and return expected results, but don't verify the correct organization is passed. After fixing issue #76, assertions should be added.
+
+**Fix:** After updating `fakeInvoicesClient`, add assertions to tests:
+```go
+// In TestInvoicesList_JSON, after running cmd.Run():
+fakeClient := &fakeInvoicesClient{listResponse: listResp}
+cmd := &InvoicesListCmd{
+    // ...
+    clientFactory: func(_ tfcapi.ClientConfig) (invoicesClient, error) {
+        return fakeClient, nil
+    },
+}
+// Run test...
+if fakeClient.listOrg != "test-org" {
+    t.Errorf("expected org 'test-org', got %s", fakeClient.listOrg)
+}
+```
+
+---
+
+### 83. [ ] Missing test: output write failure
+
+**File:** `cmd/tfc/invoices_test.go`
+
+**Problem:** No test verifies error handling when writing to stdout fails. Lines 324-326 and 345-347 in `invoices.go` handle write errors, but this path is untested.
+
+**Fix:** Add test with a writer that fails:
+```go
+type failingWriter struct{}
+
+func (w *failingWriter) Write(p []byte) (int, error) {
+    return 0, errors.New("write failed: disk full")
+}
+
+func TestInvoicesList_OutputWriteError(t *testing.T) {
+    baseDir, tokenResolver := setupInvoicesTestSettings(t)
+
+    listResp := &InvoicesListResponse{
+        Data: []InvoiceData{{ID: "inv-1", Type: "billing-invoices"}},
+    }
+
+    cmd := &InvoicesListCmd{
+        baseDir:       baseDir,
+        tokenResolver: tokenResolver,
+        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+        stdout:        &failingWriter{},
+        clientFactory: func(_ tfcapi.ClientConfig) (invoicesClient, error) {
+            return &fakeInvoicesClient{listResponse: listResp}, nil
+        },
+    }
+
+    cli := &CLI{OutputFormat: "json"}
+    err := cmd.Run(cli)
+    if err == nil {
+        t.Fatal("expected error for write failure")
+    }
+    if !strings.Contains(err.Error(), "failed to write output") {
+        t.Errorf("expected write error, got: %v", err)
+    }
+}
+```
+
+---
+
+### 84. [ ] No integration test for `realInvoicesClient`
+
+**File:** `cmd/tfc/invoices_test.go`
+
+**Problem:** The `realInvoicesClient` struct and its HTTP handling logic are never directly tested. All tests inject `fakeInvoicesClient`. This means HTTP request construction, header setting, status code handling, and response parsing are untested.
+
+**Fix:** Add integration-style tests using `httptest.Server`:
+```go
+func TestRealInvoicesClient_List_Success(t *testing.T) {
+    server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        // Verify request
+        if r.Method != "GET" {
+            t.Errorf("expected GET, got %s", r.Method)
+        }
+        if r.URL.Path != "/api/v2/organizations/test-org/invoices" {
+            t.Errorf("expected path /api/v2/organizations/test-org/invoices, got %s", r.URL.Path)
+        }
+        if r.Header.Get("Authorization") != "Bearer test-token" {
+            t.Errorf("expected Bearer token, got %s", r.Header.Get("Authorization"))
+        }
+        if r.Header.Get("Content-Type") != "application/vnd.api+json" {
+            t.Errorf("expected JSON:API content type, got %s", r.Header.Get("Content-Type"))
+        }
+
+        w.WriteHeader(http.StatusOK)
+        json.NewEncoder(w).Encode(InvoicesListResponse{
+            Data: []InvoiceData{
+                {ID: "inv-123", Type: "billing-invoices"},
+            },
+        })
+    }))
+    defer server.Close()
+
+    client := &realInvoicesClient{
+        baseURL:    server.URL,
+        token:      "test-token",
+        httpClient: server.Client(),
+    }
+
+    result, err := client.List(context.Background(), "test-org")
+    if err != nil {
+        t.Fatalf("unexpected error: %v", err)
+    }
+    if len(result.Data) != 1 {
+        t.Errorf("expected 1 invoice, got %d", len(result.Data))
+    }
+    if result.Data[0].ID != "inv-123" {
+        t.Errorf("expected inv-123, got %s", result.Data[0].ID)
+    }
+}
+
+func TestRealInvoicesClient_GetNext_Success(t *testing.T) {
+    server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        if r.URL.Path != "/api/v2/organizations/test-org/invoices/next" {
+            t.Errorf("expected path /api/v2/organizations/test-org/invoices/next, got %s", r.URL.Path)
+        }
+
+        w.WriteHeader(http.StatusOK)
+        json.NewEncoder(w).Encode(InvoiceResponse{
+            Data: InvoiceData{ID: "inv-next", Type: "billing-invoices"},
+        })
+    }))
+    defer server.Close()
+
+    client := &realInvoicesClient{
+        baseURL:    server.URL,
+        token:      "test-token",
+        httpClient: server.Client(),
+    }
+
+    result, err := client.GetNext(context.Background(), "test-org")
+    if err != nil {
+        t.Fatalf("unexpected error: %v", err)
+    }
+    if result.Data.ID != "inv-next" {
+        t.Errorf("expected inv-next, got %s", result.Data.ID)
+    }
+}
+
+func TestRealInvoicesClient_Unauthorized(t *testing.T) {
+    server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        w.WriteHeader(http.StatusUnauthorized)
+    }))
+    defer server.Close()
+
+    client := &realInvoicesClient{
+        baseURL:    server.URL,
+        token:      "bad-token",
+        httpClient: server.Client(),
+    }
+
+    _, err := client.List(context.Background(), "test-org")
+    if err == nil {
+        t.Fatal("expected error for 401")
+    }
+    if !strings.Contains(err.Error(), "unauthorized") {
+        t.Errorf("expected unauthorized error, got: %v", err)
+    }
+}
+
+func TestRealInvoicesClient_Forbidden(t *testing.T) {
+    server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        w.WriteHeader(http.StatusForbidden)
+    }))
+    defer server.Close()
+
+    client := &realInvoicesClient{
+        baseURL:    server.URL,
+        token:      "test-token",
+        httpClient: server.Client(),
+    }
+
+    _, err := client.List(context.Background(), "test-org")
+    if err == nil {
+        t.Fatal("expected error for 403")
+    }
+    if _, ok := err.(*invoicesNotAvailableError); !ok {
+        t.Errorf("expected invoicesNotAvailableError, got: %T", err)
+    }
+}
+```
+
+---
+
+### 85. [ ] Missing test: org with special characters
+
+**File:** `cmd/tfc/invoices_test.go`
+
+**Problem:** Lines 83 and 129 in `invoices.go` use `url.PathEscape(org)` to escape the organization name in the URL path. However, no test verifies this escaping works correctly for organization names with special characters.
+
+**Fix:** Add test:
+```go
+func TestRealInvoicesClient_OrgWithSpecialChars(t *testing.T) {
+    var requestedPath string
+    server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        requestedPath = r.URL.Path
+        w.WriteHeader(http.StatusOK)
+        json.NewEncoder(w).Encode(InvoicesListResponse{Data: []InvoiceData{}})
+    }))
+    defer server.Close()
+
+    client := &realInvoicesClient{
+        baseURL:    server.URL,
+        token:      "test-token",
+        httpClient: server.Client(),
+    }
+
+    // Test with an org name that has characters needing escaping
+    _, err := client.List(context.Background(), "org/with/slashes")
+    if err != nil {
+        t.Fatalf("unexpected error: %v", err)
+    }
+
+    // Verify slashes were escaped
+    if requestedPath != "/api/v2/organizations/org%2Fwith%2Fslashes/invoices" {
+        t.Errorf("expected escaped path, got %s", requestedPath)
+    }
+}
+```
+
+---
+
+### 86. [ ] Missing test: malformed JSON response
+
+**File:** `cmd/tfc/invoices_test.go`
+
+**Problem:** No test verifies error handling when the API returns invalid JSON that cannot be parsed. Lines 112-114 and 155-157 in `invoices.go` handle this, but the path is untested.
+
+**Fix:** Add test:
+```go
+func TestRealInvoicesClient_MalformedJSON(t *testing.T) {
+    server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        w.WriteHeader(http.StatusOK)
+        w.Write([]byte(`{invalid json`))
+    }))
+    defer server.Close()
+
+    client := &realInvoicesClient{
+        baseURL:    server.URL,
+        token:      "test-token",
+        httpClient: server.Client(),
+    }
+
+    _, err := client.List(context.Background(), "test-org")
+    if err == nil {
+        t.Fatal("expected error for malformed JSON")
+    }
+    if !strings.Contains(err.Error(), "failed to parse response") {
+        t.Errorf("expected parse error, got: %v", err)
+    }
+}
+```
+
+---
+
+### 87. [ ] Missing test: empty table output
+
+**File:** `cmd/tfc/invoices_test.go`
+
+**Problem:** `TestInvoicesList_EmptyList` only tests JSON output for empty list. No test verifies table output renders correctly with zero invoices.
+
+**Fix:** Add test:
+```go
+func TestInvoicesList_EmptyList_Table(t *testing.T) {
+    baseDir, tokenResolver := setupInvoicesTestSettings(t)
+
+    listResp := &InvoicesListResponse{Data: []InvoiceData{}}
+
+    var stdout bytes.Buffer
+    cmd := &InvoicesListCmd{
+        baseDir:       baseDir,
+        tokenResolver: tokenResolver,
+        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: true},
+        stdout:        &stdout,
+        clientFactory: func(_ tfcapi.ClientConfig) (invoicesClient, error) {
+            return &fakeInvoicesClient{listResponse: listResp}, nil
+        },
+    }
+
+    cli := &CLI{OutputFormat: "table"}
+    err := cmd.Run(cli)
+    if err != nil {
+        t.Fatalf("unexpected error: %v", err)
+    }
+
+    out := stdout.String()
+    // Should still have headers
+    if !strings.Contains(out, "ID") || !strings.Contains(out, "STATUS") {
+        t.Errorf("expected table headers even for empty list, got: %s", out)
+    }
+}
+```
+
+---
+
+### 88. [ ] Missing test: InvoicesNext table output without ExternalLink
+
+**File:** `cmd/tfc/invoices_test.go`
+
+**Problem:** `TestInvoicesNext_Table` tests with ExternalLink populated. No test verifies table output when ExternalLink is empty (lines 432-434 in invoices.go have conditional logic).
+
+**Fix:** Add test:
+```go
+func TestInvoicesNext_Table_NoExternalLink(t *testing.T) {
+    baseDir, tokenResolver := setupInvoicesTestSettings(t)
+
+    nextResp := &InvoiceResponse{
+        Data: InvoiceData{
+            ID:   "inv-next123",
+            Type: "billing-invoices",
+            Attributes: InvoiceAttributes{
+                CreatedAt:    time.Now(),
+                Number:       "INV-001",
+                Status:       "draft",
+                Total:        5000,
+                ExternalLink: "", // Empty
+            },
+        },
+    }
+
+    var stdout bytes.Buffer
+    cmd := &InvoicesNextCmd{
+        baseDir:       baseDir,
+        tokenResolver: tokenResolver,
+        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: true},
+        stdout:        &stdout,
+        clientFactory: func(_ tfcapi.ClientConfig) (invoicesClient, error) {
+            return &fakeInvoicesClient{nextResponse: nextResp}, nil
+        },
+    }
+
+    cli := &CLI{OutputFormat: "table"}
+    err := cmd.Run(cli)
+    if err != nil {
+        t.Fatalf("unexpected error: %v", err)
+    }
+
+    out := stdout.String()
+    // External Link row should not appear when empty
+    if strings.Contains(out, "External Link") {
+        t.Errorf("expected no External Link field when empty, got: %s", out)
+    }
+}
+```
+
+---
+
+### 89. [ ] Missing test: InvoicesNext API error
+
+**File:** `cmd/tfc/invoices_test.go`
+
+**Problem:** `TestInvoicesList_APIError` tests API error for List, but there's no equivalent for `InvoicesNextCmd`.
+
+**Fix:** Add test:
+```go
+func TestInvoicesNext_APIError(t *testing.T) {
+    baseDir, tokenResolver := setupInvoicesTestSettings(t)
+
+    var stdout bytes.Buffer
+    cmd := &InvoicesNextCmd{
+        baseDir:       baseDir,
+        tokenResolver: tokenResolver,
+        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+        stdout:        &stdout,
+        clientFactory: func(_ tfcapi.ClientConfig) (invoicesClient, error) {
+            return &fakeInvoicesClient{
+                err: errors.New("Internal Server Error"),
+            }, nil
+        },
+    }
+
+    cli := &CLI{OutputFormat: "json"}
+    err := cmd.Run(cli)
+    if err == nil {
+        t.Fatal("expected error for API failure, got nil")
+    }
+
+    errStr := err.Error()
+    if !strings.Contains(errStr, "Internal Server Error") {
+        t.Errorf("expected 'Internal Server Error' in error, got: %s", errStr)
+    }
+}
+```
+
+---
+
+### 90. [ ] `invoicesAPIError` test type doesn't match real error flow
+
+**File:** `cmd/tfc/invoices_test.go`
+**Lines:** 654-661
+
+**Problem:** The `invoicesAPIError` type is defined for testing, but the error handling in `InvoicesListCmd.Run` (lines 303-313) specifically checks for `*invoicesNotAvailableError`, then uses `tfcapi.ParseAPIError`. The `invoicesAPIError` type doesn't interact with `tfcapi.ParseAPIError`, so the test at line 509-535 may not accurately simulate real error scenarios.
+
+**Current:**
+```go
+type invoicesAPIError struct {
+    message string
+}
+
+func (e *invoicesAPIError) Error() string {
+    return e.message
+}
+```
+
+**Fix:** Either remove the custom `invoicesAPIError` type and use `errors.New()` directly (which is what most error tests do), or ensure the test error type matches what the production code expects. For consistency with other test files:
+```go
+func TestInvoicesList_APIError(t *testing.T) {
+    // ...
+    clientFactory: func(_ tfcapi.ClientConfig) (invoicesClient, error) {
+        return &fakeInvoicesClient{
+            err: errors.New("Internal Server Error"),
+        }, nil
+    },
+    // ...
+}
+```
+
+Then delete the `invoicesAPIError` struct entirely.
+
+---
+
+### 91. [ ] `handleErrorResponse` doesn't include response body in generic error
+
+**File:** `cmd/tfc/invoices.go`
+**Line:** 199
+
+**Problem:** When the HTTP status code is not one of the specifically handled codes (200, 401, 403, 404), and the JSON:API error parsing fails, the function returns a generic error with just the status code. The response body (which might contain useful debugging info) is discarded.
+
+**Current:**
+```go
+return fmt.Errorf("API request failed with status %d", statusCode)
+```
+
+**Fix:** Include truncated body in error for debugging:
+```go
+bodyPreview := string(body)
+if len(bodyPreview) > 200 {
+    bodyPreview = bodyPreview[:200] + "..."
+}
+if len(bodyPreview) > 0 {
+    return fmt.Errorf("API request failed with status %d: %s", statusCode, bodyPreview)
+}
+return fmt.Errorf("API request failed with status %d", statusCode)
+```
+
+---
+
+### 92. [ ] Missing test: context cancellation during API call
+
+**File:** `cmd/tfc/invoices_test.go`
+
+**Problem:** No test verifies that the API calls correctly handle context cancellation. Lines 88 and 131 in `invoices.go` create requests with context, but cancellation isn't tested.
+
+**Fix:** Add test:
+```go
+func TestRealInvoicesClient_ContextCancellation(t *testing.T) {
+    server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        // Simulate slow response
+        time.Sleep(100 * time.Millisecond)
+        w.WriteHeader(http.StatusOK)
+        json.NewEncoder(w).Encode(InvoicesListResponse{})
+    }))
+    defer server.Close()
+
+    client := &realInvoicesClient{
+        baseURL:    server.URL,
+        token:      "test-token",
+        httpClient: server.Client(),
+    }
+
+    ctx, cancel := context.WithCancel(context.Background())
+    cancel() // Cancel immediately
+
+    _, err := client.List(ctx, "test-org")
+    if err == nil {
+        t.Fatal("expected error for cancelled context")
+    }
+    if !strings.Contains(err.Error(), "context canceled") && !strings.Contains(err.Error(), "request") {
+        t.Errorf("expected context/request error, got: %v", err)
+    }
+}
+```
