@@ -1173,11 +1173,31 @@ if fakeClient.readPlanID != "plan-123" {
 
 ---
 
-### 23. [ ] Missing test: client factory returns error
+### 23. [x] Missing test: client factory returns error
+
+**Status:** DONE
 
 **File:** `cmd/tfc/plans_test.go`
 
 **Problem:** No test verifies error handling when `clientFactory` returns an error for any of the three commands (`PlansGetCmd`, `PlansJSONOutputCmd`, `PlansSanitizedPlanCmd`).
+
+#### Plan
+- **Acceptance criteria:** A test `TestPlansGet_ClientFactoryError` exists that verifies the command returns an error when the client factory fails.
+- **Verification:** `make fmt && make lint && make build && make test` all pass; new test passes.
+- **Implementation steps:**
+  1. Add `TestPlansGet_ClientFactoryError` test function after `TestPlansGet_NotFound`
+  2. Test uses clientFactory that returns an error
+  3. Verify error is propagated correctly to caller
+  4. Run feedback loops to verify
+
+#### Progress Notes
+
+**2026-01-22:** Completed.
+- Changed: `cmd/tfc/plans_test.go` - added `TestPlansGet_ClientFactoryError` test function after `TestPlansGet_NotFound`
+- Test uses clientFactory that returns `errors.New("failed to create TFC client")`
+- Verifies error is returned and contains "failed to create client" message
+- Commands: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Result: Client factory error handling branch in `PlansGetCmd.Run` is now tested
 
 **Fix:** Add test:
 ```go

@@ -310,6 +310,31 @@ func TestPlansGet_NotFound(t *testing.T) {
 	}
 }
 
+func TestPlansGet_ClientFactoryError(t *testing.T) {
+	tmpDir, resolver := setupPlansTest(t)
+
+	var stdout bytes.Buffer
+	cmd := &PlansGetCmd{
+		ID:            "plan-123",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &stdout,
+		clientFactory: func(_ tfcapi.ClientConfig) (plansClient, error) {
+			return nil, errors.New("failed to create TFC client")
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error for client factory failure")
+	}
+	if !strings.Contains(err.Error(), "failed to create client") {
+		t.Errorf("expected client error message, got: %v", err)
+	}
+}
+
 func TestPlansJSONOutput_WritesToStdout(t *testing.T) {
 	tmpDir, resolver := setupPlansTest(t)
 
