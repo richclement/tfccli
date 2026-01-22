@@ -679,6 +679,45 @@ func TestContextsAddCmd_SaveError(t *testing.T) {
 	}
 }
 
+// TestContextsRemoveCmd_SaveError tests that save errors are properly surfaced.
+func TestContextsRemoveCmd_SaveError(t *testing.T) {
+	tmpHome := t.TempDir()
+
+	settings := &config.Settings{
+		CurrentContext: "default",
+		Contexts: map[string]config.Context{
+			"default": {Address: "app.terraform.io", LogLevel: "info"},
+			"prod":    {Address: "tfe.example.com", LogLevel: "warn"},
+		},
+	}
+	createTestSettings(t, tmpHome, settings)
+
+	// Make the settings file read-only to prevent writing
+	settingsPath := filepath.Join(tmpHome, ".tfccli", "settings.json")
+	if err := os.Chmod(settingsPath, 0o400); err != nil {
+		t.Fatalf("Failed to chmod settings file: %v", err)
+	}
+	t.Cleanup(func() {
+		os.Chmod(settingsPath, 0o600) // Restore so cleanup can delete
+	})
+
+	forceVal := true
+	cmd := &ContextsRemoveCmd{
+		Name:      "prod",
+		baseDir:   tmpHome,
+		forceFlag: &forceVal,
+	}
+	cli := &CLI{}
+
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error when save fails, got nil")
+	}
+	if !strings.Contains(err.Error(), "failed to save settings") {
+		t.Errorf("expected save failure message, got: %v", err)
+	}
+}
+
 // TestContextsListCmd_JSONOutput tests JSON output format for list command.
 func TestContextsListCmd_JSONOutput(t *testing.T) {
 	tmpHome := t.TempDir()

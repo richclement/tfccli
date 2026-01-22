@@ -714,9 +714,50 @@ func (c *ContextsUseCmd) Run(cli *CLI) error {
 
 ### 20. Missing Test: ContextsRemoveCmd config.Save Failure
 
+**Status:** DONE
+
 **File:** `cmd/tfc/contexts_test.go`
 
 **Problem:** No test verifies error handling when `config.Save()` fails for the remove command.
+
+#### Plan (2026-01-21)
+
+**Acceptance criteria:**
+- Test exists that triggers `config.Save()` failure in `ContextsRemoveCmd.Run()`
+- Test verifies error message contains "failed to save settings"
+- Test uses same pattern as `TestContextsUseCmd_SaveError` for consistency
+
+**Verification approach:**
+- `make test` passes
+- New test specifically tests the save failure code path (main.go:585-587)
+
+**Implementation steps:**
+1. Add `TestContextsRemoveCmd_SaveError` test following pattern from `TestContextsUseCmd_SaveError`
+2. Create settings with two contexts (default and prod)
+3. Make settings file read-only to cause save failure
+4. Attempt to remove non-current context with --force
+5. Verify error contains "failed to save settings"
+6. Run feedback loops
+
+#### Progress Note (2026-01-21)
+
+**Files changed:**
+- `cmd/tfc/contexts_test.go`: Added `TestContextsRemoveCmd_SaveError` test (lines 682-714)
+  - Creates test settings with "default" and "prod" contexts
+  - Makes settings file read-only (0o400) to trigger save failure
+  - Uses `forceFlag: &forceVal` to bypass confirmation prompt
+  - Verifies error contains "failed to save settings"
+
+**Commands run:**
+- `make fmt` - passed
+- `make lint` - passed
+- `make build` - passed
+- `make test` - passed (all tests green)
+- `go test -v -run TestContextsRemoveCmd_SaveError ./cmd/tfc/...` - passed
+
+**What remains:**
+- Task #20 is complete
+- Test coverage now includes save failure path for ContextsRemoveCmd
 
 **Test to add:**
 ```go
