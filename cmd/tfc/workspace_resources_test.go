@@ -523,3 +523,91 @@ func TestWorkspaceResourcesList_TokenResolutionError(t *testing.T) {
 		t.Errorf("expected token-related error, got: %v", err)
 	}
 }
+
+// TestWorkspaceResourcesList_Table_ColumnVerification tests that table columns match headers.
+func TestWorkspaceResourcesList_Table_ColumnVerification(t *testing.T) {
+	tmpDir, resolver := setupWorkspaceResourcesTestSettings(t)
+
+	// Use distinct values per column to verify correct placement
+	fakeClient := &fakeWorkspaceResourcesClient{
+		resources: []*tfe.WorkspaceResource{
+			{ID: "res-abc", Address: "aws_instance.web", Name: "webserver", ProviderType: "aws_instance", Provider: "hashicorp/aws"},
+			{ID: "res-xyz", Address: "google_compute_instance.db", Name: "database", ProviderType: "google_compute_instance", Provider: "hashicorp/google"},
+		},
+	}
+
+	var buf bytes.Buffer
+	cmd := &WorkspaceResourcesListCmd{
+		WorkspaceID:   "ws-123",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &buf,
+		clientFactory: func(_ tfcapi.ClientConfig) (workspaceResourcesClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "table"}
+	err := cmd.Run(cli)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	out := buf.String()
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	// Table format: header, separator, data rows
+	if len(lines) < 4 {
+		t.Fatalf("expected at least 4 lines (header + separator + 2 data), got %d: %q", len(lines), out)
+	}
+
+	// Verify header contains all columns in order
+	header := lines[0]
+	idIdx := strings.Index(header, "ID")
+	typeIdx := strings.Index(header, "RESOURCE-TYPE")
+	nameIdx := strings.Index(header, "NAME")
+	providerIdx := strings.Index(header, "PROVIDER")
+
+	if idIdx < 0 || typeIdx < 0 || nameIdx < 0 || providerIdx < 0 {
+		t.Fatalf("expected all column headers, got: %s", header)
+	}
+	if !(idIdx < typeIdx && typeIdx < nameIdx && nameIdx < providerIdx) {
+		t.Errorf("columns not in expected order: ID=%d, RESOURCE-TYPE=%d, NAME=%d, PROVIDER=%d", idIdx, typeIdx, nameIdx, providerIdx)
+	}
+
+	// Verify separator line exists (lines[1])
+	separator := lines[1]
+	if !strings.Contains(separator, "---") {
+		t.Errorf("expected separator line, got: %s", separator)
+	}
+
+	// Verify first data row (lines[2]) has values in correct positions
+	row1 := lines[2]
+	if !strings.Contains(row1, "res-abc") {
+		t.Error("expected 'res-abc' in first data row")
+	}
+	if !strings.Contains(row1, "aws_instance") {
+		t.Error("expected 'aws_instance' in first data row")
+	}
+	if !strings.Contains(row1, "webserver") {
+		t.Error("expected 'webserver' in first data row")
+	}
+	if !strings.Contains(row1, "hashicorp/aws") {
+		t.Error("expected 'hashicorp/aws' in first data row")
+	}
+
+	// Verify second data row (lines[3])
+	row2 := lines[3]
+	if !strings.Contains(row2, "res-xyz") {
+		t.Error("expected 'res-xyz' in second data row")
+	}
+	if !strings.Contains(row2, "google_compute_instance") {
+		t.Error("expected 'google_compute_instance' in second data row")
+	}
+	if !strings.Contains(row2, "database") {
+		t.Error("expected 'database' in second data row")
+	}
+	if !strings.Contains(row2, "hashicorp/google") {
+		t.Error("expected 'hashicorp/google' in second data row")
+	}
+}

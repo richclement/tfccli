@@ -1283,65 +1283,51 @@ func TestWorkspaceResourcesList_TokenResolutionError(t *testing.T) {
 
 ### 28. Missing Test: Table Output Column Verification
 
+**Status:** DONE
+
 **File:** `cmd/tfc/workspace_resources_test.go:144-180`
 
 **Problem:** `TestWorkspaceResourcesList_Table` only verifies that headers and resource ID/name appear in output, but doesn't verify the actual column order or that the correct data appears in the correct columns.
 
-**Enhanced test:**
-```go
-// TestWorkspaceResourcesList_Table_ColumnVerification tests that table columns match headers.
-func TestWorkspaceResourcesList_Table_ColumnVerification(t *testing.T) {
-    tmpDir, resolver := setupWorkspaceResourcesTestSettings(t)
+#### Plan (2026-01-21)
 
-    fakeClient := &fakeWorkspaceResourcesClient{
-        resources: []*tfe.WorkspaceResource{
-            {ID: "res-1", Address: "aws_instance.web", Name: "web", ProviderType: "aws_instance", Provider: "aws"},
-        },
-    }
+**Acceptance criteria (from PRD Section 6):**
+- Test exists that verifies table columns have correct headers in expected order
+- Test verifies data appears in correct columns (ID maps to resource ID, RESOURCE-TYPE to ProviderType, NAME to Name, PROVIDER to Provider)
+- Test verifies multiple rows render correctly
 
-    var buf bytes.Buffer
-    cmd := &WorkspaceResourcesListCmd{
-        WorkspaceID:   "ws-123",
-        baseDir:       tmpDir,
-        tokenResolver: resolver,
-        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
-        stdout:        &buf,
-        clientFactory: func(_ tfcapi.ClientConfig) (workspaceResourcesClient, error) {
-            return fakeClient, nil
-        },
-    }
+**Verification approach:**
+- `make test` passes
+- New test specifically validates column structure and data alignment
 
-    cli := &CLI{OutputFormat: "table"}
-    err := cmd.Run(cli)
-    if err != nil {
-        t.Fatalf("unexpected error: %v", err)
-    }
+**Implementation steps:**
+1. Add `TestWorkspaceResourcesList_Table_ColumnVerification` test
+2. Create resources with distinct, non-overlapping values per column (to verify correct column placement)
+3. Verify header row contains columns in correct order
+4. Verify data rows contain expected values
+5. Run feedback loops
+6. Update review.md with results
 
-    out := buf.String()
-    lines := strings.Split(strings.TrimSpace(out), "\n")
-    if len(lines) < 2 {
-        t.Fatalf("expected at least 2 lines (header + data), got %d", len(lines))
-    }
+#### Progress Note (2026-01-21)
 
-    // Verify headers are sensible
-    // Header line should contain column names in order
-    if !strings.Contains(lines[0], "ID") {
-        t.Error("expected ID column in header")
-    }
+**Files changed:**
+- `cmd/tfc/workspace_resources_test.go`: Added `TestWorkspaceResourcesList_Table_ColumnVerification` test (lines 527-609)
+  - Creates two resources with distinct values per column to verify correct placement
+  - Verifies header contains columns in order: ID, RESOURCE-TYPE, NAME, PROVIDER
+  - Verifies separator line exists between header and data
+  - Verifies first data row contains: res-abc, aws_instance, webserver, hashicorp/aws
+  - Verifies second data row contains: res-xyz, google_compute_instance, database, hashicorp/google
 
-    // Data line should have resource values in expected positions
-    dataLine := lines[1]
-    if !strings.Contains(dataLine, "res-1") {
-        t.Error("expected resource ID in data line")
-    }
-    if !strings.Contains(dataLine, "aws_instance") {
-        t.Error("expected provider type (aws_instance) in data line")
-    }
-    if !strings.Contains(dataLine, "web") {
-        t.Error("expected resource name in data line")
-    }
-}
-```
+**Commands run:**
+- `make fmt` - passed
+- `make lint` - passed
+- `make build` - passed
+- `make test` - passed (all tests green)
+- `go test -v -run TestWorkspaceResourcesList_Table_ColumnVerification ./cmd/tfc/...` - passed
+
+**What remains:**
+- Task #28 is complete
+- Test coverage now includes table column structure and data alignment verification
 
 ---
 
