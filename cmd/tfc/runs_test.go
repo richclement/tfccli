@@ -705,9 +705,16 @@ func TestRunsApply_WithForce(t *testing.T) {
 	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
 		t.Fatalf("failed to parse JSON: %v", err)
 	}
-	meta := result["meta"].(map[string]any)
-	if meta["status"].(float64) != 202 {
-		t.Errorf("expected status 202, got %v", meta["status"])
+	meta, ok := result["meta"].(map[string]any)
+	if !ok {
+		t.Fatal("expected meta object in response")
+	}
+	status, ok := meta["status"].(float64)
+	if !ok {
+		t.Fatalf("expected status to be number, got %T", meta["status"])
+	}
+	if status != 202 {
+		t.Errorf("expected status 202, got %v", status)
 	}
 }
 

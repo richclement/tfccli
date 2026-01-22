@@ -723,10 +723,12 @@ Then implement pagination limit in the Run method, or add a separate `CollectRun
 
 ---
 
-### 14. [ ] Test assertion uses fragile type assertion
+### 14. [x] Test assertion uses fragile type assertion
+
+**Status:** DONE
 
 **File:** `cmd/tfc/runs_test.go`
-**Lines:** 469-471
+**Lines:** 708-710 (actual lines)
 
 **Problem:** The test uses `meta["status"].(float64)` which will panic if the type changes or is missing, rather than failing gracefully.
 
@@ -750,6 +752,21 @@ if status != 202 {
     t.Errorf("expected status 202, got %v", status)
 }
 ```
+
+#### Plan
+- **Acceptance criteria:** Type assertions in `TestRunsApply_WithForce` use checked `ok` pattern to fail gracefully instead of panicking.
+- **Verification:** `make fmt && make lint && make build && make test` all pass.
+- **Implementation steps:**
+  1. Replace unchecked `result["meta"].(map[string]any)` with checked pattern
+  2. Replace unchecked `meta["status"].(float64)` with checked pattern
+  3. Run feedback loops to verify
+
+#### Progress Notes
+
+**2026-01-22:** Completed.
+- Changed: `cmd/tfc/runs_test.go` lines 708-711 - replaced unchecked type assertions with safe `ok` pattern for both `meta` and `status` type assertions
+- Commands: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Result: Test now fails gracefully with descriptive error messages instead of panicking when types don't match
 
 ---
 
