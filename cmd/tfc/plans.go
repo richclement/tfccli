@@ -140,6 +140,9 @@ func (c *PlansGetCmd) Run(cli *CLI) error {
 		tw.AddRow("Changes", fmt.Sprintf("%d", plan.ResourceChanges))
 		tw.AddRow("Destructions", fmt.Sprintf("%d", plan.ResourceDestructions))
 		tw.AddRow("Imports", fmt.Sprintf("%d", plan.ResourceImports))
+		if plan.LogReadURL != "" {
+			tw.AddRow("Log URL", plan.LogReadURL)
+		}
 		if _, err := tw.Render(); err != nil {
 			return internalcmd.NewRuntimeError(fmt.Errorf("failed to write output: %w", err))
 		}

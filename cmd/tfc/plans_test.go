@@ -195,6 +195,79 @@ func TestPlansGet_Table(t *testing.T) {
 	}
 }
 
+func TestPlansGet_Table_WithLogReadURL(t *testing.T) {
+	tmpDir, resolver := setupPlansTest(t)
+
+	fakeClient := &fakePlansClient{
+		plan: &tfe.Plan{
+			ID:         "plan-789",
+			Status:     tfe.PlanRunning,
+			LogReadURL: "https://archivist.example/logs/plan-789",
+		},
+	}
+
+	var stdout bytes.Buffer
+	cmd := &PlansGetCmd{
+		ID:            "plan-789",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &stdout,
+		clientFactory: func(_ tfcapi.ClientConfig) (plansClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "table"}
+	err := cmd.Run(cli)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	out := stdout.String()
+	if !strings.Contains(out, "Log URL") {
+		t.Errorf("expected 'Log URL' field in table output, got: %s", out)
+	}
+	if !strings.Contains(out, "https://archivist.example/logs/plan-789") {
+		t.Errorf("expected LogReadURL value in table output, got: %s", out)
+	}
+}
+
+func TestPlansGet_Table_WithoutLogReadURL(t *testing.T) {
+	tmpDir, resolver := setupPlansTest(t)
+
+	fakeClient := &fakePlansClient{
+		plan: &tfe.Plan{
+			ID:         "plan-abc",
+			Status:     tfe.PlanFinished,
+			LogReadURL: "", // Empty - should not appear in table
+		},
+	}
+
+	var stdout bytes.Buffer
+	cmd := &PlansGetCmd{
+		ID:            "plan-abc",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &stdout,
+		clientFactory: func(_ tfcapi.ClientConfig) (plansClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "table"}
+	err := cmd.Run(cli)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	out := stdout.String()
+	if strings.Contains(out, "Log URL") {
+		t.Errorf("expected 'Log URL' field NOT to appear when LogReadURL is empty, got: %s", out)
+	}
+}
+
 func TestPlansGet_NotFound(t *testing.T) {
 	tmpDir, resolver := setupPlansTest(t)
 

@@ -963,7 +963,9 @@ cfg, _, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
 
 ---
 
-### 19. [ ] `planJSON` missing `LogReadURL` in table output
+### 19. [x] `planJSON` missing `LogReadURL` in table output
+
+**Status:** DONE
 
 **File:** `cmd/tfc/plans.go`
 **Lines:** 27-36, 175-185
@@ -977,6 +979,25 @@ if plan.LogReadURL != "" {
     tw.AddRow("Log URL", plan.LogReadURL)
 }
 ```
+
+#### Plan
+- **Acceptance criteria:** Table output includes "Log URL" field when `plan.LogReadURL` is non-empty; field is omitted when empty (consistent with JSON `omitempty` behavior).
+- **Verification:** `make fmt && make lint && make build && make test` passes; new tests verify behavior for both present and absent LogReadURL cases.
+- **Implementation steps:**
+  1. Add conditional `tw.AddRow("Log URL", plan.LogReadURL)` after "Imports" row in `PlansGetCmd.Run`
+  2. Add `TestPlansGet_Table_WithLogReadURL` test to verify Log URL appears when present
+  3. Add `TestPlansGet_Table_WithoutLogReadURL` test to verify Log URL is omitted when empty
+  4. Run feedback loops to verify
+
+#### Progress Notes
+
+**2026-01-22:** Completed.
+- Changed: `cmd/tfc/plans.go` line 143 - added conditional `tw.AddRow("Log URL", plan.LogReadURL)` when LogReadURL is non-empty
+- Changed: `cmd/tfc/plans_test.go` - added 2 new tests:
+  - `TestPlansGet_Table_WithLogReadURL` - verifies "Log URL" field and value appear when LogReadURL is set
+  - `TestPlansGet_Table_WithoutLogReadURL` - verifies "Log URL" field is NOT present when LogReadURL is empty
+- Commands: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Result: Table and JSON output are now consistent - both include LogReadURL conditionally
 
 ---
 
