@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"sort"
 
@@ -68,7 +69,7 @@ type DoctorCmd struct {
 	baseDir       string
 	tokenResolver *auth.TokenResolver
 	ttyDetector   output.TTYDetector
-	stdout        *os.File
+	stdout        io.Writer
 	clientFactory func(cfg tfcapi.ClientConfig) (doctorClient, error)
 }
 
@@ -104,7 +105,11 @@ func (d *DoctorCmd) Run(cli *CLI) error {
 		d.clientFactory = defaultClientFactory
 	}
 
-	isTTY := d.ttyDetector.IsTTY(d.stdout)
+	// Determine output format (use type assertion for TTY detection)
+	isTTY := false
+	if f, ok := d.stdout.(*os.File); ok {
+		isTTY = d.ttyDetector.IsTTY(f)
+	}
 	format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
 
 	result := &DoctorResult{Checks: make([]DoctorCheck, 0)}

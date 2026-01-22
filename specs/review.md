@@ -1906,6 +1906,8 @@ Review of `cmd/tfc/main.go` (DoctorCmd, lines 64-248) and `cmd/tfc/doctor_test.g
 
 ### 36. stdout Field Type Inconsistency
 
+**Status: DONE** (2026-01-21)
+
 **File:** `cmd/tfc/main.go:70`
 
 **Problem:** `DoctorCmd.stdout` is typed as `*os.File`, while other commands (e.g., `ProjectsListCmd`, `WorkspacesListCmd`) use `io.Writer`. This inconsistency:
@@ -1954,6 +1956,28 @@ func (d *DoctorCmd) Run(cli *CLI) error {
 ```
 
 **Impact:** This also affects `outputAndError()` which currently passes `d.stdout` to `output.WriteJSON()` and `output.NewTableWriter()` - both accept `io.Writer`, so no changes needed there.
+
+**Plan (2026-01-21):**
+- Acceptance criteria: `DoctorCmd.stdout` is typed as `io.Writer` instead of `*os.File`, using type assertion pattern for TTY detection consistent with other commands
+- Verification: Run existing doctor tests - all should pass
+- Implementation:
+  1. Add `io` import to main.go
+  2. Change `stdout *os.File` to `stdout io.Writer` in `DoctorCmd` struct
+  3. Update TTY detection to use type assertion pattern like other commands
+
+**Progress notes (2026-01-21):**
+
+Changes made:
+- `cmd/tfc/main.go:7` - Added `io` import
+- `cmd/tfc/main.go:72` - Changed `stdout *os.File` to `stdout io.Writer`
+- `cmd/tfc/main.go:107-111` - Updated TTY detection to use type assertion pattern: `if f, ok := d.stdout.(*os.File); ok { isTTY = d.ttyDetector.IsTTY(f) }`
+
+Verification:
+- `make fmt` - passed
+- `make lint` - passed (with temp caches)
+- `make build` - passed
+- `make test` - all tests pass
+- `go test -v -run "TestDoctor" ./cmd/tfc/...` - all 13 tests pass
 
 ---
 
