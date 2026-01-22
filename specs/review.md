@@ -1229,11 +1229,30 @@ func TestPlansGet_ClientFactoryError(t *testing.T) {
 
 ---
 
-### 24. [ ] Missing test: invalid context specified via --context flag
+### 24. [x] Missing test: invalid context specified via --context flag
+
+**Status:** DONE
 
 **File:** `cmd/tfc/plans_test.go`
 
 **Problem:** `TestPlansGet_FailsWhenSettingsMissing` tests missing settings file, but no test for when `--context` flag specifies a non-existent context.
+
+#### Plan
+- **Acceptance criteria:** A new test `TestPlansGet_InvalidContext` exists that verifies the command returns an error when `--context` specifies a non-existent context name.
+- **Verification:** `make fmt && make lint && make build && make test` all pass; new test passes.
+- **Implementation steps:**
+  1. Add `TestPlansGet_InvalidContext` test function after `TestPlansGet_ClientFactoryError` in plans_test.go
+  2. Test sets `cli.Context` to "nonexistent" and verifies error contains "not found"
+  3. Run feedback loops to verify
+
+#### Progress Notes
+
+**2026-01-22:** Completed.
+- Changed: `cmd/tfc/plans_test.go` - added `TestPlansGet_InvalidContext` test function after `TestPlansGet_ClientFactoryError`
+- Test uses `setupPlansTest(t)` which creates settings with "default" context, then passes `cli.Context = "nonexistent"` to trigger the error path in `resolveClientConfig`
+- Verifies error is returned and contains "not found" message
+- Commands: `make fmt`, `make lint`, `go build`, `go test` - all pass
+- Result: Invalid context error handling in `PlansGetCmd.Run` is now tested
 
 **Fix:** Add test:
 ```go

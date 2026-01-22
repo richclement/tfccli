@@ -335,6 +335,31 @@ func TestPlansGet_ClientFactoryError(t *testing.T) {
 	}
 }
 
+func TestPlansGet_InvalidContext(t *testing.T) {
+	tmpDir, resolver := setupPlansTest(t)
+
+	var stdout bytes.Buffer
+	cmd := &PlansGetCmd{
+		ID:            "plan-123",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &stdout,
+		clientFactory: func(_ tfcapi.ClientConfig) (plansClient, error) {
+			return &fakePlansClient{}, nil
+		},
+	}
+
+	cli := &CLI{Context: "nonexistent", OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error for invalid context")
+	}
+	if !strings.Contains(err.Error(), "not found") {
+		t.Errorf("expected context not found error, got: %v", err)
+	}
+}
+
 func TestPlansJSONOutput_WritesToStdout(t *testing.T) {
 	tmpDir, resolver := setupPlansTest(t)
 
