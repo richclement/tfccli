@@ -376,6 +376,25 @@ func TestContextsRemoveCmd_RemovesWithConfirmation(t *testing.T) {
 	}
 }
 
+// TestContextsRemoveCmd_NoSettings tests error when settings file doesn't exist.
+func TestContextsRemoveCmd_NoSettings(t *testing.T) {
+	tmpHome := t.TempDir()
+	// Don't create settings file
+
+	forceVal := true
+	cmd := &ContextsRemoveCmd{
+		Name:      "some-context",
+		baseDir:   tmpHome,
+		forceFlag: &forceVal,
+	}
+	cli := &CLI{}
+
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error when settings not found, got nil")
+	}
+}
+
 func TestContextsShowCmd_ShowsCurrentContext(t *testing.T) {
 	tmpHome := t.TempDir()
 

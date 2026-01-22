@@ -2919,9 +2919,28 @@ func TestContextsUseCmd_NoSettings(t *testing.T) {
 
 ### 55. Missing Test: ContextsRemoveCmd Settings File Not Found
 
+**Status: DONE** (2026-01-21)
+
 **File:** `cmd/tfc/contexts_test.go`
 
 **Problem:** No test verifies error handling when `config.Load()` fails.
+
+**Plan (2026-01-21):**
+- Acceptance criteria: Test `TestContextsRemoveCmd_NoSettings` exists and verifies that when settings file doesn't exist, ContextsRemoveCmd returns an error
+- Verification: Run `go test -v -run "TestContextsRemoveCmd_NoSettings" ./cmd/tfc/...`
+- Implementation: Add test following existing NoSettings test pattern
+
+**Progress notes (2026-01-21):**
+
+Changes made:
+- `cmd/tfc/contexts_test.go:379-394` - Added `TestContextsRemoveCmd_NoSettings` test
+
+Verification:
+- `make fmt` - passed
+- `make lint` - passed (with temp caches due to permission issues)
+- `make build` - passed
+- `make test` - all tests pass
+- `go test -v -run "TestContextsRemoveCmd_NoSettings" ./cmd/tfc/...` - pass
 
 **Test to add:**
 ```go
@@ -3395,7 +3414,7 @@ func TestContextsShowCmd_JSONOutput(t *testing.T) {
 | Remove with prompt (decline) | ✅ | - |
 | Remove with prompt (accept) | ✅ | - |
 | Remove nonexistent context | ❌ | #62 |
-| Remove settings not found | ❌ | #55 |
+| Remove settings not found | ✅ | #55 |
 | Remove config.Save failure | ❌ | #60 |
 | Remove prompter error | ❌ | #57 |
 | Show current context | ✅ | - |
