@@ -1785,7 +1785,9 @@ func (c *realCVClient) Upload(ctx context.Context, uploadURL string, reader io.R
 
 ---
 
-### 35. [ ] Configuration-versions commands don't use `resolveFormat` helper
+### 35. [x] Configuration-versions commands don't use `resolveFormat` helper
+
+**Status:** DONE
 
 **File:** `cmd/tfc/configuration_versions.go`
 **Lines:** 184-189, 257-262, 343-348, 435-440, 540-545, 637-642
@@ -1805,6 +1807,30 @@ format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
 ```go
 format, isTTY := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
 ```
+
+#### Plan
+- **Acceptance criteria:** All 6 CV commands use `resolveFormat` helper instead of inline TTY detection.
+- **Verification:** `make fmt && make lint && make build && make test` passes; no functional change in behavior.
+- **Implementation steps:**
+  1. Replace inline TTY detection in CVListCmd.Run (lines 179-184)
+  2. Replace inline TTY detection in CVGetCmd.Run (lines 252-257)
+  3. Replace inline TTY detection in CVCreateCmd.Run (lines 338-343)
+  4. Replace inline TTY detection in CVUploadCmd.Run (lines 430-435)
+  5. Replace inline TTY detection in CVDownloadCmd.Run (lines 535-540)
+  6. Replace inline TTY detection in CVArchiveCmd.Run (lines 632-637)
+
+#### Progress Notes
+
+**2026-01-22:** Completed refactor.
+- Changed: `cmd/tfc/configuration_versions.go` - replaced 6 instances of inline TTY detection with `resolveFormat` helper
+  - `CVListCmd.Run`: uses `format, isTTY := resolveFormat(...)` (needs isTTY for TableWriter)
+  - `CVGetCmd.Run`: uses `format, isTTY := resolveFormat(...)` (needs isTTY for TableWriter)
+  - `CVCreateCmd.Run`: uses `format, _ := resolveFormat(...)` (isTTY not needed, table output uses fmt.Fprintf)
+  - `CVUploadCmd.Run`: uses `format, _ := resolveFormat(...)` (isTTY not needed)
+  - `CVDownloadCmd.Run`: uses `format, _ := resolveFormat(...)` (isTTY not needed)
+  - `CVArchiveCmd.Run`: uses `format, _ := resolveFormat(...)` (isTTY not needed)
+- Commands: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Result: Code is now consistent with other commands (runs, plans, doctor, projects, workspace-variables, workspace-resources)
 
 ---
 

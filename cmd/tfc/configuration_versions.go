@@ -177,11 +177,7 @@ func (c *CVListCmd) Run(cli *CLI) error {
 	}
 
 	// Determine output format
-	isTTY := false
-	if f, ok := c.stdout.(*os.File); ok {
-		isTTY = c.ttyDetector.IsTTY(f)
-	}
-	format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
+	format, isTTY := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
 
 	if format == output.FormatJSON {
 		jsonCVs := make([]*cvJSON, len(cvs))
@@ -250,11 +246,7 @@ func (c *CVGetCmd) Run(cli *CLI) error {
 	}
 
 	// Determine output format
-	isTTY := false
-	if f, ok := c.stdout.(*os.File); ok {
-		isTTY = c.ttyDetector.IsTTY(f)
-	}
-	format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
+	format, isTTY := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
 
 	if format == output.FormatJSON {
 		result := map[string]any{"data": toCVJSON(cv)}
@@ -336,11 +328,7 @@ func (c *CVCreateCmd) Run(cli *CLI) error {
 	}
 
 	// Determine output format
-	isTTY := false
-	if f, ok := c.stdout.(*os.File); ok {
-		isTTY = c.ttyDetector.IsTTY(f)
-	}
-	format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
+	format, _ := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
 
 	if format == output.FormatJSON {
 		result := map[string]any{"data": toCVJSON(cv)}
@@ -428,11 +416,7 @@ func (c *CVUploadCmd) Run(cli *CLI) error {
 	}
 
 	// Determine output format
-	isTTY := false
-	if f, ok := c.stdout.(*os.File); ok {
-		isTTY = c.ttyDetector.IsTTY(f)
-	}
-	format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
+	format, _ := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
 
 	if format == output.FormatJSON {
 		result := map[string]any{
@@ -533,11 +517,7 @@ func (c *CVDownloadCmd) Run(cli *CLI) error {
 	}
 
 	// Determine output format for meta output
-	isTTY := false
-	if f, ok := c.stdout.(*os.File); ok {
-		isTTY = c.ttyDetector.IsTTY(f)
-	}
-	format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
+	format, _ := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
 
 	if c.Out != "" {
 		// Write to file
@@ -630,11 +610,7 @@ func (c *CVArchiveCmd) Run(cli *CLI) error {
 	}
 
 	// Determine output format
-	isTTY := false
-	if f, ok := c.stdout.(*os.File); ok {
-		isTTY = c.ttyDetector.IsTTY(f)
-	}
-	format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
+	format, _ := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
 
 	if format == output.FormatJSON {
 		result := map[string]any{
