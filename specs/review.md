@@ -274,11 +274,29 @@ func TestRunsGet_Table(t *testing.T) {
 
 ---
 
-### 6. [ ] Missing test: empty runs list
+### 6. [x] Missing test: empty runs list
+
+**Status:** DONE
 
 **File:** `cmd/tfc/runs_test.go`
 
 **Problem:** No test verifies behavior when workspace has zero runs. Both JSON and table output should handle empty results gracefully.
+
+#### Plan
+- **Acceptance criteria:** A new test `TestRunsList_EmptyList` exists that verifies both JSON and table output handle empty results gracefully (JSON returns empty `data` array, table shows headers with no rows).
+- **Verification:** `make fmt && make lint && make build && make test` all pass; new test passes.
+- **Implementation steps:**
+  1. Add `TestRunsList_EmptyList` test function after `TestRunsList_Table` in runs_test.go
+  2. Test JSON output: verify empty `data` array in response
+  3. Test table output: verify no error and output contains headers
+  4. Run feedback loops to verify
+
+#### Progress Notes
+
+**2026-01-22:** Completed.
+- Changed: `cmd/tfc/runs_test.go` - added `TestRunsList_EmptyList` test with two subtests: `json_output` verifies empty `data` array in JSON response; `table_output` verifies headers are present even with no data
+- Commands: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Result: Empty runs list edge case now covered for both output formats
 
 **Fix:** Add test:
 ```go

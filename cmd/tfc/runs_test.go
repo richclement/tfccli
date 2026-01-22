@@ -287,6 +287,73 @@ func TestRunsList_Table(t *testing.T) {
 	}
 }
 
+func TestRunsList_EmptyList(t *testing.T) {
+	tmpDir, resolver := setupRunsTest(t)
+
+	fakeClient := &fakeRunsClient{
+		runs: []*tfe.Run{}, // Empty list
+	}
+
+	t.Run("json output", func(t *testing.T) {
+		var stdout bytes.Buffer
+		cmd := &RunsListCmd{
+			WorkspaceID:   "ws-empty",
+			baseDir:       tmpDir,
+			tokenResolver: resolver,
+			ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+			stdout:        &stdout,
+			clientFactory: func(_ tfcapi.ClientConfig) (runsClient, error) {
+				return fakeClient, nil
+			},
+		}
+
+		cli := &CLI{OutputFormat: "json"}
+		err := cmd.Run(cli)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		var result map[string]any
+		if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+			t.Fatalf("failed to parse JSON: %v", err)
+		}
+
+		data, ok := result["data"].([]any)
+		if !ok {
+			t.Fatalf("expected data array, got %T", result["data"])
+		}
+		if len(data) != 0 {
+			t.Errorf("expected 0 runs, got %d", len(data))
+		}
+	})
+
+	t.Run("table output", func(t *testing.T) {
+		var stdout bytes.Buffer
+		cmd := &RunsListCmd{
+			WorkspaceID:   "ws-empty",
+			baseDir:       tmpDir,
+			tokenResolver: resolver,
+			ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+			stdout:        &stdout,
+			clientFactory: func(_ tfcapi.ClientConfig) (runsClient, error) {
+				return fakeClient, nil
+			},
+		}
+
+		cli := &CLI{OutputFormat: "table"}
+		err := cmd.Run(cli)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		out := stdout.String()
+		// Table output should contain headers even with no data
+		if !strings.Contains(out, "ID") || !strings.Contains(out, "STATUS") {
+			t.Errorf("expected table headers in empty output, got: %s", out)
+		}
+	})
+}
+
 func TestRunsGet_JSON(t *testing.T) {
 	tmpDir, resolver := setupRunsTest(t)
 
