@@ -3256,9 +3256,28 @@ func TestContextsAddCmd_InvalidAddressRejected(t *testing.T) {
 
 ### 62. Missing Test: ContextsRemoveCmd Context Not Found
 
+**Status: DONE** (2026-01-21)
+
 **File:** `cmd/tfc/contexts_test.go`
 
 **Problem:** No test verifies the error when trying to remove a nonexistent context.
+
+**Plan (2026-01-21):**
+- Acceptance criteria: Test `TestContextsRemoveCmd_ContextNotFound` exists and verifies that when trying to remove a nonexistent context, it returns an error containing "not found"
+- Verification: Run `go test -v -run "TestContextsRemoveCmd_ContextNotFound" ./cmd/tfc/...`
+- Implementation: Add test case in `contexts_test.go`
+
+**Progress notes (2026-01-21):**
+
+Changes made:
+- `cmd/tfc/contexts_test.go:492-518` - Added `TestContextsRemoveCmd_ContextNotFound` test
+
+Verification:
+- `make fmt` - passed
+- `make lint` - passed (with temp caches due to permission issues)
+- `make build` - passed (with temp caches)
+- `make test` - all tests pass
+- `go test -v -run "TestContextsRemoveCmd_ContextNotFound" ./cmd/tfc/...` - pass
 
 **Test to add:**
 ```go
@@ -3456,7 +3475,7 @@ func TestContextsShowCmd_JSONOutput(t *testing.T) {
 | Remove current context (error) | ✅ | - |
 | Remove with prompt (decline) | ✅ | - |
 | Remove with prompt (accept) | ✅ | - |
-| Remove nonexistent context | ❌ | #62 |
+| Remove nonexistent context | ✅ | #62 |
 | Remove settings not found | ✅ | #55 |
 | Remove config.Save failure | ❌ | #60 |
 | Remove prompter error | ✅ | #57 |

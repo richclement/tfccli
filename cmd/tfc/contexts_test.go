@@ -489,6 +489,35 @@ func TestContextsShowCmd_NoSettings(t *testing.T) {
 	}
 }
 
+// TestContextsRemoveCmd_ContextNotFound tests error when removing nonexistent context.
+func TestContextsRemoveCmd_ContextNotFound(t *testing.T) {
+	tmpHome := t.TempDir()
+
+	settings := &config.Settings{
+		CurrentContext: "default",
+		Contexts: map[string]config.Context{
+			"default": {Address: "app.terraform.io", LogLevel: "info"},
+		},
+	}
+	createTestSettings(t, tmpHome, settings)
+
+	forceVal := true
+	cmd := &ContextsRemoveCmd{
+		Name:      "nonexistent",
+		baseDir:   tmpHome,
+		forceFlag: &forceVal,
+	}
+	cli := &CLI{}
+
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error when context not found, got nil")
+	}
+	if !strings.Contains(err.Error(), "not found") {
+		t.Errorf("expected 'not found' error, got: %v", err)
+	}
+}
+
 // TestContextsRemoveCmd_PrompterError tests that prompter errors are surfaced.
 func TestContextsRemoveCmd_PrompterError(t *testing.T) {
 	tmpHome := t.TempDir()
