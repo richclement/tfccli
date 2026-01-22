@@ -805,3 +805,52 @@ Net effect:
 - Context is created once in `run()` with `signal.NotifyContext` and stored in `cli.Ctx`
 - Ctrl+C (SIGINT) and SIGTERM now trigger context cancellation, enabling clean shutdown
 - Tests continue to work because `cmdContext()` falls back to `context.Background()` when `cli.Ctx` is nil
+
+---
+
+### Task: #5 Empty doc.go files
+
+**Status:** DONE
+**Priority:** P3
+
+**Acceptance Criteria:**
+- All 6 doc.go files contain package-level documentation describing each package's purpose
+- Documentation follows Go godoc conventions (comment directly above package declaration)
+- Tests pass unchanged (doc comments don't affect behavior)
+
+**Verification:**
+- `make fmt` passes
+- `make lint` passes
+- `make build` passes
+- `make test` passes
+- `go doc github.com/richclement/tfccli/internal/auth` shows documentation
+
+**Implementation Plan:**
+1. Add package documentation to `internal/auth/doc.go` - Token discovery following Terraform CLI conventions
+2. Add package documentation to `internal/cmd/doc.go` - Shared command utilities (RuntimeError type)
+3. Add package documentation to `internal/config/doc.go` - Settings schema and persistence
+4. Add package documentation to `internal/output/doc.go` - Output formatting with TTY awareness
+5. Add package documentation to `internal/tfcapi/doc.go` - TFC API client wrapper and utilities
+6. Add package documentation to `internal/ui/doc.go` - User interaction prompts
+7. Run feedback loops and verify
+
+**Progress Notes:**
+
+_2026-01-22:_ Completed.
+
+Files changed:
+- `internal/auth/doc.go`: Added package documentation describing token discovery with Terraform CLI conventions
+- `internal/cmd/doc.go`: Added package documentation describing RuntimeError type for exit code 2
+- `internal/config/doc.go`: Added package documentation describing settings.json and multi-context support
+- `internal/output/doc.go`: Added package documentation describing TTY-aware output formatting
+- `internal/tfcapi/doc.go`: Added package documentation describing TFC API client utilities
+- `internal/ui/doc.go`: Added package documentation describing Prompter interface and StdPrompter
+
+Commands run:
+- `make fmt` - passed
+- `make lint` - passed (after cache clear)
+- `make build` - passed
+- `make test` - passed (all tests pass)
+- `go doc github.com/richclement/tfccli/internal/auth` - shows documentation correctly
+
+Net effect: All 6 doc.go files now contain package-level documentation following Go godoc conventions. Documentation describes each package's purpose and key features.
