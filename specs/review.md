@@ -576,24 +576,40 @@ func (c *ContextsListCmd) Run(cli *CLI) error {
 
 ### 16. Console Output Not Testable
 
-**File:** `cmd/tfc/main.go:373-387, 419, 446-447, 489-490, 500, 535-538`
+**Status:** DONE
 
-**Problem:** All contexts commands write directly to `os.Stdout` via `fmt.Printf()` and `fmt.Println()`, making output untestable. Other commands (ProjectsListCmd, WorkspacesListCmd, DoctorCmd) have injectable `stdout` fields.
+**File:** `cmd/tfc/main.go`
 
-**Current code locations:**
-- `ContextsListCmd.Run()` line 384: `fmt.Printf("%s%s\n", marker, name)`
-- `ContextsAddCmd.Run()` line 419: `fmt.Printf("Context %q added.\n", c.Name)`
-- `ContextsUseCmd.Run()` line 446: `fmt.Printf("Switched to context %q.\n", c.Name)`
-- `ContextsRemoveCmd.Run()` line 489: `fmt.Println("Aborting removal.")`
-- `ContextsRemoveCmd.Run()` line 500: `fmt.Printf("Context %q removed.\n", c.Name)`
-- `ContextsShowCmd.Run()` lines 535-538: multiple `fmt.Printf` calls
+**Problem:** Some contexts commands write directly to `os.Stdout` via `fmt.Printf()` and `fmt.Println()`, making output untestable. Other commands (ProjectsListCmd, WorkspacesListCmd, DoctorCmd) have injectable `stdout` fields.
 
-**Fix:** Add `stdout io.Writer` field to all contexts command structs and use `fmt.Fprintf(c.stdout, ...)` instead of `fmt.Printf(...)`. Set default in `Run()`:
-```go
-if c.stdout == nil {
-    c.stdout = os.Stdout
-}
-```
+#### Plan (2026-01-21)
+
+**Acceptance criteria:**
+- `ContextsAddCmd`, `ContextsUseCmd`, and `ContextsRemoveCmd` have injectable `stdout io.Writer` fields
+- All `fmt.Printf`/`fmt.Println` replaced with `fmt.Fprintf(c.stdout, ...)`
+- Default to `os.Stdout` when not injected
+- Existing tests still pass
+- New tests can verify output content
+
+#### Progress Note (2026-01-21)
+
+**Files changed:**
+- `cmd/tfc/main.go`:
+  - Added `stdout io.Writer` field to `ContextsAddCmd`
+  - Added `stdout io.Writer` field to `ContextsUseCmd`
+  - Added `stdout io.Writer` field to `ContextsRemoveCmd`
+  - Each `Run()` method defaults `stdout` to `os.Stdout` if nil
+  - Replaced all `fmt.Printf`/`fmt.Println` with `fmt.Fprintf`/`fmt.Fprintln` using `c.stdout`
+
+**Commands run:**
+- `make fmt` - passed
+- `make lint` - passed
+- `make build` - passed
+- `make test` - passed (all tests green)
+
+**What remains:**
+- Task #16 is complete
+- Tests can now use injectable `stdout` to verify output content
 
 ---
 

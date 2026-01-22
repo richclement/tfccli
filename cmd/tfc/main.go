@@ -456,9 +456,15 @@ type ContextsAddCmd struct {
 	LogLevel   string `name:"log-level" enum:"debug,info,warn,error," default:"" help:"Log level."`
 
 	baseDir string
+	stdout  io.Writer
 }
 
 func (c *ContextsAddCmd) Run() error {
+	// Set defaults
+	if c.stdout == nil {
+		c.stdout = os.Stdout
+	}
+
 	settings, err := config.Load(c.baseDir)
 	if err != nil {
 		return internalcmd.NewRuntimeError(err)
@@ -483,7 +489,7 @@ func (c *ContextsAddCmd) Run() error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to save settings: %w", err))
 	}
 
-	fmt.Printf("Context %q added.\n", c.Name)
+	fmt.Fprintf(c.stdout, "Context %q added.\n", c.Name)
 	return nil
 }
 
@@ -492,9 +498,15 @@ type ContextsUseCmd struct {
 	Name string `arg:"" help:"Name of the context to switch to."`
 
 	baseDir string
+	stdout  io.Writer
 }
 
 func (c *ContextsUseCmd) Run() error {
+	// Set defaults
+	if c.stdout == nil {
+		c.stdout = os.Stdout
+	}
+
 	settings, err := config.Load(c.baseDir)
 	if err != nil {
 		return internalcmd.NewRuntimeError(err)
@@ -510,7 +522,7 @@ func (c *ContextsUseCmd) Run() error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to save settings: %w", err))
 	}
 
-	fmt.Printf("Switched to context %q.\n", c.Name)
+	fmt.Fprintf(c.stdout, "Switched to context %q.\n", c.Name)
 	return nil
 }
 
@@ -520,10 +532,16 @@ type ContextsRemoveCmd struct {
 
 	baseDir   string
 	prompter  ui.Prompter
+	stdout    io.Writer
 	forceFlag *bool // Pointer to allow injection from parent CLI
 }
 
 func (c *ContextsRemoveCmd) Run(cli *CLI) error {
+	// Set defaults
+	if c.stdout == nil {
+		c.stdout = os.Stdout
+	}
+
 	settings, err := config.Load(c.baseDir)
 	if err != nil {
 		return internalcmd.NewRuntimeError(err)
@@ -553,7 +571,7 @@ func (c *ContextsRemoveCmd) Run(cli *CLI) error {
 			return internalcmd.NewRuntimeError(fmt.Errorf("failed to prompt for confirmation: %w", err))
 		}
 		if !confirmed {
-			fmt.Println("Aborting removal.")
+			fmt.Fprintln(c.stdout, "Aborting removal.")
 			return nil
 		}
 	}
@@ -564,7 +582,7 @@ func (c *ContextsRemoveCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to save settings: %w", err))
 	}
 
-	fmt.Printf("Context %q removed.\n", c.Name)
+	fmt.Fprintf(c.stdout, "Context %q removed.\n", c.Name)
 	return nil
 }
 
