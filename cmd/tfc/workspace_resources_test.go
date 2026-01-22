@@ -396,3 +396,29 @@ func TestWorkspaceResourcesList_AddressOverride(t *testing.T) {
 		t.Errorf("expected address 'custom.tfe.io', got %q", capturedAddress)
 	}
 }
+
+// TestWorkspaceResourcesList_ClientFactoryError tests error when client factory fails.
+func TestWorkspaceResourcesList_ClientFactoryError(t *testing.T) {
+	tmpDir, resolver := setupWorkspaceResourcesTestSettings(t)
+
+	var buf bytes.Buffer
+	cmd := &WorkspaceResourcesListCmd{
+		WorkspaceID:   "ws-123",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &buf,
+		clientFactory: func(_ tfcapi.ClientConfig) (workspaceResourcesClient, error) {
+			return nil, errors.New("failed to initialize TFC client")
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "failed to create client") {
+		t.Errorf("expected 'failed to create client' in error, got: %v", err)
+	}
+}
