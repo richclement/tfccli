@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -848,4 +850,77 @@ func TestCV_AddressOverride(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+}
+
+func TestDefaultUploadClient_HTTPError_IncludesBody(t *testing.T) {
+	// Test that defaultUploadClient includes response body in error message
+	t.Run("with_body", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte(`{"error":"Access denied: invalid upload URL"}`))
+		}))
+		defer server.Close()
+
+		err := defaultUploadClient(server.URL, []byte("test-content"))
+		if err == nil {
+			t.Fatal("expected error for non-2xx status")
+		}
+		if !strings.Contains(err.Error(), "403") {
+			t.Errorf("expected status code 403 in error, got: %v", err)
+		}
+		if !strings.Contains(err.Error(), "Access denied") {
+			t.Errorf("expected response body in error, got: %v", err)
+		}
+	})
+
+	t.Run("without_body", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer server.Close()
+
+		err := defaultUploadClient(server.URL, []byte("test-content"))
+		if err == nil {
+			t.Fatal("expected error for non-2xx status")
+		}
+		if !strings.Contains(err.Error(), "404") {
+			t.Errorf("expected status code 404 in error, got: %v", err)
+		}
+	})
+
+	t.Run("success_200", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		err := defaultUploadClient(server.URL, []byte("test-content"))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("success_201", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusCreated)
+		}))
+		defer server.Close()
+
+		err := defaultUploadClient(server.URL, []byte("test-content"))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("success_204", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		}))
+		defer server.Close()
+
+		err := defaultUploadClient(server.URL, []byte("test-content"))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
 }

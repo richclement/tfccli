@@ -1874,10 +1874,12 @@ Then delete `resolveCVClientConfig` entirely.
 
 ---
 
-### 37. [ ] `defaultUploadClient` doesn't include response body in error
+### 37. [x] `defaultUploadClient` doesn't include response body in error
+
+**Status:** DONE
 
 **File:** `cmd/tfc/configuration_versions.go`
-**Lines:** 477-479
+**Lines:** 420-421
 
 **Problem:** When the HTTP status code indicates failure, the function returns a generic error with just the status code. The response body (which often contains useful error details from the server) is discarded.
 
@@ -1898,6 +1900,28 @@ if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated && 
     return fmt.Errorf("upload failed with status code: %d", resp.StatusCode)
 }
 ```
+
+#### Plan
+- **Acceptance criteria:** Error messages from `defaultUploadClient` include the response body when available (for non-2xx status codes), providing actionable error details from the server.
+- **Verification:** `make fmt && make lint && make build && make test` passes; new test verifies error includes body.
+- **Implementation steps:**
+  1. Update `defaultUploadClient` to read response body on non-2xx status
+  2. Include body in error message if non-empty
+  3. Add test `TestDefaultUploadClient_HTTPError_IncludesBody` using httptest
+  4. Run feedback loops to verify
+
+#### Progress Notes
+
+**2026-01-22:** Completed.
+- Changed: `cmd/tfc/configuration_versions.go` lines 420-427 - added response body reading on non-2xx status; body is included in error message when available
+- Changed: `cmd/tfc/configuration_versions_test.go` - added `TestDefaultUploadClient_HTTPError_IncludesBody` test with 5 subtests:
+  - `with_body` - verifies error includes status code (403) and body content ("Access denied")
+  - `without_body` - verifies error includes status code (404) when no body present
+  - `success_200` - verifies normal 200 response works correctly
+  - `success_201` - verifies 201 Created response works correctly
+  - `success_204` - verifies 204 No Content response works correctly
+- Commands: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Result: Error messages now include actionable server response details, improving debuggability
 
 ---
 

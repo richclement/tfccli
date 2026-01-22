@@ -418,6 +418,10 @@ func defaultUploadClient(uploadURL string, fileContent []byte) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusNoContent {
+		body, _ := io.ReadAll(resp.Body)
+		if len(body) > 0 {
+			return fmt.Errorf("upload failed with status code %d: %s", resp.StatusCode, string(body))
+		}
 		return fmt.Errorf("upload failed with status code: %d", resp.StatusCode)
 	}
 
