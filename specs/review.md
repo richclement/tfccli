@@ -1284,11 +1284,30 @@ func TestPlansGet_InvalidContext(t *testing.T) {
 
 ---
 
-### 25. [ ] Missing test: plan with `LogReadURL` field populated
+### 25. [x] Missing test: plan with `LogReadURL` field populated
+
+**Status:** DONE
 
 **File:** `cmd/tfc/plans_test.go`
 
 **Problem:** No test verifies that `LogReadURL` is correctly included in JSON output when present. The existing tests don't set this field.
+
+#### Plan
+- **Acceptance criteria:** A new test `TestPlansGet_JSON_WithLogReadURL` verifies that `log_read_url` field appears in JSON output when `LogReadURL` is set on the plan.
+- **Verification:** `make fmt && make lint && make build && make test` passes; new test passes.
+- **Implementation steps:**
+  1. Add `TestPlansGet_JSON_WithLogReadURL` test function after `TestPlansGet_JSON`
+  2. Test creates a plan with `LogReadURL` set
+  3. Verify JSON output contains the `log_read_url` field with correct value
+  4. Run feedback loops to verify
+
+#### Progress Notes
+
+**2026-01-22:** Completed.
+- Changed: `cmd/tfc/plans_test.go` - added `TestPlansGet_JSON_WithLogReadURL` test function after `TestPlansGet_JSON`
+- Test creates a plan with `LogReadURL: "https://archivist.example/logs/plan-logurl"` and verifies the JSON output contains `log_read_url` field with the expected value
+- Commands: `make fmt`, `make lint` (temp cache due to system permission issues), `make build`, `go test ./...` - all pass
+- Result: JSON output now verified to include `log_read_url` field when LogReadURL is populated
 
 **Fix:** Add test:
 ```go

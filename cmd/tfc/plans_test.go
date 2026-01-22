@@ -164,6 +164,54 @@ func TestPlansGet_JSON(t *testing.T) {
 	}
 }
 
+func TestPlansGet_JSON_WithLogReadURL(t *testing.T) {
+	tmpDir, resolver := setupPlansTest(t)
+
+	fakeClient := &fakePlansClient{
+		plan: &tfe.Plan{
+			ID:         "plan-logurl",
+			Status:     tfe.PlanRunning,
+			HasChanges: false,
+			LogReadURL: "https://archivist.example/logs/plan-logurl",
+		},
+	}
+
+	var stdout bytes.Buffer
+	cmd := &PlansGetCmd{
+		ID:            "plan-logurl",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &stdout,
+		clientFactory: func(_ tfcapi.ClientConfig) (plansClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var result map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+		t.Fatalf("failed to parse JSON output: %v", err)
+	}
+
+	data, ok := result["data"].(map[string]any)
+	if !ok {
+		t.Fatal("expected data field in JSON output")
+	}
+
+	if data["id"] != "plan-logurl" {
+		t.Errorf("expected id=plan-logurl, got %v", data["id"])
+	}
+	if data["log_read_url"] != "https://archivist.example/logs/plan-logurl" {
+		t.Errorf("expected log_read_url=https://archivist.example/logs/plan-logurl, got %v", data["log_read_url"])
+	}
+}
+
 func TestPlansGet_Table(t *testing.T) {
 	tmpDir, resolver := setupPlansTest(t)
 
