@@ -1591,7 +1591,9 @@ if fakeClient.jsonOutputPlanID != "plan-123" {
 
 ---
 
-### 31. [ ] Missing test: verify download URL passed correctly to `downloadClient`
+### 31. [x] Missing test: verify download URL passed correctly to `downloadClient`
+
+**Status:** DONE
 
 **File:** `cmd/tfc/plans_test.go`
 
@@ -1613,6 +1615,25 @@ if downloadedURL != "https://archivist.example/sanitized.json" {
     t.Errorf("expected download URL, got %s", downloadedURL)
 }
 ```
+
+#### Plan
+- **Acceptance criteria:** Sanitized plan tests (`TestPlansSanitizedPlan_WritesToStdout`, `TestPlansSanitizedPlan_WritesToFile`, `TestPlansSanitizedPlan_DownloadError`) capture and verify the download URL passed to `downloadClient`.
+- **Verification:** `make fmt && make lint && make build && make test` passes; tests verify correct URL is passed.
+- **Implementation steps:**
+  1. Update `TestPlansSanitizedPlan_WritesToStdout` to capture and verify URL
+  2. Update `TestPlansSanitizedPlan_WritesToFile` to capture and verify URL
+  3. Update `TestPlansSanitizedPlan_DownloadError` to capture and verify URL
+  4. Run feedback loops
+
+#### Progress Notes
+
+**2026-01-22:** Completed.
+- Changed: `cmd/tfc/plans_test.go` - updated 3 tests to capture and verify download URL:
+  - `TestPlansSanitizedPlan_WritesToStdout` - added `downloadedURL` capture variable and verification assertion
+  - `TestPlansSanitizedPlan_WritesToFile` - added `downloadedURL` capture variable and verification assertion
+  - `TestPlansSanitizedPlan_DownloadError` - added `downloadedURL` capture variable and verification assertion (verifies URL passed even on error)
+- Commands: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Result: All sanitized plan tests now verify the correct URL ("https://archivist.example/sanitized.json") is passed to the download client, catching potential bugs where wrong URLs could be used
 
 ---
 

@@ -625,6 +625,7 @@ func TestPlansSanitizedPlan_WritesToStdout(t *testing.T) {
 	tmpDir, resolver := setupPlansTest(t)
 
 	sanitizedContent := `{"sanitized":"plan"}`
+	var downloadedURL string
 	fakeClient := &fakePlansClient{
 		plan: &tfe.Plan{
 			ID: "plan-hyok",
@@ -644,7 +645,8 @@ func TestPlansSanitizedPlan_WritesToStdout(t *testing.T) {
 		clientFactory: func(_ tfcapi.ClientConfig) (plansClient, error) {
 			return fakeClient, nil
 		},
-		downloadClient: func(_ string) ([]byte, error) {
+		downloadClient: func(url string) ([]byte, error) {
+			downloadedURL = url
 			return []byte(sanitizedContent), nil
 		},
 	}
@@ -658,12 +660,18 @@ func TestPlansSanitizedPlan_WritesToStdout(t *testing.T) {
 	if stdout.String() != sanitizedContent {
 		t.Errorf("expected %q, got %q", sanitizedContent, stdout.String())
 	}
+
+	// Verify correct URL was passed to download client
+	if downloadedURL != "https://archivist.example/sanitized.json" {
+		t.Errorf("expected download URL https://archivist.example/sanitized.json, got %s", downloadedURL)
+	}
 }
 
 func TestPlansSanitizedPlan_WritesToFile(t *testing.T) {
 	tmpDir, resolver := setupPlansTest(t)
 
 	sanitizedContent := `{"sanitized":"plan"}`
+	var downloadedURL string
 	fakeClient := &fakePlansClient{
 		plan: &tfe.Plan{
 			ID: "plan-hyok",
@@ -685,7 +693,8 @@ func TestPlansSanitizedPlan_WritesToFile(t *testing.T) {
 		clientFactory: func(_ tfcapi.ClientConfig) (plansClient, error) {
 			return fakeClient, nil
 		},
-		downloadClient: func(_ string) ([]byte, error) {
+		downloadClient: func(url string) ([]byte, error) {
+			downloadedURL = url
 			return []byte(sanitizedContent), nil
 		},
 	}
@@ -716,6 +725,11 @@ func TestPlansSanitizedPlan_WritesToFile(t *testing.T) {
 	}
 	if metaData["written_to"] != outFile {
 		t.Errorf("expected written_to=%s, got %v", outFile, metaData["written_to"])
+	}
+
+	// Verify correct URL was passed to download client
+	if downloadedURL != "https://archivist.example/sanitized.json" {
+		t.Errorf("expected download URL https://archivist.example/sanitized.json, got %s", downloadedURL)
 	}
 }
 
@@ -824,6 +838,7 @@ func TestPlansSanitizedPlan_NilLinks(t *testing.T) {
 func TestPlansSanitizedPlan_DownloadError(t *testing.T) {
 	tmpDir, resolver := setupPlansTest(t)
 
+	var downloadedURL string
 	fakeClient := &fakePlansClient{
 		plan: &tfe.Plan{
 			ID: "plan-hyok",
@@ -843,7 +858,8 @@ func TestPlansSanitizedPlan_DownloadError(t *testing.T) {
 		clientFactory: func(_ tfcapi.ClientConfig) (plansClient, error) {
 			return fakeClient, nil
 		},
-		downloadClient: func(_ string) ([]byte, error) {
+		downloadClient: func(url string) ([]byte, error) {
+			downloadedURL = url
 			return nil, errors.New("connection refused")
 		},
 	}
@@ -855,6 +871,11 @@ func TestPlansSanitizedPlan_DownloadError(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "connection refused") {
 		t.Errorf("expected 'connection refused' in error, got: %v", err)
+	}
+
+	// Verify correct URL was passed to download client even when it returns an error
+	if downloadedURL != "https://archivist.example/sanitized.json" {
+		t.Errorf("expected download URL https://archivist.example/sanitized.json, got %s", downloadedURL)
 	}
 }
 
