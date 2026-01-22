@@ -725,6 +725,40 @@ func TestRunsApply_ConfirmYes(t *testing.T) {
 	}
 }
 
+func TestRunsApply_WithComment(t *testing.T) {
+	tmpDir, resolver := setupRunsTest(t)
+
+	fakeClient := &fakeRunsClient{}
+
+	var stdout bytes.Buffer
+	forceFlag := true
+	cmd := &RunsApplyCmd{
+		ID:            "run-1",
+		Comment:       "LGTM, applying",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &stdout,
+		clientFactory: func(_ tfcapi.ClientConfig) (runsClient, error) {
+			return fakeClient, nil
+		},
+		forceFlag: &forceFlag,
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !fakeClient.applyCalled {
+		t.Error("expected apply to be called")
+	}
+	if fakeClient.applyOpts.Comment == nil || *fakeClient.applyOpts.Comment != "LGTM, applying" {
+		t.Errorf("expected comment 'LGTM, applying' to be passed to API, got %v", fakeClient.applyOpts.Comment)
+	}
+}
+
 func TestRunsDiscard_PromptsWithoutForce(t *testing.T) {
 	tmpDir, resolver := setupRunsTest(t)
 
@@ -781,6 +815,40 @@ func TestRunsDiscard_WithForce(t *testing.T) {
 
 	if !fakeClient.discardCalled {
 		t.Error("expected discard to be called with --force")
+	}
+}
+
+func TestRunsDiscard_WithComment(t *testing.T) {
+	tmpDir, resolver := setupRunsTest(t)
+
+	fakeClient := &fakeRunsClient{}
+
+	var stdout bytes.Buffer
+	forceFlag := true
+	cmd := &RunsDiscardCmd{
+		ID:            "run-1",
+		Comment:       "Discarding due to failed review",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &stdout,
+		clientFactory: func(_ tfcapi.ClientConfig) (runsClient, error) {
+			return fakeClient, nil
+		},
+		forceFlag: &forceFlag,
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !fakeClient.discardCalled {
+		t.Error("expected discard to be called")
+	}
+	if fakeClient.discardOpts.Comment == nil || *fakeClient.discardOpts.Comment != "Discarding due to failed review" {
+		t.Errorf("expected comment to be passed to API, got %v", fakeClient.discardOpts.Comment)
 	}
 }
 
@@ -843,6 +911,40 @@ func TestRunsCancel_WithForce(t *testing.T) {
 	}
 }
 
+func TestRunsCancel_WithComment(t *testing.T) {
+	tmpDir, resolver := setupRunsTest(t)
+
+	fakeClient := &fakeRunsClient{}
+
+	var stdout bytes.Buffer
+	forceFlag := true
+	cmd := &RunsCancelCmd{
+		ID:            "run-1",
+		Comment:       "Cancelling to update configuration",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &stdout,
+		clientFactory: func(_ tfcapi.ClientConfig) (runsClient, error) {
+			return fakeClient, nil
+		},
+		forceFlag: &forceFlag,
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !fakeClient.cancelCalled {
+		t.Error("expected cancel to be called")
+	}
+	if fakeClient.cancelOpts.Comment == nil || *fakeClient.cancelOpts.Comment != "Cancelling to update configuration" {
+		t.Errorf("expected comment to be passed to API, got %v", fakeClient.cancelOpts.Comment)
+	}
+}
+
 func TestRunsForceCancel_PromptsWithoutForce(t *testing.T) {
 	tmpDir, resolver := setupRunsTest(t)
 
@@ -899,6 +1001,40 @@ func TestRunsForceCancel_WithForce(t *testing.T) {
 
 	if !fakeClient.forceCancelCalled {
 		t.Error("expected force-cancel to be called with --force")
+	}
+}
+
+func TestRunsForceCancel_WithComment(t *testing.T) {
+	tmpDir, resolver := setupRunsTest(t)
+
+	fakeClient := &fakeRunsClient{}
+
+	var stdout bytes.Buffer
+	forceFlag := true
+	cmd := &RunsForceCancelCmd{
+		ID:            "run-1",
+		Comment:       "Emergency force-cancel required",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &stdout,
+		clientFactory: func(_ tfcapi.ClientConfig) (runsClient, error) {
+			return fakeClient, nil
+		},
+		forceFlag: &forceFlag,
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !fakeClient.forceCancelCalled {
+		t.Error("expected force-cancel to be called")
+	}
+	if fakeClient.forceCancelOpts.Comment == nil || *fakeClient.forceCancelOpts.Comment != "Emergency force-cancel required" {
+		t.Errorf("expected comment to be passed to API, got %v", fakeClient.forceCancelOpts.Comment)
 	}
 }
 

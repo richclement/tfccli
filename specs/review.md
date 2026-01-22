@@ -402,11 +402,34 @@ func TestRunsCreate_APIError(t *testing.T) {
 
 ---
 
-### 8. [ ] Missing test: Comment option passed to Apply/Discard/Cancel/ForceCancel
+### 8. [x] Missing test: Comment option passed to Apply/Discard/Cancel/ForceCancel
+
+**Status:** DONE
 
 **File:** `cmd/tfc/runs_test.go`
 
 **Problem:** The `--comment` flag functionality is not tested. We don't verify the comment is actually passed to the API.
+
+#### Plan
+- **Acceptance criteria:** Four tests exist that verify the `--comment` flag value is correctly passed to the API for Apply, Discard, Cancel, and ForceCancel commands. Tests assert that `opts.Comment` is set to the expected value.
+- **Verification:** `make fmt && make lint && make build && make test` all pass; new tests pass.
+- **Implementation steps:**
+  1. Add `TestRunsApply_WithComment` test - uses `--force` and verifies `applyOpts.Comment`
+  2. Add `TestRunsDiscard_WithComment` test - uses `--force` and verifies `discardOpts.Comment`
+  3. Add `TestRunsCancel_WithComment` test - uses `--force` and verifies `cancelOpts.Comment`
+  4. Add `TestRunsForceCancel_WithComment` test - uses `--force` and verifies `forceCancelOpts.Comment`
+  5. Run feedback loops to verify
+
+#### Progress Notes
+
+**2026-01-22:** Completed.
+- Changed: `cmd/tfc/runs_test.go` - added 4 new tests:
+  - `TestRunsApply_WithComment` - verifies comment "LGTM, applying" is passed to API
+  - `TestRunsDiscard_WithComment` - verifies comment "Discarding due to failed review" is passed to API
+  - `TestRunsCancel_WithComment` - verifies comment "Cancelling to update configuration" is passed to API
+  - `TestRunsForceCancel_WithComment` - verifies comment "Emergency force-cancel required" is passed to API
+- Commands: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Result: `--comment` flag functionality now verified for all 4 destructive operations. Tests use captured opts from fakeRunsClient (enabled by issue #4).
 
 **Fix:** Add a test (example for Apply, repeat pattern for others):
 ```go
