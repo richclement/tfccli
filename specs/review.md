@@ -590,3 +590,51 @@ Commands run:
 - `grep -r "apiErr.Error()" cmd/tfc/` - no matches found (verified all replaced)
 
 Net effect: Changed 36 error wrapping statements from `%s` with `.Error()` to `%w` with the error directly. This preserves the error chain for callers using `errors.As()` to inspect underlying errors.
+
+---
+
+### Task: #2 Large main.go file (734 lines)
+
+**Status:** DONE
+**Priority:** P2
+
+**Acceptance Criteria:**
+- `main.go` contains only: CLI struct, run(), versionString(), exitCodeForError(), main()
+- `doctor.go` contains DoctorCmd, DoctorCheck, DoctorResult types and methods
+- `init.go` contains InitCmd and Run method
+- `contexts.go` contains ContextsCmd and all Contexts subcommands
+- All tests pass unchanged (behavior is identical)
+- No circular imports
+
+**Verification:**
+- `make fmt` passes
+- `make lint` passes
+- `make build` passes
+- `make test` passes
+
+**Implementation Plan:**
+1. Create `doctor.go` with DoctorCmd, DoctorCheck, DoctorResult, doctorClient interface, defaultClientFactory, outputAndError method
+2. Create `init.go` with InitCmd and Run method
+3. Create `contexts.go` with ContextsCmd and all subcommands (List, Add, Use, Remove, Show)
+4. Remove extracted code from `main.go`, keeping only CLI struct, version handling, run(), exitCodeForError(), printParseError(), main()
+5. Run feedback loops and verify
+
+**Progress Notes:**
+
+_2026-01-22:_ Completed.
+
+Files created:
+- `cmd/tfc/doctor.go` (202 lines): DoctorCmd, DoctorCheck, DoctorResult types, doctorClient interface, Run() method, outputAndError() helper, defaultDoctorClientFactory()
+- `cmd/tfc/init.go` (132 lines): InitCmd type and Run() method
+- `cmd/tfc/contexts.go` (305 lines): ContextsCmd, ContextsListCmd, ContextsAddCmd, ContextsUseCmd, ContextsRemoveCmd, ContextsShowCmd types and all Run() methods, contextListItem and contextShowItem types
+
+Files changed:
+- `cmd/tfc/main.go`: Reduced from 724 lines to 119 lines. Now contains only: CLI struct, version handling, main(), run(), printParseError(), exitCodeForError()
+
+Commands run:
+- `make fmt` - passed
+- `make lint` - passed
+- `make build` - passed
+- `make test` - passed (all tests pass, behavior unchanged)
+
+Net effect: Reduced main.go from 724 lines to 119 lines by extracting DoctorCmd (202 lines), InitCmd (132 lines), and ContextsCmd with subcommands (305 lines) into focused files. No circular imports, all tests pass unchanged.
