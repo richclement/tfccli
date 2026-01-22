@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -8,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/richclement/tfccli/internal/config"
+	"github.com/richclement/tfccli/internal/output"
 	"github.com/richclement/tfccli/internal/ui"
 )
 
@@ -31,14 +34,26 @@ func TestContextsListCmd_ListsAllContexts(t *testing.T) {
 	}
 	createTestSettings(t, tmpHome, settings)
 
-	cmd := &ContextsListCmd{baseDir: tmpHome}
+	var buf bytes.Buffer
+	cmd := &ContextsListCmd{
+		baseDir:     tmpHome,
+		stdout:      &buf,
+		ttyDetector: &output.FakeTTYDetector{IsTTYValue: false},
+	}
+	cli := &CLI{OutputFormat: "table"}
 
-	err := cmd.Run()
+	err := cmd.Run(cli)
 	if err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
-	// Output verification would require capturing stdout
-	// but the test verifies no error occurs with valid settings
+
+	out := buf.String()
+	if !strings.Contains(out, "default") {
+		t.Errorf("expected 'default' in output, got: %s", out)
+	}
+	if !strings.Contains(out, "prod") {
+		t.Errorf("expected 'prod' in output, got: %s", out)
+	}
 }
 
 func TestContextsAddCmd_CreatesNewContext(t *testing.T) {
@@ -445,15 +460,29 @@ func TestContextsShowCmd_ShowsCurrentContext(t *testing.T) {
 	}
 	createTestSettings(t, tmpHome, settings)
 
+	var buf bytes.Buffer
 	cmd := &ContextsShowCmd{
-		baseDir: tmpHome,
+		baseDir:     tmpHome,
+		stdout:      &buf,
+		ttyDetector: &output.FakeTTYDetector{IsTTYValue: false},
 	}
+	cli := &CLI{OutputFormat: "table"}
 
-	err := cmd.Run()
+	err := cmd.Run(cli)
 	if err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
-	// Output verification would require capturing stdout
+
+	out := buf.String()
+	if !strings.Contains(out, "default") {
+		t.Errorf("expected 'default' in output, got: %s", out)
+	}
+	if !strings.Contains(out, "(current)") {
+		t.Errorf("expected '(current)' marker in output, got: %s", out)
+	}
+	if !strings.Contains(out, "myorg") {
+		t.Errorf("expected 'myorg' in output, got: %s", out)
+	}
 }
 
 func TestContextsShowCmd_ShowsNamedContext(t *testing.T) {
@@ -468,14 +497,26 @@ func TestContextsShowCmd_ShowsNamedContext(t *testing.T) {
 	}
 	createTestSettings(t, tmpHome, settings)
 
+	var buf bytes.Buffer
 	cmd := &ContextsShowCmd{
-		Name:    "prod",
-		baseDir: tmpHome,
+		Name:        "prod",
+		baseDir:     tmpHome,
+		stdout:      &buf,
+		ttyDetector: &output.FakeTTYDetector{IsTTYValue: false},
 	}
+	cli := &CLI{OutputFormat: "table"}
 
-	err := cmd.Run()
+	err := cmd.Run(cli)
 	if err != nil {
 		t.Fatalf("Run() error = %v", err)
+	}
+
+	out := buf.String()
+	if !strings.Contains(out, "prod") {
+		t.Errorf("expected 'prod' in output, got: %s", out)
+	}
+	if !strings.Contains(out, "acme") {
+		t.Errorf("expected 'acme' in output, got: %s", out)
 	}
 }
 
@@ -490,12 +531,16 @@ func TestContextsShowCmd_ErrorsIfContextNotFound(t *testing.T) {
 	}
 	createTestSettings(t, tmpHome, settings)
 
+	var buf bytes.Buffer
 	cmd := &ContextsShowCmd{
-		Name:    "nonexistent",
-		baseDir: tmpHome,
+		Name:        "nonexistent",
+		baseDir:     tmpHome,
+		stdout:      &buf,
+		ttyDetector: &output.FakeTTYDetector{IsTTYValue: false},
 	}
+	cli := &CLI{}
 
-	err := cmd.Run()
+	err := cmd.Run(cli)
 	if err == nil {
 		t.Fatal("Expected error when showing nonexistent context")
 	}
@@ -506,9 +551,15 @@ func TestContextsListCmd_NoSettings(t *testing.T) {
 	tmpHome := t.TempDir()
 	// Don't create settings file
 
-	cmd := &ContextsListCmd{baseDir: tmpHome}
+	var buf bytes.Buffer
+	cmd := &ContextsListCmd{
+		baseDir:     tmpHome,
+		stdout:      &buf,
+		ttyDetector: &output.FakeTTYDetector{IsTTYValue: false},
+	}
+	cli := &CLI{}
 
-	err := cmd.Run()
+	err := cmd.Run(cli)
 	if err == nil {
 		t.Fatal("expected error when settings not found, got nil")
 	}
@@ -519,9 +570,15 @@ func TestContextsShowCmd_NoSettings(t *testing.T) {
 	tmpHome := t.TempDir()
 	// Don't create settings file
 
-	cmd := &ContextsShowCmd{baseDir: tmpHome}
+	var buf bytes.Buffer
+	cmd := &ContextsShowCmd{
+		baseDir:     tmpHome,
+		stdout:      &buf,
+		ttyDetector: &output.FakeTTYDetector{IsTTYValue: false},
+	}
+	cli := &CLI{}
 
-	err := cmd.Run()
+	err := cmd.Run(cli)
 	if err == nil {
 		t.Fatal("expected error when settings not found, got nil")
 	}
@@ -619,5 +676,133 @@ func TestContextsAddCmd_SaveError(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "failed to save settings") {
 		t.Errorf("expected save failure message, got: %v", err)
+	}
+}
+
+// TestContextsListCmd_JSONOutput tests JSON output format for list command.
+func TestContextsListCmd_JSONOutput(t *testing.T) {
+	tmpHome := t.TempDir()
+
+	settings := &config.Settings{
+		CurrentContext: "default",
+		Contexts: map[string]config.Context{
+			"default": {Address: "app.terraform.io", LogLevel: "info"},
+			"prod":    {Address: "tfe.example.com", LogLevel: "warn"},
+		},
+	}
+	createTestSettings(t, tmpHome, settings)
+
+	var buf bytes.Buffer
+	cmd := &ContextsListCmd{
+		baseDir:     tmpHome,
+		stdout:      &buf,
+		ttyDetector: &output.FakeTTYDetector{IsTTYValue: false},
+	}
+	cli := &CLI{OutputFormat: "json"}
+
+	err := cmd.Run(cli)
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	var items []contextListItem
+	if err := json.Unmarshal(buf.Bytes(), &items); err != nil {
+		t.Fatalf("failed to parse JSON: %v", err)
+	}
+
+	if len(items) != 2 {
+		t.Errorf("expected 2 items, got %d", len(items))
+	}
+
+	// Verify items are sorted alphabetically
+	if items[0].Name != "default" {
+		t.Errorf("expected first item 'default', got %q", items[0].Name)
+	}
+	if !items[0].IsCurrent {
+		t.Error("expected 'default' to be marked as current")
+	}
+	if items[1].Name != "prod" {
+		t.Errorf("expected second item 'prod', got %q", items[1].Name)
+	}
+	if items[1].IsCurrent {
+		t.Error("expected 'prod' to NOT be marked as current")
+	}
+}
+
+// TestContextsShowCmd_JSONOutput tests JSON output format for show command.
+func TestContextsShowCmd_JSONOutput(t *testing.T) {
+	tmpHome := t.TempDir()
+
+	settings := &config.Settings{
+		CurrentContext: "default",
+		Contexts: map[string]config.Context{
+			"default": {Address: "app.terraform.io", DefaultOrg: "acme", LogLevel: "info"},
+		},
+	}
+	createTestSettings(t, tmpHome, settings)
+
+	var buf bytes.Buffer
+	cmd := &ContextsShowCmd{
+		baseDir:     tmpHome,
+		stdout:      &buf,
+		ttyDetector: &output.FakeTTYDetector{IsTTYValue: false},
+	}
+	cli := &CLI{OutputFormat: "json"}
+
+	err := cmd.Run(cli)
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	var item contextShowItem
+	if err := json.Unmarshal(buf.Bytes(), &item); err != nil {
+		t.Fatalf("failed to parse JSON: %v", err)
+	}
+
+	if item.Name != "default" {
+		t.Errorf("expected name 'default', got %q", item.Name)
+	}
+	if !item.IsCurrent {
+		t.Error("expected is_current to be true")
+	}
+	if item.Address != "app.terraform.io" {
+		t.Errorf("expected address 'app.terraform.io', got %q", item.Address)
+	}
+	if item.DefaultOrg != "acme" {
+		t.Errorf("expected default_org 'acme', got %q", item.DefaultOrg)
+	}
+	if item.LogLevel != "info" {
+		t.Errorf("expected log_level 'info', got %q", item.LogLevel)
+	}
+}
+
+// TestContextsShowCmd_EmptyDefaultOrgDisplayed tests that empty default_org shows "(none)" in table output.
+func TestContextsShowCmd_EmptyDefaultOrgDisplayed(t *testing.T) {
+	tmpHome := t.TempDir()
+
+	settings := &config.Settings{
+		CurrentContext: "default",
+		Contexts: map[string]config.Context{
+			"default": {Address: "app.terraform.io", LogLevel: "info"},
+		},
+	}
+	createTestSettings(t, tmpHome, settings)
+
+	var buf bytes.Buffer
+	cmd := &ContextsShowCmd{
+		baseDir:     tmpHome,
+		stdout:      &buf,
+		ttyDetector: &output.FakeTTYDetector{IsTTYValue: false},
+	}
+	cli := &CLI{OutputFormat: "table"}
+
+	err := cmd.Run(cli)
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	out := buf.String()
+	if !strings.Contains(out, "(none)") {
+		t.Errorf("expected '(none)' for empty default_org, got: %s", out)
 	}
 }

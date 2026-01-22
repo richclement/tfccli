@@ -380,10 +380,26 @@ type ContextsCmd struct {
 
 // ContextsListCmd lists all contexts.
 type ContextsListCmd struct {
-	baseDir string
+	baseDir     string
+	stdout      io.Writer
+	ttyDetector output.TTYDetector
 }
 
-func (c *ContextsListCmd) Run() error {
+// contextListItem represents a context in JSON output.
+type contextListItem struct {
+	Name      string `json:"name"`
+	IsCurrent bool   `json:"is_current"`
+}
+
+func (c *ContextsListCmd) Run(cli *CLI) error {
+	// Set defaults
+	if c.stdout == nil {
+		c.stdout = os.Stdout
+	}
+	if c.ttyDetector == nil {
+		c.ttyDetector = &output.RealTTYDetector{}
+	}
+
 	settings, err := config.Load(c.baseDir)
 	if err != nil {
 		return internalcmd.NewRuntimeError(err)
@@ -396,12 +412,38 @@ func (c *ContextsListCmd) Run() error {
 	}
 	sort.Strings(names)
 
-	for _, name := range names {
-		marker := "  "
-		if name == settings.CurrentContext {
-			marker = "* "
+	// Determine output format
+	isTTY := false
+	if f, ok := c.stdout.(*os.File); ok {
+		isTTY = c.ttyDetector.IsTTY(f)
+	}
+	format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
+
+	if format == output.FormatJSON {
+		items := make([]contextListItem, 0, len(names))
+		for _, name := range names {
+			items = append(items, contextListItem{
+				Name:      name,
+				IsCurrent: name == settings.CurrentContext,
+			})
 		}
-		fmt.Printf("%s%s\n", marker, name)
+		if err := output.WriteJSON(c.stdout, items); err != nil {
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to write output: %w", err))
+		}
+		return nil
+	}
+
+	// Table output
+	tw := output.NewTableWriter(c.stdout, []string{"", "NAME"}, isTTY)
+	for _, name := range names {
+		marker := ""
+		if name == settings.CurrentContext {
+			marker = "*"
+		}
+		tw.AddRow(marker, name)
+	}
+	if _, err := tw.Render(); err != nil {
+		return internalcmd.NewRuntimeError(fmt.Errorf("failed to write output: %w", err))
 	}
 	return nil
 }
@@ -530,10 +572,29 @@ func (c *ContextsRemoveCmd) Run(cli *CLI) error {
 type ContextsShowCmd struct {
 	Name string `arg:"" optional:"" help:"Name of the context to show (defaults to current)."`
 
-	baseDir string
+	baseDir     string
+	stdout      io.Writer
+	ttyDetector output.TTYDetector
 }
 
-func (c *ContextsShowCmd) Run() error {
+// contextShowItem represents a context detail in JSON output.
+type contextShowItem struct {
+	Name       string `json:"name"`
+	IsCurrent  bool   `json:"is_current"`
+	Address    string `json:"address"`
+	DefaultOrg string `json:"default_org"`
+	LogLevel   string `json:"log_level"`
+}
+
+func (c *ContextsShowCmd) Run(cli *CLI) error {
+	// Set defaults
+	if c.stdout == nil {
+		c.stdout = os.Stdout
+	}
+	if c.ttyDetector == nil {
+		c.ttyDetector = &output.RealTTYDetector{}
+	}
+
 	settings, err := config.Load(c.baseDir)
 	if err != nil {
 		return internalcmd.NewRuntimeError(err)
@@ -551,16 +612,42 @@ func (c *ContextsShowCmd) Run() error {
 
 	// Apply defaults for display
 	resolved := ctx.WithDefaults()
+	isCurrent := name == settings.CurrentContext
 
-	current := ""
-	if name == settings.CurrentContext {
-		current = " (current)"
+	// Determine output format
+	isTTY := false
+	if f, ok := c.stdout.(*os.File); ok {
+		isTTY = c.ttyDetector.IsTTY(f)
+	}
+	format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
+
+	if format == output.FormatJSON {
+		item := contextShowItem{
+			Name:       name,
+			IsCurrent:  isCurrent,
+			Address:    resolved.Address,
+			DefaultOrg: resolved.DefaultOrg,
+			LogLevel:   resolved.LogLevel,
+		}
+		if err := output.WriteJSON(c.stdout, item); err != nil {
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to write output: %w", err))
+		}
+		return nil
 	}
 
-	fmt.Printf("Context: %s%s\n", name, current)
-	fmt.Printf("  Address:     %s\n", resolved.Address)
-	fmt.Printf("  Default Org: %s\n", resolved.DefaultOrg)
-	fmt.Printf("  Log Level:   %s\n", resolved.LogLevel)
+	// Table-like text output
+	current := ""
+	if isCurrent {
+		current = " (current)"
+	}
+	fmt.Fprintf(c.stdout, "Context: %s%s\n", name, current)
+	fmt.Fprintf(c.stdout, "  Address:     %s\n", resolved.Address)
+	defaultOrg := resolved.DefaultOrg
+	if defaultOrg == "" {
+		defaultOrg = "(none)"
+	}
+	fmt.Fprintf(c.stdout, "  Default Org: %s\n", defaultOrg)
+	fmt.Fprintf(c.stdout, "  Log Level:   %s\n", resolved.LogLevel)
 	return nil
 }
 
