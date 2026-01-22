@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -485,5 +486,34 @@ func TestContextsShowCmd_NoSettings(t *testing.T) {
 	err := cmd.Run()
 	if err == nil {
 		t.Fatal("expected error when settings not found, got nil")
+	}
+}
+
+// TestContextsRemoveCmd_PrompterError tests that prompter errors are surfaced.
+func TestContextsRemoveCmd_PrompterError(t *testing.T) {
+	tmpHome := t.TempDir()
+
+	settings := &config.Settings{
+		CurrentContext: "default",
+		Contexts: map[string]config.Context{
+			"default": {Address: "app.terraform.io", LogLevel: "info"},
+			"prod":    {Address: "tfe.example.com", LogLevel: "warn"},
+		},
+	}
+	createTestSettings(t, tmpHome, settings)
+
+	cmd := &ContextsRemoveCmd{
+		Name:     "prod",
+		baseDir:  tmpHome,
+		prompter: &errorPrompter{err: errors.New("terminal not available")},
+	}
+	cli := &CLI{Force: false}
+
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "failed to prompt for confirmation") {
+		t.Errorf("expected prompt error, got: %v", err)
 	}
 }

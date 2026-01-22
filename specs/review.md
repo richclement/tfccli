@@ -3009,9 +3009,33 @@ func TestContextsShowCmd_NoSettings(t *testing.T) {
 
 ### 57. Missing Test: ContextsRemoveCmd Prompter Error
 
+**Status: DONE** (2026-01-21)
+
 **File:** `cmd/tfc/contexts_test.go`
 
 **Problem:** No test verifies error handling when `prompter.Confirm()` returns an error. The `errorPrompter` type exists in `testhelpers_test.go`.
+
+**Plan (2026-01-21):**
+- Acceptance criteria: Test `TestContextsRemoveCmd_PrompterError` exists and verifies that when prompter.Confirm() returns an error, it is wrapped and surfaced as a RuntimeError with message "failed to prompt for confirmation"
+- Verification: Run `go test -v -run "TestContextsRemoveCmd_PrompterError" ./cmd/tfc/...`
+- Implementation:
+  1. Use the existing shared `errorPrompter` from `testhelpers_test.go`
+  2. Add test `TestContextsRemoveCmd_PrompterError` to `contexts_test.go`
+  3. Need to add `errors` import to contexts_test.go for `errors.New`
+  4. Run feedback loops to verify
+
+**Progress notes (2026-01-21):**
+
+Changes made:
+- `cmd/tfc/contexts_test.go:4` - Added `errors` import
+- `cmd/tfc/contexts_test.go:492-519` - Added `TestContextsRemoveCmd_PrompterError` test using shared `errorPrompter`
+
+Verification:
+- `make fmt` - passed
+- `make lint` - passed (with temp caches due to permission issues)
+- `make build` - passed (with temp caches)
+- `make test` - all tests pass
+- `go test -v -run "TestContextsRemoveCmd_PrompterError" ./cmd/tfc/...` - pass
 
 **Test to add:**
 ```go
@@ -3435,7 +3459,7 @@ func TestContextsShowCmd_JSONOutput(t *testing.T) {
 | Remove nonexistent context | ❌ | #62 |
 | Remove settings not found | ✅ | #55 |
 | Remove config.Save failure | ❌ | #60 |
-| Remove prompter error | ❌ | #57 |
+| Remove prompter error | ✅ | #57 |
 | Show current context | ✅ | - |
 | Show named context | ✅ | - |
 | Show nonexistent context (error) | ✅ | - |
