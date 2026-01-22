@@ -882,7 +882,9 @@ if fakeClient.listWorkspaceID != "ws-test" {
 
 ## Issues Found
 
-### 17. [ ] Plans commands don't use `resolveFormat` helper
+### 17. [x] Plans commands don't use `resolveFormat` helper
+
+**Status:** DONE
 
 **File:** `cmd/tfc/plans.go`
 **Lines:** 163-167, 237-241, 339-343
@@ -902,6 +904,24 @@ format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
 ```go
 format, isTTY := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
 ```
+
+#### Plan
+- **Acceptance criteria:** All 3 plans commands use `resolveFormat` helper instead of inline TTY detection.
+- **Verification:** `make fmt && make lint && make build && make test` passes; no functional change in behavior.
+- **Implementation steps:**
+  1. Replace inline TTY detection in PlansGetCmd.Run (lines 163-167)
+  2. Replace inline TTY detection in PlansJSONOutputCmd.Run (lines 237-241)
+  3. Replace inline TTY detection in PlansSanitizedPlanCmd.Run (lines 339-343)
+
+#### Progress Notes
+
+**2026-01-22:** Completed refactor.
+- Changed: `cmd/tfc/plans.go` - replaced 3 instances of inline TTY detection with `resolveFormat` helper
+  - `PlansGetCmd.Run`: uses `format, isTTY := resolveFormat(...)` (needs isTTY for TableWriter)
+  - `PlansJSONOutputCmd.Run`: uses `format, _ := resolveFormat(...)` (isTTY not needed)
+  - `PlansSanitizedPlanCmd.Run`: uses `format, _ := resolveFormat(...)` (isTTY not needed)
+- Commands: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Result: Code is now consistent with other commands (doctor, projects, workspace-variables, workspace-resources)
 
 ---
 

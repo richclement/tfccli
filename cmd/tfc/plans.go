@@ -160,11 +160,7 @@ func (c *PlansGetCmd) Run(cli *CLI) error {
 	}
 
 	// Determine output format
-	isTTY := false
-	if f, ok := c.stdout.(*os.File); ok {
-		isTTY = c.ttyDetector.IsTTY(f)
-	}
-	format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
+	format, isTTY := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
 
 	if format == output.FormatJSON {
 		result := map[string]any{"data": toPlanJSON(plan)}
@@ -234,11 +230,7 @@ func (c *PlansJSONOutputCmd) Run(cli *CLI) error {
 	}
 
 	// Determine output format for meta output
-	isTTY := false
-	if f, ok := c.stdout.(*os.File); ok {
-		isTTY = c.ttyDetector.IsTTY(f)
-	}
-	format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
+	format, _ := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
 
 	if c.Out != "" {
 		// Write to file
@@ -336,11 +328,7 @@ func (c *PlansSanitizedPlanCmd) Run(cli *CLI) error {
 	}
 
 	// Determine output format for meta output
-	isTTY := false
-	if f, ok := c.stdout.(*os.File); ok {
-		isTTY = c.ttyDetector.IsTTY(f)
-	}
-	format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
+	format, _ := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
 
 	if c.Out != "" {
 		// Write to file
