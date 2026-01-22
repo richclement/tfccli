@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/alecthomas/kong"
 	"github.com/go-logr/logr"
@@ -60,6 +63,9 @@ type CLI struct {
 
 	// Logger is the logr.Logger used for debug output. Set by run() based on --debug flag and settings.
 	Logger logr.Logger `kong:"-"`
+
+	// Ctx is the context for command execution. Set by run() with signal handling for cancellation.
+	Ctx context.Context `kong:"-"`
 }
 
 type exitError struct {
@@ -114,6 +120,11 @@ func run() (exitCode int) {
 		}
 	}
 	cli.Logger = logging.NewLogger(logLevel, cli.Debug)
+
+	// Create context with signal handling for cancellation (Ctrl+C).
+	signalCtx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
+	cli.Ctx = signalCtx
 
 	if err := ctx.Run(); err != nil {
 		return exitCodeForError(err)

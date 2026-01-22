@@ -152,7 +152,7 @@ func (c *RunsListCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create client: %w", err))
 	}
 
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 	runs, err := client.List(ctx, c.WorkspaceID, nil, c.Limit)
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
@@ -217,7 +217,7 @@ func (c *RunsGetCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create client: %w", err))
 	}
 
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 	run, err := client.Read(ctx, c.ID)
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
@@ -289,7 +289,7 @@ func (c *RunsCreateCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create client: %w", err))
 	}
 
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 	opts := tfe.RunCreateOptions{
 		Workspace: &tfe.Workspace{ID: c.WorkspaceID},
 	}
@@ -382,7 +382,7 @@ func (c *RunsApplyCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create client: %w", err))
 	}
 
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 	opts := tfe.RunApplyOptions{}
 	if c.Comment != "" {
 		opts.Comment = tfe.String(c.Comment)
@@ -469,7 +469,7 @@ func (c *RunsDiscardCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create client: %w", err))
 	}
 
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 	opts := tfe.RunDiscardOptions{}
 	if c.Comment != "" {
 		opts.Comment = tfe.String(c.Comment)
@@ -556,7 +556,7 @@ func (c *RunsCancelCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create client: %w", err))
 	}
 
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 	opts := tfe.RunCancelOptions{}
 	if c.Comment != "" {
 		opts.Comment = tfe.String(c.Comment)
@@ -643,7 +643,7 @@ func (c *RunsForceCancelCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create client: %w", err))
 	}
 
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 	opts := tfe.RunForceCancelOptions{}
 	if c.Comment != "" {
 		opts.Comment = tfe.String(c.Comment)

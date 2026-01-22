@@ -156,7 +156,7 @@ func (d *DoctorCmd) Run(cli *CLI) error {
 		return d.outputAndError(result, format, isTTY, hasFailure)
 	}
 
-	pingCtx := context.Background()
+	pingCtx := cmdContext(cli)
 	if err := client.Ping(pingCtx); err != nil {
 		result.Checks = append(result.Checks, DoctorCheck{
 			Name:   "connectivity",

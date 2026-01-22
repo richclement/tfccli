@@ -111,7 +111,7 @@ func (c *UsersGetCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create client: %w", err))
 	}
 
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 	user, err := client.Read(ctx, c.UserID)
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)

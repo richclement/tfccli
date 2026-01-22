@@ -142,7 +142,7 @@ func (c *WorkspaceVariablesListCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create client: %w", err))
 	}
 
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 	variables, err := client.List(ctx, c.WorkspaceID, nil)
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
@@ -207,7 +207,7 @@ func (c *WorkspaceVariablesGetCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create client: %w", err))
 	}
 
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 	variable, err := client.Read(ctx, c.WorkspaceID, c.VariableID)
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
@@ -294,7 +294,7 @@ func (c *WorkspaceVariablesCreateCmd) Run(cli *CLI) error {
 		category = tfe.CategoryTerraform
 	}
 
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 	opts := tfe.VariableCreateOptions{
 		Key:       tfe.String(c.Key),
 		Value:     tfe.String(c.Value),
@@ -386,7 +386,7 @@ func (c *WorkspaceVariablesUpdateCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create client: %w", err))
 	}
 
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 	opts := tfe.VariableUpdateOptions{}
 	if c.Key != "" {
 		opts.Key = tfe.String(c.Key)
@@ -489,7 +489,7 @@ func (c *WorkspaceVariablesDeleteCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create client: %w", err))
 	}
 
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 	err = client.Delete(ctx, c.WorkspaceID, c.VariableID)
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)

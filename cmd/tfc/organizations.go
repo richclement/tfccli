@@ -102,7 +102,7 @@ func (c *OrganizationsListCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create client: %w", err))
 	}
 
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 	orgs, err := client.List(ctx, nil)
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
@@ -172,7 +172,7 @@ func (c *OrganizationsGetCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create client: %w", err))
 	}
 
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 	org, err := client.Read(ctx, c.Name)
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
@@ -239,7 +239,7 @@ func (c *OrganizationsCreateCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create client: %w", err))
 	}
 
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 	opts := tfe.OrganizationCreateOptions{
 		Name:  tfe.String(c.Name),
 		Email: tfe.String(c.Email),
@@ -307,7 +307,7 @@ func (c *OrganizationsUpdateCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("nothing to update: specify --email"))
 	}
 
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 	opts := tfe.OrganizationUpdateOptions{
 		Email: tfe.String(c.Email),
 	}
@@ -394,7 +394,7 @@ func (c *OrganizationsDeleteCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create client: %w", err))
 	}
 
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 	err = client.Delete(ctx, c.Name)
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)

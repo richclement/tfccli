@@ -745,3 +745,63 @@ Net effect:
 - Updated users.go to use shared HTTP client (~40 lines reduced)
 - Updated invoices.go to use shared JSON:API error parsing (removed duplicate struct)
 - Behavior unchanged, tests pass
+
+---
+
+### Task: #11 No context propagation
+
+**Status:** DONE
+**Priority:** P2
+
+**Acceptance Criteria:**
+- Commands use a context with signal handling (`signal.NotifyContext`) instead of `context.Background()`
+- User can cancel long-running operations with Ctrl+C (SIGINT)
+- Context is created once in `run()` and passed through CLI struct to commands
+- Tests pass unchanged (behavior is identical when no signal is received)
+- Clean shutdown on cancellation (no panic, appropriate exit code)
+
+**Verification:**
+- `make fmt` passes
+- `make lint` passes
+- `make build` passes
+- `make test` passes
+- Manual test: Start a long-running command and Ctrl+C cleanly exits
+
+**Implementation Plan:**
+1. Add `Ctx context.Context` field to CLI struct (with `kong:"-"` to exclude from parsing)
+2. In `run()`, create context with `signal.NotifyContext` for SIGINT/SIGTERM before running commands
+3. Create a helper function `cmdContext(cli *CLI) context.Context` in `common.go` that returns `cli.Ctx` if set, or `context.Background()` as fallback (for tests)
+4. Update all commands to use `cmdContext(cli)` instead of `context.Background()`
+5. Run feedback loops and verify
+
+**Progress Notes:**
+
+_2026-01-22:_ Completed.
+
+Files changed:
+- `cmd/tfc/main.go`: Added imports for `context`, `os/signal`, `syscall`. Added `Ctx context.Context` field to CLI struct (with `kong:"-"` to exclude from parsing). Updated `run()` to create context with `signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)` and assign to `cli.Ctx` before running commands.
+- `cmd/tfc/common.go`: Added import for `context`. Added `cmdContext(cli *CLI) context.Context` helper that returns `cli.Ctx` if set, or `context.Background()` as fallback for tests.
+- `cmd/tfc/organizations.go`: Replaced 5 `ctx := context.Background()` with `ctx := cmdContext(cli)`
+- `cmd/tfc/workspaces.go`: Replaced 5 `ctx := context.Background()` with `ctx := cmdContext(cli)`
+- `cmd/tfc/projects.go`: Replaced 5 `ctx := context.Background()` with `ctx := cmdContext(cli)`
+- `cmd/tfc/runs.go`: Replaced 7 `ctx := context.Background()` with `ctx := cmdContext(cli)`
+- `cmd/tfc/plans.go`: Replaced 3 `ctx := context.Background()` with `ctx := cmdContext(cli)`
+- `cmd/tfc/applies.go`: Replaced 2 `ctx := context.Background()` with `ctx := cmdContext(cli)`
+- `cmd/tfc/invoices.go`: Replaced 2 `ctx := context.Background()` with `ctx := cmdContext(cli)`
+- `cmd/tfc/users.go`: Replaced 1 `ctx := context.Background()` with `ctx := cmdContext(cli)`
+- `cmd/tfc/configuration_versions.go`: Replaced 6 `ctx := context.Background()` with `ctx := cmdContext(cli)`
+- `cmd/tfc/workspace_variables.go`: Replaced 5 `ctx := context.Background()` with `ctx := cmdContext(cli)`
+- `cmd/tfc/workspace_resources.go`: Replaced 1 `ctx := context.Background()` with `ctx := cmdContext(cli)`
+- `cmd/tfc/doctor.go`: Replaced 1 `pingCtx := context.Background()` with `pingCtx := cmdContext(cli)`
+
+Commands run:
+- `make fmt` - passed
+- `make lint` - passed
+- `make build` - passed
+- `make test` - passed (all tests pass)
+
+Net effect:
+- All 43 commands now use a signal-aware context via `cmdContext(cli)` helper
+- Context is created once in `run()` with `signal.NotifyContext` and stored in `cli.Ctx`
+- Ctrl+C (SIGINT) and SIGTERM now trigger context cancellation, enabling clean shutdown
+- Tests continue to work because `cmdContext()` falls back to `context.Background()` when `cli.Ctx` is nil

@@ -143,7 +143,7 @@ func (c *WorkspacesListCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create client: %w", err))
 	}
 
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 
 	// Build list options
 	var listOpts *tfe.WorkspaceListOptions
@@ -227,7 +227,7 @@ func (c *WorkspacesGetCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create client: %w", err))
 	}
 
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 	ws, err := client.ReadByID(ctx, c.ID)
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
@@ -302,7 +302,7 @@ func (c *WorkspacesCreateCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create client: %w", err))
 	}
 
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 	opts := tfe.WorkspaceCreateOptions{
 		Name: tfe.String(c.Name),
 	}
@@ -383,7 +383,7 @@ func (c *WorkspacesUpdateCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create client: %w", err))
 	}
 
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 	opts := tfe.WorkspaceUpdateOptions{}
 	if c.Name != "" {
 		opts.Name = tfe.String(c.Name)
@@ -474,7 +474,7 @@ func (c *WorkspacesDeleteCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create client: %w", err))
 	}
 
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 	err = client.DeleteByID(ctx, c.ID)
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)

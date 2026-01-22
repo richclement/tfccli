@@ -154,7 +154,7 @@ func (c *AppliesGetCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create client: %w", err))
 	}
 
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 	apply, err := client.Read(ctx, c.ID)
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
@@ -226,7 +226,7 @@ func (c *AppliesErroredStateCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create client: %w", err))
 	}
 
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 
 	// Get the redirect URL for errored state
 	erroredStateURL, err := client.GetErroredStateURL(ctx, c.ID)

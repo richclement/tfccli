@@ -258,7 +258,7 @@ func (c *InvoicesListCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create client: %w", err))
 	}
 
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 	invoices, err := client.List(ctx, org)
 	if err != nil {
 		// Check for invoices not available error
@@ -342,7 +342,7 @@ func (c *InvoicesNextCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create client: %w", err))
 	}
 
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 	invoice, err := client.GetNext(ctx, org)
 	if err != nil {
 		// Check for invoices not available error

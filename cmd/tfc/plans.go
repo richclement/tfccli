@@ -113,7 +113,7 @@ func (c *PlansGetCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create client: %w", err))
 	}
 
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 	plan, err := client.Read(ctx, c.ID)
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
@@ -186,7 +186,7 @@ func (c *PlansJSONOutputCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create client: %w", err))
 	}
 
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 	jsonBytes, err := client.ReadJSONOutput(ctx, c.ID)
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
@@ -272,7 +272,7 @@ func (c *PlansSanitizedPlanCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create client: %w", err))
 	}
 
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 	plan, err := client.Read(ctx, c.ID)
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)

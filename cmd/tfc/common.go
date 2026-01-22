@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -74,4 +75,13 @@ func resolveFormat(stdout io.Writer, ttyDetector output.TTYDetector, cliFormat s
 		isTTY = ttyDetector.IsTTY(f)
 	}
 	return output.ResolveOutputFormat(cliFormat, isTTY), isTTY
+}
+
+// cmdContext returns the context for command execution.
+// Uses cli.Ctx if set (normal execution with signal handling), falls back to context.Background() for tests.
+func cmdContext(cli *CLI) context.Context {
+	if cli.Ctx != nil {
+		return cli.Ctx
+	}
+	return context.Background()
 }

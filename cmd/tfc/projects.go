@@ -134,7 +134,7 @@ func (c *ProjectsListCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create client: %w", err))
 	}
 
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 	projects, err := client.List(ctx, org, nil)
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
@@ -200,7 +200,7 @@ func (c *ProjectsGetCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create client: %w", err))
 	}
 
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 	proj, err := client.Read(ctx, c.ID)
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
@@ -272,7 +272,7 @@ func (c *ProjectsCreateCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create client: %w", err))
 	}
 
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 	opts := tfe.ProjectCreateOptions{
 		Name: c.Name,
 	}
@@ -345,7 +345,7 @@ func (c *ProjectsUpdateCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create client: %w", err))
 	}
 
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 	opts := tfe.ProjectUpdateOptions{}
 	if c.Name != "" {
 		opts.Name = &c.Name
@@ -435,7 +435,7 @@ func (c *ProjectsDeleteCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create client: %w", err))
 	}
 
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 	err = client.Delete(ctx, c.ID)
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)

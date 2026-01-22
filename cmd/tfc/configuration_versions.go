@@ -130,7 +130,7 @@ func (c *CVListCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create client: %w", err))
 	}
 
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 	cvs, err := client.List(ctx, c.WorkspaceID, nil)
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
@@ -199,7 +199,7 @@ func (c *CVGetCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create client: %w", err))
 	}
 
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 	cv, err := client.Read(ctx, c.ID)
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
@@ -281,7 +281,7 @@ func (c *CVCreateCmd) Run(cli *CLI) error {
 		opts.AutoQueueRuns = c.AutoQueueRuns
 	}
 
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 	cv, err := client.Create(ctx, c.WorkspaceID, opts)
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
@@ -354,7 +354,7 @@ func (c *CVUploadCmd) Run(cli *CLI) error {
 	}
 
 	// Get the configuration version to retrieve the upload URL
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 	cv, err := client.Read(ctx, c.ID)
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
@@ -474,7 +474,7 @@ func (c *CVDownloadCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create client: %w", err))
 	}
 
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 	content, err := client.Download(ctx, c.ID)
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
@@ -571,7 +571,7 @@ func (c *CVArchiveCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create client: %w", err))
 	}
 
-	ctx := context.Background()
+	ctx := cmdContext(cli)
 	err = client.Archive(ctx, c.ID)
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
