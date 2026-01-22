@@ -2872,9 +2872,30 @@ func TestContextsAddCmd_NoSettings(t *testing.T) {
 
 ### 54. Missing Test: ContextsUseCmd Settings File Not Found
 
+**Status: DONE** (2026-01-21)
+
 **File:** `cmd/tfc/contexts_test.go`
 
 **Problem:** No test verifies error handling when `config.Load()` fails.
+
+**Plan (2026-01-21):**
+- Acceptance criteria: Test `TestContextsUseCmd_NoSettings` exists and verifies that when settings file doesn't exist, ContextsUseCmd returns an error
+- Verification: Run `go test -v -run "TestContextsUseCmd_NoSettings" ./cmd/tfc/...`
+- Implementation:
+  1. Add test `TestContextsUseCmd_NoSettings` to `contexts_test.go`
+  2. Run feedback loops
+
+**Progress notes (2026-01-21):**
+
+Changes made:
+- `cmd/tfc/contexts_test.go:222-233` - Added `TestContextsUseCmd_NoSettings` test
+
+Verification:
+- `make fmt` - passed
+- `make lint` - passed (with temp caches due to permission issues)
+- `make build` - passed
+- `make test` - all tests pass
+- `go test -v -run "TestContextsUseCmd_NoSettings" ./cmd/tfc/...` - pass
 
 **Test to add:**
 ```go
