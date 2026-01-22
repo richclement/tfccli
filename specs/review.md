@@ -2967,9 +2967,28 @@ func TestContextsRemoveCmd_NoSettings(t *testing.T) {
 
 ### 56. Missing Test: ContextsShowCmd Settings File Not Found
 
+**Status: DONE** (2026-01-21)
+
 **File:** `cmd/tfc/contexts_test.go`
 
 **Problem:** No test verifies error handling when `config.Load()` fails.
+
+**Plan (2026-01-21):**
+- Acceptance criteria: Test `TestContextsShowCmd_NoSettings` exists and verifies that when settings file doesn't exist, ContextsShowCmd returns an error
+- Verification: Run `go test -v -run "TestContextsShowCmd_NoSettings" ./cmd/tfc/...`
+- Implementation: Add test following existing NoSettings test pattern
+
+**Progress notes (2026-01-21):**
+
+Changes made:
+- `cmd/tfc/contexts_test.go:478-489` - Added `TestContextsShowCmd_NoSettings` test
+
+Verification:
+- `make fmt` - passed
+- `make lint` - passed (with temp caches due to permission issues)
+- `make build` - passed
+- `make test` - all tests pass
+- `go test -v -run "TestContextsShowCmd_NoSettings" ./cmd/tfc/...` - pass
 
 **Test to add:**
 ```go
@@ -3407,7 +3426,7 @@ func TestContextsShowCmd_JSONOutput(t *testing.T) {
 | Add config.Save failure | ❌ | #58 |
 | Use/switch context | ✅ | - |
 | Use nonexistent context (error) | ✅ | - |
-| Use settings not found | ❌ | #54 |
+| Use settings not found | ✅ | #54 |
 | Use config.Save failure | ❌ | #59 |
 | Remove with --force | ✅ | - |
 | Remove current context (error) | ✅ | - |
@@ -3422,7 +3441,7 @@ func TestContextsShowCmd_JSONOutput(t *testing.T) {
 | Show nonexistent context (error) | ✅ | - |
 | Show JSON output | ❌ | #65 |
 | Show output verification | ❌ | #63 |
-| Show settings not found | ❌ | #56 |
+| Show settings not found | ✅ | #56 |
 
 ---
 
