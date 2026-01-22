@@ -283,9 +283,13 @@ func (c *PlansSanitizedPlanCmd) Run(cli *CLI) error {
 	}
 
 	// Get sanitized-plan link from plan.Links
-	sanitizedPlanLink, ok := plan.Links["sanitized-plan"].(string)
-	if !ok || sanitizedPlanLink == "" {
+	linkVal, exists := plan.Links["sanitized-plan"]
+	if !exists {
 		return internalcmd.NewRuntimeError(fmt.Errorf("sanitized plan not available for this plan (HYOK feature)"))
+	}
+	sanitizedPlanLink, ok := linkVal.(string)
+	if !ok || sanitizedPlanLink == "" {
+		return internalcmd.NewRuntimeError(fmt.Errorf("sanitized plan link has unexpected type: %T", linkVal))
 	}
 
 	// Download from the sanitized plan URL (no Authorization header - redirect already handled)

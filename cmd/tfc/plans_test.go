@@ -577,6 +577,44 @@ func TestPlansSanitizedPlan_NoLinkAvailable(t *testing.T) {
 	}
 }
 
+func TestPlansSanitizedPlan_LinkWrongType(t *testing.T) {
+	tmpDir, resolver := setupPlansTest(t)
+
+	fakeClient := &fakePlansClient{
+		plan: &tfe.Plan{
+			ID: "plan-bad-link",
+			Links: map[string]interface{}{
+				"sanitized-plan": 12345, // Wrong type (int instead of string)
+			},
+		},
+	}
+
+	var stdout bytes.Buffer
+	cmd := &PlansSanitizedPlanCmd{
+		ID:            "plan-bad-link",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &stdout,
+		clientFactory: func(_ tfcapi.ClientConfig) (plansClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error when sanitized plan link has wrong type")
+	}
+	// Error should mention the type, not say "not available"
+	if !strings.Contains(err.Error(), "unexpected type") {
+		t.Errorf("expected 'unexpected type' in error, got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "int") {
+		t.Errorf("expected type 'int' mentioned in error, got: %v", err)
+	}
+}
+
 func TestPlansSanitizedPlan_DownloadError(t *testing.T) {
 	tmpDir, resolver := setupPlansTest(t)
 

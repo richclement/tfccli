@@ -1050,10 +1050,12 @@ if resp.StatusCode != http.StatusOK {
 
 ---
 
-### 21. [ ] Misleading error message when `sanitized-plan` link has wrong type
+### 21. [x] Misleading error message when `sanitized-plan` link has wrong type
+
+**Status:** DONE
 
 **File:** `cmd/tfc/plans.go`
-**Lines:** 327-329
+**Lines:** 286-289
 
 **Problem:** The type assertion `plan.Links["sanitized-plan"].(string)` returns `ok=false` both when the key is missing AND when the value is not a string. The error message "sanitized plan not available" is misleading if the link exists but has the wrong type (e.g., an integer or object).
 
@@ -1076,6 +1078,23 @@ if !ok || sanitizedPlanLink == "" {
     return internalcmd.NewRuntimeError(fmt.Errorf("sanitized plan link has unexpected type: %T", linkVal))
 }
 ```
+
+#### Plan
+- **Acceptance criteria:** Error messages distinguish between "link missing" vs "link has unexpected type"; when type is wrong, error shows actual type via %T.
+- **Verification:** `make fmt && make lint && make build && make test` passes; new test verifies wrong-type error message.
+- **Implementation steps:**
+  1. Update `PlansSanitizedPlanCmd.Run` to check key existence first with `plan.Links["sanitized-plan"]`
+  2. Then perform type assertion and provide different error for wrong type
+  3. Add test `TestPlansSanitizedPlan_LinkWrongType` to verify the wrong-type error path
+  4. Run feedback loops
+
+#### Progress Notes
+
+**2026-01-22:** Completed.
+- Changed: `cmd/tfc/plans.go` lines 285-292 - separated key existence check from type assertion; "not available" error for missing key; "unexpected type: %T" error for wrong type
+- Changed: `cmd/tfc/plans_test.go` - added `TestPlansSanitizedPlan_LinkWrongType` test with int value (12345) to verify wrong-type error path shows "unexpected type" and "int"
+- Commands: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Result: Error messages now distinguish between missing link vs wrong type, providing clearer debugging info
 
 ---
 
