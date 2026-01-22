@@ -1416,57 +1416,53 @@ func TestPlansJSONOutput_FileWriteError(t *testing.T) {
 
 ---
 
-### 27. [ ] Missing test: `sanitized-plan` link is non-string type
+### 27. [x] Missing test: `sanitized-plan` link is non-string type
+
+**Status:** DONE
 
 **File:** `cmd/tfc/plans_test.go`
 
 **Problem:** `TestPlansSanitizedPlan_NoLinkAvailable` tests when the key is missing (empty map), but no test verifies behavior when the `sanitized-plan` key exists but has an unexpected type (e.g., integer, object).
 
-**Fix:** Add test:
-```go
-func TestPlansSanitizedPlan_LinkWrongType(t *testing.T) {
-    tmpDir, resolver := setupPlansTest(t)
+#### Plan
+- **Acceptance criteria:** A test `TestPlansSanitizedPlan_LinkWrongType` exists that verifies error contains "unexpected type" when the link has wrong type.
+- **Verification:** `make test` passes.
+- **Implementation steps:**
+  1. Add `TestPlansSanitizedPlan_LinkWrongType` test function
 
-    fakeClient := &fakePlansClient{
-        plan: &tfe.Plan{
-            ID: "plan-bad-link",
-            Links: map[string]interface{}{
-                "sanitized-plan": 12345, // Wrong type (int instead of string)
-            },
-        },
-    }
+#### Progress Notes
 
-    var stdout bytes.Buffer
-    cmd := &PlansSanitizedPlanCmd{
-        ID:            "plan-bad-link",
-        baseDir:       tmpDir,
-        tokenResolver: resolver,
-        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
-        stdout:        &stdout,
-        clientFactory: func(_ tfcapi.ClientConfig) (plansClient, error) {
-            return fakeClient, nil
-        },
-    }
-
-    cli := &CLI{}
-    err := cmd.Run(cli)
-    if err == nil {
-        t.Fatal("expected error when sanitized plan link has wrong type")
-    }
-    // After fixing issue #21, this should mention the type
-    if !strings.Contains(err.Error(), "sanitized plan") {
-        t.Errorf("expected sanitized plan error, got: %v", err)
-    }
-}
-```
+**2026-01-22:** Already completed as part of issue #21.
+- Test `TestPlansSanitizedPlan_LinkWrongType` already exists in `cmd/tfc/plans_test.go` (line 724)
+- Commands: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Result: Test verifies error contains "unexpected type" and "int" when link has wrong type
 
 ---
 
-### 28. [ ] Missing test: `plan.Links` is nil
+### 28. [x] Missing test: `plan.Links` is nil
+
+**Status:** DONE
 
 **File:** `cmd/tfc/plans_test.go`
 
 **Problem:** `TestPlansSanitizedPlan_NoLinkAvailable` tests with an empty map `Links: map[string]interface{}{}`, but not when `Links` is nil. Accessing a nil map in Go returns the zero value and doesn't panic, but testing this edge case ensures consistent behavior.
+
+#### Plan
+- **Acceptance criteria:** A test `TestPlansSanitizedPlan_NilLinks` exists that verifies the command returns "sanitized plan not available" error when `plan.Links` is nil.
+- **Verification:** `make fmt && make lint && make build && make test` all pass.
+- **Implementation steps:**
+  1. Add `TestPlansSanitizedPlan_NilLinks` test function after `TestPlansSanitizedPlan_LinkWrongType`
+  2. Test creates a plan with `Links: nil` (not empty map)
+  3. Verify error contains "sanitized plan not available"
+  4. Run feedback loops to verify
+
+#### Progress Notes
+
+**2026-01-22:** Completed.
+- Changed: `cmd/tfc/plans_test.go` - added `TestPlansSanitizedPlan_NilLinks` test function after `TestPlansSanitizedPlan_LinkWrongType` (line 762)
+- Test creates plan with `Links: nil` and verifies error contains "sanitized plan not available"
+- Commands: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Result: Nil Links edge case now covered, ensuring consistent behavior with empty map case
 
 **Fix:** Add test:
 ```go

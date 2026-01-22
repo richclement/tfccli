@@ -759,6 +759,38 @@ func TestPlansSanitizedPlan_LinkWrongType(t *testing.T) {
 	}
 }
 
+func TestPlansSanitizedPlan_NilLinks(t *testing.T) {
+	tmpDir, resolver := setupPlansTest(t)
+
+	fakeClient := &fakePlansClient{
+		plan: &tfe.Plan{
+			ID:    "plan-nil-links",
+			Links: nil, // nil instead of empty map
+		},
+	}
+
+	var stdout bytes.Buffer
+	cmd := &PlansSanitizedPlanCmd{
+		ID:            "plan-nil-links",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &stdout,
+		clientFactory: func(_ tfcapi.ClientConfig) (plansClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error when Links is nil")
+	}
+	if !strings.Contains(err.Error(), "sanitized plan not available") {
+		t.Errorf("expected 'sanitized plan not available' in error, got: %v", err)
+	}
+}
+
 func TestPlansSanitizedPlan_DownloadError(t *testing.T) {
 	tmpDir, resolver := setupPlansTest(t)
 
