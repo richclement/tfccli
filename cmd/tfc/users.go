@@ -11,7 +11,6 @@ import (
 
 	"github.com/richclement/tfccli/internal/auth"
 	internalcmd "github.com/richclement/tfccli/internal/cmd"
-	"github.com/richclement/tfccli/internal/config"
 	"github.com/richclement/tfccli/internal/output"
 	"github.com/richclement/tfccli/internal/tfcapi"
 )
@@ -123,41 +122,6 @@ func defaultUsersClientFactory(cfg tfcapi.ClientConfig) (usersClient, error) {
 	}, nil
 }
 
-// resolveUsersClientConfig resolves settings and token for API calls.
-func resolveUsersClientConfig(cli *CLI, baseDir string, tokenResolver *auth.TokenResolver) (tfcapi.ClientConfig, error) {
-	settings, err := config.Load(baseDir)
-	if err != nil {
-		return tfcapi.ClientConfig{}, err
-	}
-
-	contextName := cli.Context
-	if contextName == "" {
-		contextName = settings.CurrentContext
-	}
-	ctx, exists := settings.Contexts[contextName]
-	if !exists {
-		return tfcapi.ClientConfig{}, fmt.Errorf("context %q not found", contextName)
-	}
-
-	resolved := ctx.WithDefaults()
-	if cli.Address != "" {
-		resolved.Address = cli.Address
-	}
-
-	if tokenResolver == nil {
-		tokenResolver = auth.NewTokenResolver()
-	}
-	tokenResult, err := tokenResolver.ResolveToken(resolved.Address)
-	if err != nil {
-		return tfcapi.ClientConfig{}, err
-	}
-
-	return tfcapi.ClientConfig{
-		Address: resolved.Address,
-		Token:   tokenResult.Token,
-	}, nil
-}
-
 // UsersGetCmd gets a user by ID.
 type UsersGetCmd struct {
 	UserID string `arg:"" help:"ID of the user."`
@@ -182,7 +146,7 @@ func (c *UsersGetCmd) Run(cli *CLI) error {
 		c.clientFactory = defaultUsersClientFactory
 	}
 
-	cfg, err := resolveUsersClientConfig(cli, c.baseDir, c.tokenResolver)
+	cfg, _, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
 	if err != nil {
 		return internalcmd.NewRuntimeError(err)
 	}

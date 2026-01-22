@@ -10,7 +10,6 @@ import (
 
 	"github.com/richclement/tfccli/internal/auth"
 	internalcmd "github.com/richclement/tfccli/internal/cmd"
-	"github.com/richclement/tfccli/internal/config"
 	"github.com/richclement/tfccli/internal/output"
 	"github.com/richclement/tfccli/internal/tfcapi"
 	"github.com/richclement/tfccli/internal/ui"
@@ -71,41 +70,6 @@ func defaultOrgsClientFactory(cfg tfcapi.ClientConfig) (orgsClient, error) {
 	return &realOrgsClient{client: client}, nil
 }
 
-// resolveOrgsClientConfig resolves settings and token for API calls.
-func resolveOrgsClientConfig(cli *CLI, baseDir string, tokenResolver *auth.TokenResolver) (tfcapi.ClientConfig, error) {
-	settings, err := config.Load(baseDir)
-	if err != nil {
-		return tfcapi.ClientConfig{}, err
-	}
-
-	contextName := cli.Context
-	if contextName == "" {
-		contextName = settings.CurrentContext
-	}
-	ctx, exists := settings.Contexts[contextName]
-	if !exists {
-		return tfcapi.ClientConfig{}, fmt.Errorf("context %q not found", contextName)
-	}
-
-	resolved := ctx.WithDefaults()
-	if cli.Address != "" {
-		resolved.Address = cli.Address
-	}
-
-	if tokenResolver == nil {
-		tokenResolver = auth.NewTokenResolver()
-	}
-	tokenResult, err := tokenResolver.ResolveToken(resolved.Address)
-	if err != nil {
-		return tfcapi.ClientConfig{}, err
-	}
-
-	return tfcapi.ClientConfig{
-		Address: resolved.Address,
-		Token:   tokenResult.Token,
-	}, nil
-}
-
 // OrganizationsListCmd lists all organizations.
 type OrganizationsListCmd struct {
 	// Dependencies for testing
@@ -128,7 +92,7 @@ func (c *OrganizationsListCmd) Run(cli *CLI) error {
 		c.clientFactory = defaultOrgsClientFactory
 	}
 
-	cfg, err := resolveOrgsClientConfig(cli, c.baseDir, c.tokenResolver)
+	cfg, _, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
 	if err != nil {
 		return internalcmd.NewRuntimeError(err)
 	}
@@ -203,7 +167,7 @@ func (c *OrganizationsGetCmd) Run(cli *CLI) error {
 		c.clientFactory = defaultOrgsClientFactory
 	}
 
-	cfg, err := resolveOrgsClientConfig(cli, c.baseDir, c.tokenResolver)
+	cfg, _, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
 	if err != nil {
 		return internalcmd.NewRuntimeError(err)
 	}
@@ -275,7 +239,7 @@ func (c *OrganizationsCreateCmd) Run(cli *CLI) error {
 		c.clientFactory = defaultOrgsClientFactory
 	}
 
-	cfg, err := resolveOrgsClientConfig(cli, c.baseDir, c.tokenResolver)
+	cfg, _, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
 	if err != nil {
 		return internalcmd.NewRuntimeError(err)
 	}
@@ -343,7 +307,7 @@ func (c *OrganizationsUpdateCmd) Run(cli *CLI) error {
 		c.clientFactory = defaultOrgsClientFactory
 	}
 
-	cfg, err := resolveOrgsClientConfig(cli, c.baseDir, c.tokenResolver)
+	cfg, _, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
 	if err != nil {
 		return internalcmd.NewRuntimeError(err)
 	}
@@ -440,7 +404,7 @@ func (c *OrganizationsDeleteCmd) Run(cli *CLI) error {
 		}
 	}
 
-	cfg, err := resolveOrgsClientConfig(cli, c.baseDir, c.tokenResolver)
+	cfg, _, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
 	if err != nil {
 		return internalcmd.NewRuntimeError(err)
 	}

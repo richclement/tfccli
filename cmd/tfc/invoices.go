@@ -13,7 +13,6 @@ import (
 
 	"github.com/richclement/tfccli/internal/auth"
 	internalcmd "github.com/richclement/tfccli/internal/cmd"
-	"github.com/richclement/tfccli/internal/config"
 	"github.com/richclement/tfccli/internal/output"
 	"github.com/richclement/tfccli/internal/tfcapi"
 )
@@ -220,47 +219,6 @@ func defaultInvoicesClientFactory(cfg tfcapi.ClientConfig) (invoicesClient, erro
 	}, nil
 }
 
-// resolveInvoicesClientConfig resolves settings, token, and org for API calls.
-func resolveInvoicesClientConfig(cli *CLI, baseDir string, tokenResolver *auth.TokenResolver) (tfcapi.ClientConfig, string, error) {
-	settings, err := config.Load(baseDir)
-	if err != nil {
-		return tfcapi.ClientConfig{}, "", err
-	}
-
-	contextName := cli.Context
-	if contextName == "" {
-		contextName = settings.CurrentContext
-	}
-	ctx, exists := settings.Contexts[contextName]
-	if !exists {
-		return tfcapi.ClientConfig{}, "", fmt.Errorf("context %q not found", contextName)
-	}
-
-	resolved := ctx.WithDefaults()
-	if cli.Address != "" {
-		resolved.Address = cli.Address
-	}
-
-	// Resolve organization
-	org := cli.Org
-	if org == "" {
-		org = resolved.DefaultOrg
-	}
-
-	if tokenResolver == nil {
-		tokenResolver = auth.NewTokenResolver()
-	}
-	tokenResult, err := tokenResolver.ResolveToken(resolved.Address)
-	if err != nil {
-		return tfcapi.ClientConfig{}, "", err
-	}
-
-	return tfcapi.ClientConfig{
-		Address: resolved.Address,
-		Token:   tokenResult.Token,
-	}, org, nil
-}
-
 // InvoicesListCmd lists invoices for an organization.
 type InvoicesListCmd struct {
 	// Dependencies for testing
@@ -283,7 +241,7 @@ func (c *InvoicesListCmd) Run(cli *CLI) error {
 		c.clientFactory = defaultInvoicesClientFactory
 	}
 
-	cfg, org, err := resolveInvoicesClientConfig(cli, c.baseDir, c.tokenResolver)
+	cfg, org, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
 	if err != nil {
 		return internalcmd.NewRuntimeError(err)
 	}
@@ -372,7 +330,7 @@ func (c *InvoicesNextCmd) Run(cli *CLI) error {
 		c.clientFactory = defaultInvoicesClientFactory
 	}
 
-	cfg, org, err := resolveInvoicesClientConfig(cli, c.baseDir, c.tokenResolver)
+	cfg, org, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
 	if err != nil {
 		return internalcmd.NewRuntimeError(err)
 	}

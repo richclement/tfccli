@@ -11,7 +11,6 @@ import (
 
 	"github.com/richclement/tfccli/internal/auth"
 	internalcmd "github.com/richclement/tfccli/internal/cmd"
-	"github.com/richclement/tfccli/internal/config"
 	"github.com/richclement/tfccli/internal/output"
 	"github.com/richclement/tfccli/internal/tfcapi"
 	"github.com/richclement/tfccli/internal/ui"
@@ -118,41 +117,6 @@ func defaultRunsClientFactory(cfg tfcapi.ClientConfig) (runsClient, error) {
 	return &realRunsClient{client: client}, nil
 }
 
-// resolveRunsClientConfig resolves settings and token for API calls.
-func resolveRunsClientConfig(cli *CLI, baseDir string, tokenResolver *auth.TokenResolver) (tfcapi.ClientConfig, error) {
-	settings, err := config.Load(baseDir)
-	if err != nil {
-		return tfcapi.ClientConfig{}, err
-	}
-
-	contextName := cli.Context
-	if contextName == "" {
-		contextName = settings.CurrentContext
-	}
-	ctx, exists := settings.Contexts[contextName]
-	if !exists {
-		return tfcapi.ClientConfig{}, fmt.Errorf("context %q not found", contextName)
-	}
-
-	resolved := ctx.WithDefaults()
-	if cli.Address != "" {
-		resolved.Address = cli.Address
-	}
-
-	if tokenResolver == nil {
-		tokenResolver = auth.NewTokenResolver()
-	}
-	tokenResult, err := tokenResolver.ResolveToken(resolved.Address)
-	if err != nil {
-		return tfcapi.ClientConfig{}, err
-	}
-
-	return tfcapi.ClientConfig{
-		Address: resolved.Address,
-		Token:   tokenResult.Token,
-	}, nil
-}
-
 // RunsListCmd lists runs for a workspace.
 type RunsListCmd struct {
 	WorkspaceID string `name:"workspace-id" required:"" help:"ID of the workspace."`
@@ -178,7 +142,7 @@ func (c *RunsListCmd) Run(cli *CLI) error {
 		c.clientFactory = defaultRunsClientFactory
 	}
 
-	cfg, err := resolveRunsClientConfig(cli, c.baseDir, c.tokenResolver)
+	cfg, _, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
 	if err != nil {
 		return internalcmd.NewRuntimeError(err)
 	}
@@ -243,7 +207,7 @@ func (c *RunsGetCmd) Run(cli *CLI) error {
 		c.clientFactory = defaultRunsClientFactory
 	}
 
-	cfg, err := resolveRunsClientConfig(cli, c.baseDir, c.tokenResolver)
+	cfg, _, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
 	if err != nil {
 		return internalcmd.NewRuntimeError(err)
 	}
@@ -315,7 +279,7 @@ func (c *RunsCreateCmd) Run(cli *CLI) error {
 		c.clientFactory = defaultRunsClientFactory
 	}
 
-	cfg, err := resolveRunsClientConfig(cli, c.baseDir, c.tokenResolver)
+	cfg, _, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
 	if err != nil {
 		return internalcmd.NewRuntimeError(err)
 	}
@@ -408,7 +372,7 @@ func (c *RunsApplyCmd) Run(cli *CLI) error {
 		}
 	}
 
-	cfg, err := resolveRunsClientConfig(cli, c.baseDir, c.tokenResolver)
+	cfg, _, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
 	if err != nil {
 		return internalcmd.NewRuntimeError(err)
 	}
@@ -495,7 +459,7 @@ func (c *RunsDiscardCmd) Run(cli *CLI) error {
 		}
 	}
 
-	cfg, err := resolveRunsClientConfig(cli, c.baseDir, c.tokenResolver)
+	cfg, _, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
 	if err != nil {
 		return internalcmd.NewRuntimeError(err)
 	}
@@ -582,7 +546,7 @@ func (c *RunsCancelCmd) Run(cli *CLI) error {
 		}
 	}
 
-	cfg, err := resolveRunsClientConfig(cli, c.baseDir, c.tokenResolver)
+	cfg, _, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
 	if err != nil {
 		return internalcmd.NewRuntimeError(err)
 	}
@@ -669,7 +633,7 @@ func (c *RunsForceCancelCmd) Run(cli *CLI) error {
 		}
 	}
 
-	cfg, err := resolveRunsClientConfig(cli, c.baseDir, c.tokenResolver)
+	cfg, _, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
 	if err != nil {
 		return internalcmd.NewRuntimeError(err)
 	}
