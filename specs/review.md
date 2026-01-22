@@ -342,11 +342,31 @@ func TestRunsList_EmptyList(t *testing.T) {
 
 ---
 
-### 7. [ ] Missing test: `RunsCreate` API error
+### 7. [x] Missing test: `RunsCreate` API error
+
+**Status:** DONE
 
 **File:** `cmd/tfc/runs_test.go`
 
 **Problem:** While `TestRunsList_APIError` tests list failure, there's no equivalent for `RunsCreate`.
+
+#### Plan
+- **Acceptance criteria:** A new test `TestRunsCreate_APIError` exists that verifies the command returns an error when the API fails during run creation.
+- **Verification:** `make fmt && make lint && make build && make test` all pass; new test passes.
+- **Implementation steps:**
+  1. Add `TestRunsCreate_APIError` test function after `TestRunsCreate_Table` in runs_test.go
+  2. Test uses `fakeRunsClient` with `createErr` set to simulate API failure
+  3. Verify error is propagated correctly to caller
+  4. Run feedback loops to verify
+
+#### Progress Notes
+
+**2026-01-22:** Completed.
+- Changed: `cmd/tfc/runs_test.go` - added `TestRunsCreate_APIError` test function after `TestRunsCreate_Table`
+- Test uses `fakeRunsClient` with `createErr` set to `errors.New("workspace not found")`
+- Verifies error is returned and contains expected message
+- Commands: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Result: API error handling branch in `RunsCreateCmd.Run` is now tested
 
 **Fix:** Add test:
 ```go

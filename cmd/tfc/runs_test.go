@@ -594,6 +594,35 @@ func TestRunsCreate_Table(t *testing.T) {
 	}
 }
 
+func TestRunsCreate_APIError(t *testing.T) {
+	tmpDir, resolver := setupRunsTest(t)
+
+	fakeClient := &fakeRunsClient{
+		createErr: errors.New("workspace not found"),
+	}
+
+	var stdout bytes.Buffer
+	cmd := &RunsCreateCmd{
+		WorkspaceID:   "ws-invalid",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &stdout,
+		clientFactory: func(_ tfcapi.ClientConfig) (runsClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error for API failure")
+	}
+	if !strings.Contains(err.Error(), "workspace not found") {
+		t.Errorf("expected error message, got: %v", err)
+	}
+}
+
 func TestRunsApply_PromptsWithoutForce(t *testing.T) {
 	tmpDir, resolver := setupRunsTest(t)
 
