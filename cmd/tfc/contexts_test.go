@@ -2,6 +2,8 @@ package main
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -544,5 +546,42 @@ func TestContextsRemoveCmd_PrompterError(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "failed to prompt for confirmation") {
 		t.Errorf("expected prompt error, got: %v", err)
+	}
+}
+
+// TestContextsAddCmd_SaveError tests that save errors are properly surfaced.
+func TestContextsAddCmd_SaveError(t *testing.T) {
+	tmpHome := t.TempDir()
+
+	// Create initial settings
+	settings := &config.Settings{
+		CurrentContext: "default",
+		Contexts: map[string]config.Context{
+			"default": {Address: "app.terraform.io", LogLevel: "info"},
+		},
+	}
+	createTestSettings(t, tmpHome, settings)
+
+	// Make the settings file read-only to prevent writing
+	settingsPath := filepath.Join(tmpHome, ".tfccli", "settings.json")
+	if err := os.Chmod(settingsPath, 0o400); err != nil {
+		t.Fatalf("Failed to chmod settings file: %v", err)
+	}
+	t.Cleanup(func() {
+		os.Chmod(settingsPath, 0o600) // Restore so cleanup can delete
+	})
+
+	cmd := &ContextsAddCmd{
+		Name:       "new-context",
+		CtxAddress: "tfe.example.com",
+		baseDir:    tmpHome,
+	}
+
+	err := cmd.Run()
+	if err == nil {
+		t.Fatal("expected error when save fails, got nil")
+	}
+	if !strings.Contains(err.Error(), "failed to save settings") {
+		t.Errorf("expected save failure message, got: %v", err)
 	}
 }

@@ -3097,9 +3097,32 @@ func TestContextsRemoveCmd_PrompterError(t *testing.T) {
 
 ### 58. Missing Test: ContextsAddCmd config.Save Failure
 
+**Status: DONE** (2026-01-21)
+
 **File:** `cmd/tfc/contexts_test.go`
 
 **Problem:** No test verifies error handling when `config.Save()` fails (e.g., read-only filesystem).
+
+**Plan (2026-01-21):**
+- Acceptance criteria: Test `TestContextsAddCmd_SaveError` exists and verifies that when config.Save() fails (e.g., read-only settings file), it is wrapped and surfaced as a RuntimeError with message "failed to save settings"
+- Verification: Run `go test -v -run "TestContextsAddCmd_SaveError" ./cmd/tfc/...`
+- Implementation:
+  1. Add test `TestContextsAddCmd_SaveError` to `contexts_test.go`
+  2. Create settings, make the settings file read-only
+  3. Attempt to add a new context and verify RuntimeError is returned
+
+**Progress notes (2026-01-21):**
+
+Changes made:
+- `cmd/tfc/contexts_test.go:3-10` - Added `os` and `path/filepath` imports
+- `cmd/tfc/contexts_test.go:552-588` - Added `TestContextsAddCmd_SaveError` test that makes the settings file read-only and verifies the proper RuntimeError is returned with "failed to save settings" message
+
+Verification:
+- `make fmt` - passed
+- `make lint` - passed (with temp caches due to permission issues)
+- `make build` - passed
+- `make test` - all tests pass
+- `go test -v -run "TestContextsAddCmd_SaveError" ./cmd/tfc/...` - pass
 
 **Test to add:**
 ```go
@@ -3490,7 +3513,7 @@ func TestContextsShowCmd_JSONOutput(t *testing.T) {
 | Add existing context (error) | ✅ | - |
 | Add with invalid address | ✅ | #48 |
 | Add settings not found | ✅ | #53 |
-| Add config.Save failure | ❌ | #58 |
+| Add config.Save failure | ✅ | #58 |
 | Use/switch context | ✅ | - |
 | Use nonexistent context (error) | ✅ | - |
 | Use settings not found | ✅ | #54 |
