@@ -1098,12 +1098,35 @@ if !ok || sanitizedPlanLink == "" {
 
 ---
 
-### 22. [ ] `fakePlansClient` doesn't capture `planID` for verification
+### 22. [x] `fakePlansClient` doesn't capture `planID` for verification
+
+**Status:** DONE
 
 **File:** `cmd/tfc/plans_test.go`
 **Lines:** 22-41
 
 **Problem:** The fake client ignores the `planID` parameter in `Read` and `ReadJSONOutput`, making it impossible to verify that commands pass the correct plan ID to the API.
+
+#### Plan
+- **Acceptance criteria:** `fakePlansClient` methods capture planID parameters; existing tests verify correct plan ID is passed to API.
+- **Verification:** `make fmt && make lint && make build && make test` passes; assertions verify planID in tests.
+- **Implementation steps:**
+  1. Add `readPlanID` and `jsonOutputPlanID` capture fields to `fakePlansClient` struct
+  2. Update `Read` method to capture planID parameter
+  3. Update `ReadJSONOutput` method to capture planID parameter
+  4. Add assertion to `TestPlansGet_JSON` to verify readPlanID
+  5. Add assertion to `TestPlansJSONOutput_WritesToStdout` to verify jsonOutputPlanID
+  6. Run feedback loops to verify
+
+#### Progress Notes
+
+**2026-01-22:** Completed.
+- Changed: `cmd/tfc/plans_test.go` - added `readPlanID` and `jsonOutputPlanID` capture fields to `fakePlansClient` struct
+- Changed: Updated `Read` method to capture planID parameter
+- Changed: Updated `ReadJSONOutput` method to capture planID parameter
+- Changed: Added planID verification assertions to `TestPlansGet_JSON` and `TestPlansJSONOutput_WritesToStdout`
+- Commands: `go vet`, `go build`, `go test` - all pass (note: system Go cache has permission issues unrelated to code changes)
+- Result: Tests now verify correct plan ID is passed to API, catching potential bugs where wrong IDs could be used
 
 **Current:**
 ```go

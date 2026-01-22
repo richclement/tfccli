@@ -26,16 +26,22 @@ type fakePlansClient struct {
 	jsonOutput []byte
 	readErr    error
 	jsonErr    error
+
+	// Captured parameters for verification
+	readPlanID       string
+	jsonOutputPlanID string
 }
 
-func (f *fakePlansClient) Read(_ context.Context, _ string) (*tfe.Plan, error) {
+func (f *fakePlansClient) Read(_ context.Context, planID string) (*tfe.Plan, error) {
+	f.readPlanID = planID
 	if f.readErr != nil {
 		return nil, f.readErr
 	}
 	return f.plan, nil
 }
 
-func (f *fakePlansClient) ReadJSONOutput(_ context.Context, _ string) ([]byte, error) {
+func (f *fakePlansClient) ReadJSONOutput(_ context.Context, planID string) ([]byte, error) {
+	f.jsonOutputPlanID = planID
 	if f.jsonErr != nil {
 		return nil, f.jsonErr
 	}
@@ -130,6 +136,11 @@ func TestPlansGet_JSON(t *testing.T) {
 	err := cmd.Run(cli)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Verify correct plan ID was passed to API
+	if fakeClient.readPlanID != "plan-123" {
+		t.Errorf("expected plan ID plan-123, got %s", fakeClient.readPlanID)
 	}
 
 	var result map[string]any
@@ -323,6 +334,11 @@ func TestPlansJSONOutput_WritesToStdout(t *testing.T) {
 	err := cmd.Run(cli)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Verify correct plan ID was passed to API
+	if fakeClient.jsonOutputPlanID != "plan-123" {
+		t.Errorf("expected plan ID plan-123, got %s", fakeClient.jsonOutputPlanID)
 	}
 
 	if stdout.String() != expectedJSON {
