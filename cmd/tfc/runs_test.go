@@ -35,16 +35,32 @@ type fakeRunsClient struct {
 	cancelCalled      bool
 	forceCancelCalled bool
 	createOpts        tfe.RunCreateOptions
+
+	// Captured parameters for verification
+	listWorkspaceID  string
+	listOpts         *tfe.RunListOptions
+	readRunID        string
+	applyRunID       string
+	applyOpts        tfe.RunApplyOptions
+	discardRunID     string
+	discardOpts      tfe.RunDiscardOptions
+	cancelRunID      string
+	cancelOpts       tfe.RunCancelOptions
+	forceCancelRunID string
+	forceCancelOpts  tfe.RunForceCancelOptions
 }
 
-func (c *fakeRunsClient) List(_ context.Context, _ string, _ *tfe.RunListOptions) ([]*tfe.Run, error) {
+func (c *fakeRunsClient) List(_ context.Context, workspaceID string, opts *tfe.RunListOptions) ([]*tfe.Run, error) {
+	c.listWorkspaceID = workspaceID
+	c.listOpts = opts
 	if c.listErr != nil {
 		return nil, c.listErr
 	}
 	return c.runs, nil
 }
 
-func (c *fakeRunsClient) Read(_ context.Context, _ string) (*tfe.Run, error) {
+func (c *fakeRunsClient) Read(_ context.Context, runID string) (*tfe.Run, error) {
+	c.readRunID = runID
 	if c.readErr != nil {
 		return nil, c.readErr
 	}
@@ -59,22 +75,30 @@ func (c *fakeRunsClient) Create(_ context.Context, opts tfe.RunCreateOptions) (*
 	return c.createdRun, nil
 }
 
-func (c *fakeRunsClient) Apply(_ context.Context, _ string, _ tfe.RunApplyOptions) error {
+func (c *fakeRunsClient) Apply(_ context.Context, runID string, opts tfe.RunApplyOptions) error {
+	c.applyRunID = runID
+	c.applyOpts = opts
 	c.applyCalled = true
 	return c.applyErr
 }
 
-func (c *fakeRunsClient) Discard(_ context.Context, _ string, _ tfe.RunDiscardOptions) error {
+func (c *fakeRunsClient) Discard(_ context.Context, runID string, opts tfe.RunDiscardOptions) error {
+	c.discardRunID = runID
+	c.discardOpts = opts
 	c.discardCalled = true
 	return c.discardErr
 }
 
-func (c *fakeRunsClient) Cancel(_ context.Context, _ string, _ tfe.RunCancelOptions) error {
+func (c *fakeRunsClient) Cancel(_ context.Context, runID string, opts tfe.RunCancelOptions) error {
+	c.cancelRunID = runID
+	c.cancelOpts = opts
 	c.cancelCalled = true
 	return c.cancelErr
 }
 
-func (c *fakeRunsClient) ForceCancel(_ context.Context, _ string, _ tfe.RunForceCancelOptions) error {
+func (c *fakeRunsClient) ForceCancel(_ context.Context, runID string, opts tfe.RunForceCancelOptions) error {
+	c.forceCancelRunID = runID
+	c.forceCancelOpts = opts
 	c.forceCancelCalled = true
 	return c.forceCancelErr
 }

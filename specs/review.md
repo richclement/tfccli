@@ -151,7 +151,9 @@ return c.forceCancelErr
 
 ---
 
-### 4. [ ] `fakeRunsClient` doesn't capture parameters for verification
+### 4. [x] `fakeRunsClient` doesn't capture parameters for verification
+
+**Status:** DONE
 
 **File:** `cmd/tfc/runs_test.go`
 **Lines:** 40-79
@@ -179,6 +181,26 @@ type fakeRunsClient struct {
 ```
 
 Then update the methods to capture these values.
+
+#### Plan
+- **Acceptance criteria:** All `fakeRunsClient` methods capture their parameters (workspaceID, runID, options) into struct fields for test verification.
+- **Verification:** `make fmt && make lint && make test` passes; existing tests continue to pass; new assertions can be added in dependent issues (#8, #15, #16).
+- **Implementation steps:**
+  1. Add capture fields to `fakeRunsClient` struct: `listWorkspaceID`, `listOpts`, `readRunID`, `applyRunID`, `applyOpts`, `discardRunID`, `discardOpts`, `cancelRunID`, `cancelOpts`, `forceCancelRunID`, `forceCancelOpts`
+  2. Update `List` method to capture workspaceID and opts
+  3. Update `Read` method to capture runID
+  4. Update `Apply` method to capture runID and opts
+  5. Update `Discard` method to capture runID and opts
+  6. Update `Cancel` method to capture runID and opts
+  7. Update `ForceCancel` method to capture runID and opts
+
+#### Progress Notes
+
+**2026-01-22:** Completed.
+- Changed: `cmd/tfc/runs_test.go` - added 11 capture fields to `fakeRunsClient` struct (`listWorkspaceID`, `listOpts`, `readRunID`, `applyRunID`, `applyOpts`, `discardRunID`, `discardOpts`, `cancelRunID`, `cancelOpts`, `forceCancelRunID`, `forceCancelOpts`)
+- Changed: Updated all 6 fake client methods (`List`, `Read`, `Apply`, `Discard`, `Cancel`, `ForceCancel`) to capture their parameters
+- Commands: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Result: Tests can now verify correct parameters are passed to API methods. Enables issues #8, #15, #16 to add parameter verification assertions.
 
 ---
 
