@@ -164,12 +164,7 @@ func (c *AppliesGetCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to get apply: %w", err))
 	}
 
-	// Determine output format
-	isTTY := false
-	if f, ok := c.stdout.(*os.File); ok {
-		isTTY = c.ttyDetector.IsTTY(f)
-	}
-	format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
+	format, isTTY := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
 
 	if format == output.FormatJSON {
 		result := map[string]any{"data": toApplyJSON(apply)}
@@ -245,12 +240,7 @@ func (c *AppliesErroredStateCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to download errored state: %w", err))
 	}
 
-	// Determine output format for meta output
-	isTTY := false
-	if f, ok := c.stdout.(*os.File); ok {
-		isTTY = c.ttyDetector.IsTTY(f)
-	}
-	format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
+	format, _ := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
 
 	if c.Out != "" {
 		// Write to file

@@ -483,3 +483,52 @@ Commands run:
 - `make test` - passed (all tests pass, behavior unchanged)
 
 Net effect: Removed ~165 lines of duplicate code across 5 files. All commands now use the single `resolveClientConfig` function from `common.go`.
+
+---
+
+### Task: #6 Inconsistent TTY detection pattern
+
+**Status:** DONE
+**Priority:** P1
+
+**Acceptance Criteria:**
+- All commands use the `resolveFormat()` helper from `common.go` instead of inline TTY detection
+- The inline pattern (`isTTY := false; if f, ok := c.stdout.(*os.File); ok { isTTY = ... }; format := output.ResolveOutputFormat(...)`) is eliminated
+- Tests pass unchanged (behavior is identical)
+
+**Verification:**
+- `make fmt` passes
+- `make lint` passes
+- `make build` passes
+- `make test` passes
+- `grep -r "isTTY := false" cmd/tfc/` only shows `common.go` (the helper itself)
+
+**Implementation Plan:**
+1. Update organizations.go (5 occurrences) to use `resolveFormat()`
+2. Update workspaces.go (5 occurrences) to use `resolveFormat()`
+3. Update users.go (1 occurrence) to use `resolveFormat()`
+4. Update applies.go (2 occurrences) to use `resolveFormat()`
+5. Update invoices.go (2 occurrences) to use `resolveFormat()`
+6. Update main.go (2 occurrences in ContextsListCmd, ContextsShowCmd) to use `resolveFormat()`
+7. Run feedback loops and verify
+
+**Progress Notes:**
+
+_2026-01-22:_ Completed.
+
+Files changed:
+- `cmd/tfc/organizations.go`: Replaced 5 inline TTY detection blocks with `resolveFormat()` calls
+- `cmd/tfc/workspaces.go`: Replaced 5 inline TTY detection blocks with `resolveFormat()` calls
+- `cmd/tfc/users.go`: Replaced 1 inline TTY detection block with `resolveFormat()` call
+- `cmd/tfc/applies.go`: Replaced 2 inline TTY detection blocks with `resolveFormat()` calls
+- `cmd/tfc/invoices.go`: Replaced 2 inline TTY detection blocks with `resolveFormat()` calls
+- `cmd/tfc/main.go`: Replaced 2 inline TTY detection blocks with `resolveFormat()` calls (ContextsListCmd, ContextsShowCmd)
+
+Commands run:
+- `make fmt` - passed
+- `make lint` - passed
+- `make build` - passed
+- `make test` - passed (all 487 test functions pass, behavior unchanged)
+- `grep -r "isTTY := false" cmd/tfc/` - only shows `common.go:59` (the helper itself)
+
+Net effect: Removed 17 inline TTY detection patterns (5 lines each = ~85 lines removed). All commands now use the consistent `resolveFormat()` helper from `common.go`.

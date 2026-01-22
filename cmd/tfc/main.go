@@ -24,6 +24,17 @@ var (
 	date    = ""
 )
 
+func versionString() string {
+	v := version
+	if commit != "" {
+		v += " (" + commit + ")"
+	}
+	if date != "" {
+		v += " " + date
+	}
+	return v
+}
+
 func main() {
 	os.Exit(run())
 }
@@ -36,7 +47,7 @@ type CLI struct {
 	Debug        bool   `help:"Enable debug logging for this invocation."`
 	Force        bool   `help:"Bypass confirmation prompts for destructive operations."`
 
-	Version               VersionCmd               `cmd:"" help:"Print version information."`
+	Version               kong.VersionFlag         `name:"version" short:"v" help:"Print version and exit."`
 	Doctor                DoctorCmd                `cmd:"" help:"Validate settings, token discovery, and connectivity."`
 	Init                  InitCmd                  `cmd:"" help:"Initialize CLI settings."`
 	Contexts              ContextsCmd              `cmd:"" help:"Manage named contexts."`
@@ -51,16 +62,6 @@ type CLI struct {
 	ConfigurationVersions ConfigurationVersionsCmd `cmd:"" name:"configuration-versions" help:"Manage configuration versions."`
 	Users                 UsersCmd                 `cmd:"" help:"Manage users."`
 	Invoices              InvoicesCmd              `cmd:"" help:"Manage invoices (HCP Terraform Cloud only)."`
-}
-
-// VersionCmd prints the CLI version info.
-type VersionCmd struct{}
-
-func (v *VersionCmd) Run() error {
-	fmt.Printf("version: %s\n", version)
-	fmt.Printf("commit:  %s\n", commit)
-	fmt.Printf("date:    %s\n", date)
-	return nil
 }
 
 // DoctorCmd validates settings, token discovery, and connectivity.
@@ -412,12 +413,7 @@ func (c *ContextsListCmd) Run(cli *CLI) error {
 	}
 	sort.Strings(names)
 
-	// Determine output format
-	isTTY := false
-	if f, ok := c.stdout.(*os.File); ok {
-		isTTY = c.ttyDetector.IsTTY(f)
-	}
-	format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
+	format, isTTY := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
 
 	if format == output.FormatJSON {
 		items := make([]contextListItem, 0, len(names))
@@ -632,12 +628,7 @@ func (c *ContextsShowCmd) Run(cli *CLI) error {
 	resolved := ctx.WithDefaults()
 	isCurrent := name == settings.CurrentContext
 
-	// Determine output format
-	isTTY := false
-	if f, ok := c.stdout.(*os.File); ok {
-		isTTY = c.ttyDetector.IsTTY(f)
-	}
-	format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
+	format, _ := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
 
 	if format == output.FormatJSON {
 		item := contextShowItem{
@@ -690,6 +681,7 @@ func run() (exitCode int) {
 		&cli,
 		kong.Name("tfc"),
 		kong.Description("Terraform Cloud API CLI"),
+		kong.Vars{"version": versionString()},
 		kong.Exit(func(code int) {
 			panic(exitError{code: code})
 		}),
