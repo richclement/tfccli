@@ -29,7 +29,7 @@ type fakeRunsClient struct {
 	applyErr          error
 	discardErr        error
 	cancelErr         error
-	forceCancel       error
+	forceCancelErr    error
 	applyCalled       bool
 	discardCalled     bool
 	cancelCalled      bool
@@ -76,7 +76,7 @@ func (c *fakeRunsClient) Cancel(_ context.Context, _ string, _ tfe.RunCancelOpti
 
 func (c *fakeRunsClient) ForceCancel(_ context.Context, _ string, _ tfe.RunForceCancelOptions) error {
 	c.forceCancelCalled = true
-	return c.forceCancel
+	return c.forceCancelErr
 }
 
 // runsTestEnv implements auth.EnvGetter for testing.

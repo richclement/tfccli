@@ -111,7 +111,9 @@ func toRunJSON(run *tfe.Run) *runJSON {
 
 ---
 
-### 3. [ ] `fakeRunsClient.forceCancel` field naming inconsistency
+### 3. [x] `fakeRunsClient.forceCancel` field naming inconsistency
+
+**Status:** DONE
 
 **File:** `cmd/tfc/runs_test.go`
 **Line:** 32
@@ -132,6 +134,20 @@ Also update line 79:
 ```go
 return c.forceCancelErr
 ```
+
+#### Plan
+- **Acceptance criteria:** Field renamed from `forceCancel` to `forceCancelErr` to match convention of other error fields.
+- **Verification:** `make fmt && make lint && make test` passes; no functional change.
+- **Implementation steps:**
+  1. Rename `forceCancel` field to `forceCancelErr` on line 32
+  2. Update reference on line 79 to use `forceCancelErr`
+
+#### Progress Notes
+
+**2026-01-22:** Completed.
+- Changed: `cmd/tfc/runs_test.go` - renamed `forceCancel` field to `forceCancelErr` (line 32) and updated reference (line 79)
+- Commands: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Result: Field naming is now consistent with `applyErr`, `discardErr`, `cancelErr`
 
 ---
 
