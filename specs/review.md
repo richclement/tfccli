@@ -788,6 +788,8 @@ func (c *ContextsListCmd) Run(cli *CLI) error {
 
 ### 19. ContextsAddCmd Needs CLI Parameter for Consistency
 
+**Status:** DONE
+
 **File:** `cmd/tfc/main.go:399`
 
 **Problem:** `ContextsAddCmd.Run()` and `ContextsUseCmd.Run()` don't take a `cli *CLI` parameter, which is inconsistent with other commands and prevents future enhancements like JSON output confirmation messages.
@@ -803,6 +805,53 @@ func (c *ContextsUseCmd) Run() error {
 func (c *ContextsAddCmd) Run(cli *CLI) error {
 func (c *ContextsUseCmd) Run(cli *CLI) error {
 ```
+
+#### Plan (2026-01-21)
+
+**Acceptance criteria:**
+- `ContextsAddCmd.Run()` accepts `cli *CLI` parameter
+- `ContextsUseCmd.Run()` accepts `cli *CLI` parameter
+- All tests updated to pass CLI parameter
+- Consistent with other context commands (List, Show, Remove)
+
+**Verification approach:**
+- `make test` passes
+- All contexts tests pass
+- Code compiles without errors
+
+**Implementation steps:**
+1. Update `ContextsAddCmd.Run()` signature to accept `cli *CLI`
+2. Update `ContextsUseCmd.Run()` signature to accept `cli *CLI`
+3. Update all test calls to pass `cli *CLI`
+4. Run feedback loops
+
+#### Progress Note (2026-01-21)
+
+**Files changed:**
+- `cmd/tfc/main.go`:
+  - Line 466: Updated `ContextsAddCmd.Run()` to accept `cli *CLI` parameter
+  - Line 508: Updated `ContextsUseCmd.Run()` to accept `cli *CLI` parameter
+- `cmd/tfc/contexts_test.go`:
+  - Updated 9 test call sites to pass `cli *CLI` parameter:
+    - `TestContextsAddCmd_CreatesNewContext`
+    - `TestContextsAddCmd_ErrorsIfContextExists`
+    - `TestContextsAddCmd_InvalidAddressRejected` (sub-test)
+    - `TestContextsAddCmd_NoSettings`
+    - `TestContextsUseCmd_SwitchesCurrentContext`
+    - `TestContextsUseCmd_ErrorsIfContextNotFound`
+    - `TestContextsUseCmd_NoSettings`
+    - `TestContextsUseCmd_SaveError`
+    - `TestContextsAddCmd_SaveError`
+
+**Commands run:**
+- `make fmt` - passed
+- `make lint` - passed
+- `make build` - passed
+- `make test` - passed (all tests green)
+
+**What remains:**
+- Task #19 is complete
+- All context command `Run()` methods now consistently accept `cli *CLI` parameter
 
 ---
 

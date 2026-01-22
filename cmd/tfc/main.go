@@ -463,7 +463,7 @@ type ContextsAddCmd struct {
 	stdout  io.Writer
 }
 
-func (c *ContextsAddCmd) Run() error {
+func (c *ContextsAddCmd) Run(cli *CLI) error {
 	// Set defaults
 	if c.stdout == nil {
 		c.stdout = os.Stdout
@@ -505,7 +505,7 @@ type ContextsUseCmd struct {
 	stdout  io.Writer
 }
 
-func (c *ContextsUseCmd) Run() error {
+func (c *ContextsUseCmd) Run(cli *CLI) error {
 	// Set defaults
 	if c.stdout == nil {
 		c.stdout = os.Stdout

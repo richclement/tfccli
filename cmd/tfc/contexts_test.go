@@ -76,7 +76,8 @@ func TestContextsAddCmd_CreatesNewContext(t *testing.T) {
 		baseDir:    tmpHome,
 	}
 
-	err := cmd.Run()
+	cli := &CLI{}
+	err := cmd.Run(cli)
 	if err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
@@ -118,8 +119,9 @@ func TestContextsAddCmd_ErrorsIfContextExists(t *testing.T) {
 		CtxAddress: "new.example.com",
 		baseDir:    tmpHome,
 	}
+	cli := &CLI{}
 
-	err := cmd.Run()
+	err := cmd.Run(cli)
 	if err == nil {
 		t.Fatal("Expected error when adding existing context")
 	}
@@ -151,8 +153,9 @@ func TestContextsAddCmd_InvalidAddressRejected(t *testing.T) {
 				CtxAddress: tc.address,
 				baseDir:    tmpHome,
 			}
+			cli := &CLI{}
 
-			err := cmd.Run()
+			err := cmd.Run(cli)
 			if err == nil {
 				t.Fatalf("expected error for invalid address %q, got nil", tc.address)
 			}
@@ -174,8 +177,9 @@ func TestContextsAddCmd_NoSettings(t *testing.T) {
 		CtxAddress: "tfe.example.com",
 		baseDir:    tmpHome,
 	}
+	cli := &CLI{}
 
-	err := cmd.Run()
+	err := cmd.Run(cli)
 	if err == nil {
 		t.Fatal("expected error when settings not found, got nil")
 	}
@@ -197,8 +201,9 @@ func TestContextsUseCmd_SwitchesCurrentContext(t *testing.T) {
 		Name:    "prod",
 		baseDir: tmpHome,
 	}
+	cli := &CLI{}
 
-	err := cmd.Run()
+	err := cmd.Run(cli)
 	if err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
@@ -229,8 +234,9 @@ func TestContextsUseCmd_ErrorsIfContextNotFound(t *testing.T) {
 		Name:    "nonexistent",
 		baseDir: tmpHome,
 	}
+	cli := &CLI{}
 
-	err := cmd.Run()
+	err := cmd.Run(cli)
 	if err == nil {
 		t.Fatal("Expected error when switching to nonexistent context")
 	}
@@ -245,8 +251,9 @@ func TestContextsUseCmd_NoSettings(t *testing.T) {
 		Name:    "some-context",
 		baseDir: tmpHome,
 	}
+	cli := &CLI{}
 
-	err := cmd.Run()
+	err := cmd.Run(cli)
 	if err == nil {
 		t.Fatal("expected error when settings not found, got nil")
 	}
@@ -278,8 +285,9 @@ func TestContextsUseCmd_SaveError(t *testing.T) {
 		Name:    "prod",
 		baseDir: tmpHome,
 	}
+	cli := &CLI{}
 
-	err := cmd.Run()
+	err := cmd.Run(cli)
 	if err == nil {
 		t.Fatal("expected error when save fails, got nil")
 	}
@@ -669,8 +677,9 @@ func TestContextsAddCmd_SaveError(t *testing.T) {
 		CtxAddress: "tfe.example.com",
 		baseDir:    tmpHome,
 	}
+	cli := &CLI{}
 
-	err := cmd.Run()
+	err := cmd.Run(cli)
 	if err == nil {
 		t.Fatal("expected error when save fails, got nil")
 	}
