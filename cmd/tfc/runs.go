@@ -527,7 +527,7 @@ func (c *RunsDiscardCmd) Run(cli *CLI) error {
 			return internalcmd.NewRuntimeError(fmt.Errorf("failed to write output: %w", err))
 		}
 	} else {
-		fmt.Fprintf(c.stdout, "Run %q discarded.\n", c.ID)
+		fmt.Fprintf(c.stdout, "Run %q discard initiated.\n", c.ID)
 	}
 
 	return nil
@@ -614,7 +614,7 @@ func (c *RunsCancelCmd) Run(cli *CLI) error {
 			return internalcmd.NewRuntimeError(fmt.Errorf("failed to write output: %w", err))
 		}
 	} else {
-		fmt.Fprintf(c.stdout, "Run %q cancelled.\n", c.ID)
+		fmt.Fprintf(c.stdout, "Run %q cancel initiated.\n", c.ID)
 	}
 
 	return nil
@@ -701,7 +701,7 @@ func (c *RunsForceCancelCmd) Run(cli *CLI) error {
 			return internalcmd.NewRuntimeError(fmt.Errorf("failed to write output: %w", err))
 		}
 	} else {
-		fmt.Fprintf(c.stdout, "Run %q force-cancelled.\n", c.ID)
+		fmt.Fprintf(c.stdout, "Run %q force-cancel initiated.\n", c.ID)
 	}
 
 	return nil

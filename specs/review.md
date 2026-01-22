@@ -663,7 +663,9 @@ func TestRunsApply_PrompterError(t *testing.T) {
 
 ---
 
-### 12. [ ] Inconsistent success message for Apply command
+### 12. [x] Inconsistent success message for Apply command
+
+**Status:** DONE
 
 **File:** `cmd/tfc/runs.go`
 **Line:** 454
@@ -677,6 +679,27 @@ func TestRunsApply_PrompterError(t *testing.T) {
 - ForceCancel: `Run %q force-cancelled.`
 
 **Fix:** Either change Apply to `Run %q applied.` or change others to match "initiated" style if that's intentional (Apply is async). Document the reason if intentional.
+
+#### Plan
+- **Acceptance criteria:** All four destructive run commands (Apply, Discard, Cancel, ForceCancel) use consistent "initiated" messaging style.
+- **Verification:** `make fmt && make lint && make build && make test` all pass; messages are consistent.
+- **Implementation steps:**
+  1. Research TFC API documentation to determine if operations are sync or async
+  2. All four operations return HTTP 202 (queued) - they are all async
+  3. Change Discard from "discarded" to "discard initiated"
+  4. Change Cancel from "cancelled" to "cancel initiated"
+  5. Change ForceCancel from "force-cancelled" to "force-cancel initiated"
+  6. Run feedback loops to verify
+
+#### Progress Notes
+
+**2026-01-22:** Completed.
+- Research: Verified via TFC API docs that all four operations (Apply, Discard, Cancel, ForceCancel) return HTTP 202 and are async/queued operations. The "initiated" style is semantically correct.
+- Changed: `cmd/tfc/runs.go` line 530 - "discarded" → "discard initiated"
+- Changed: `cmd/tfc/runs.go` line 617 → "cancel initiated"
+- Changed: `cmd/tfc/runs.go` line 704 → "force-cancel initiated"
+- Commands: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Result: All four destructive commands now use consistent "initiated" style, accurately reflecting the async nature of these API operations.
 
 ---
 
