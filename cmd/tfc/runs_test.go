@@ -525,6 +525,11 @@ func TestRunsGet_JSON(t *testing.T) {
 	if data["id"] != "run-1" {
 		t.Errorf("expected id run-1, got %v", data["id"])
 	}
+
+	// Verify correct run ID was passed to API
+	if fakeClient.readRunID != "run-1" {
+		t.Errorf("expected run ID run-1 passed to API, got %s", fakeClient.readRunID)
+	}
 }
 
 func TestRunsGet_JSON_WithWorkspace(t *testing.T) {
@@ -812,6 +817,11 @@ func TestRunsApply_WithForce(t *testing.T) {
 		t.Error("expected apply to be called with --force")
 	}
 
+	// Verify correct run ID was passed to API
+	if fakeClient.applyRunID != "run-1" {
+		t.Errorf("expected run ID run-1 passed to API, got %s", fakeClient.applyRunID)
+	}
+
 	// Verify JSON response
 	var result map[string]any
 	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
@@ -950,6 +960,11 @@ func TestRunsDiscard_WithForce(t *testing.T) {
 	if !fakeClient.discardCalled {
 		t.Error("expected discard to be called with --force")
 	}
+
+	// Verify correct run ID was passed to API
+	if fakeClient.discardRunID != "run-1" {
+		t.Errorf("expected run ID run-1 passed to API, got %s", fakeClient.discardRunID)
+	}
 }
 
 func TestRunsDiscard_WithComment(t *testing.T) {
@@ -1043,6 +1058,11 @@ func TestRunsCancel_WithForce(t *testing.T) {
 	if !fakeClient.cancelCalled {
 		t.Error("expected cancel to be called with --force")
 	}
+
+	// Verify correct run ID was passed to API
+	if fakeClient.cancelRunID != "run-1" {
+		t.Errorf("expected run ID run-1 passed to API, got %s", fakeClient.cancelRunID)
+	}
 }
 
 func TestRunsCancel_WithComment(t *testing.T) {
@@ -1135,6 +1155,11 @@ func TestRunsForceCancel_WithForce(t *testing.T) {
 
 	if !fakeClient.forceCancelCalled {
 		t.Error("expected force-cancel to be called with --force")
+	}
+
+	// Verify correct run ID was passed to API
+	if fakeClient.forceCancelRunID != "run-1" {
+		t.Errorf("expected run ID run-1 passed to API, got %s", fakeClient.forceCancelRunID)
 	}
 }
 

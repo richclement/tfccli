@@ -798,7 +798,9 @@ if status != 202 {
 
 ---
 
-### 15. [ ] Missing test: verify correct run ID passed to Read/Apply/Discard/Cancel/ForceCancel
+### 15. [x] Missing test: verify correct run ID passed to Read/Apply/Discard/Cancel/ForceCancel
+
+**Status:** DONE
 
 **File:** `cmd/tfc/runs_test.go`
 
@@ -811,6 +813,29 @@ if fakeClient.applyRunID != "run-1" {
     t.Errorf("expected run ID run-1, got %s", fakeClient.applyRunID)
 }
 ```
+
+#### Plan
+- **Acceptance criteria:** Existing tests verify that the correct run ID is passed to the API for Read, Apply, Discard, Cancel, and ForceCancel commands.
+- **Verification:** `make fmt && make lint && make build && make test` all pass.
+- **Implementation steps:**
+  1. Add `readRunID` assertion to `TestRunsGet_JSON` (line ~527)
+  2. Add `applyRunID` assertion to `TestRunsApply_WithForce` (line ~813)
+  3. Add `discardRunID` assertion to `TestRunsDiscard_WithForce` (line ~952)
+  4. Add `cancelRunID` assertion to `TestRunsCancel_WithForce` (line ~1045)
+  5. Add `forceCancelRunID` assertion to `TestRunsForceCancel_WithForce` (line ~1138)
+  6. Run feedback loops
+
+#### Progress Notes
+
+**2026-01-22:** Completed.
+- Changed: `cmd/tfc/runs_test.go` - added run ID verification assertions to 5 tests:
+  - `TestRunsGet_JSON` - verifies `readRunID == "run-1"`
+  - `TestRunsApply_WithForce` - verifies `applyRunID == "run-1"`
+  - `TestRunsDiscard_WithForce` - verifies `discardRunID == "run-1"`
+  - `TestRunsCancel_WithForce` - verifies `cancelRunID == "run-1"`
+  - `TestRunsForceCancel_WithForce` - verifies `forceCancelRunID == "run-1"`
+- Commands: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Result: Tests now verify the correct run ID is passed to the API, catching potential bugs where wrong IDs could be used
 
 ---
 
