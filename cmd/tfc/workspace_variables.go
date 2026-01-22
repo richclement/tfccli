@@ -10,7 +10,6 @@ import (
 
 	"github.com/richclement/tfccli/internal/auth"
 	internalcmd "github.com/richclement/tfccli/internal/cmd"
-	"github.com/richclement/tfccli/internal/config"
 	"github.com/richclement/tfccli/internal/output"
 	"github.com/richclement/tfccli/internal/tfcapi"
 	"github.com/richclement/tfccli/internal/ui"
@@ -109,41 +108,6 @@ func defaultVariablesClientFactory(cfg tfcapi.ClientConfig) (variablesClient, er
 	return &realVariablesClient{client: client}, nil
 }
 
-// resolveVariablesClientConfig resolves settings and token for API calls.
-func resolveVariablesClientConfig(cli *CLI, baseDir string, tokenResolver *auth.TokenResolver) (tfcapi.ClientConfig, error) {
-	settings, err := config.Load(baseDir)
-	if err != nil {
-		return tfcapi.ClientConfig{}, err
-	}
-
-	contextName := cli.Context
-	if contextName == "" {
-		contextName = settings.CurrentContext
-	}
-	ctx, exists := settings.Contexts[contextName]
-	if !exists {
-		return tfcapi.ClientConfig{}, fmt.Errorf("context %q not found", contextName)
-	}
-
-	resolved := ctx.WithDefaults()
-	if cli.Address != "" {
-		resolved.Address = cli.Address
-	}
-
-	if tokenResolver == nil {
-		tokenResolver = auth.NewTokenResolver()
-	}
-	tokenResult, err := tokenResolver.ResolveToken(resolved.Address)
-	if err != nil {
-		return tfcapi.ClientConfig{}, err
-	}
-
-	return tfcapi.ClientConfig{
-		Address: resolved.Address,
-		Token:   tokenResult.Token,
-	}, nil
-}
-
 // WorkspaceVariablesListCmd lists variables for a workspace.
 type WorkspaceVariablesListCmd struct {
 	WorkspaceID string `required:"" name:"workspace-id" help:"ID of the workspace."`
@@ -168,7 +132,7 @@ func (c *WorkspaceVariablesListCmd) Run(cli *CLI) error {
 		c.clientFactory = defaultVariablesClientFactory
 	}
 
-	cfg, err := resolveVariablesClientConfig(cli, c.baseDir, c.tokenResolver)
+	cfg, _, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
 	if err != nil {
 		return internalcmd.NewRuntimeError(err)
 	}
@@ -238,7 +202,7 @@ func (c *WorkspaceVariablesGetCmd) Run(cli *CLI) error {
 		c.clientFactory = defaultVariablesClientFactory
 	}
 
-	cfg, err := resolveVariablesClientConfig(cli, c.baseDir, c.tokenResolver)
+	cfg, _, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
 	if err != nil {
 		return internalcmd.NewRuntimeError(err)
 	}
@@ -321,7 +285,7 @@ func (c *WorkspaceVariablesCreateCmd) Run(cli *CLI) error {
 		c.clientFactory = defaultVariablesClientFactory
 	}
 
-	cfg, err := resolveVariablesClientConfig(cli, c.baseDir, c.tokenResolver)
+	cfg, _, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
 	if err != nil {
 		return internalcmd.NewRuntimeError(err)
 	}
@@ -415,7 +379,7 @@ func (c *WorkspaceVariablesUpdateCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("at least one of --key, --value, --description, --sensitive, or --hcl is required"))
 	}
 
-	cfg, err := resolveVariablesClientConfig(cli, c.baseDir, c.tokenResolver)
+	cfg, _, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
 	if err != nil {
 		return internalcmd.NewRuntimeError(err)
 	}
@@ -519,7 +483,7 @@ func (c *WorkspaceVariablesDeleteCmd) Run(cli *CLI) error {
 		}
 	}
 
-	cfg, err := resolveVariablesClientConfig(cli, c.baseDir, c.tokenResolver)
+	cfg, _, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
 	if err != nil {
 		return internalcmd.NewRuntimeError(err)
 	}

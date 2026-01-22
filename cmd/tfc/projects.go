@@ -10,7 +10,6 @@ import (
 
 	"github.com/richclement/tfccli/internal/auth"
 	internalcmd "github.com/richclement/tfccli/internal/cmd"
-	"github.com/richclement/tfccli/internal/config"
 	"github.com/richclement/tfccli/internal/output"
 	"github.com/richclement/tfccli/internal/tfcapi"
 	"github.com/richclement/tfccli/internal/ui"
@@ -98,57 +97,6 @@ func defaultProjectsClientFactory(cfg tfcapi.ClientConfig) (projectsClient, erro
 	return &realProjectsClient{client: client}, nil
 }
 
-// resolveFormat determines the output format based on CLI flags and TTY detection.
-// Returns both the format and the isTTY bool (needed by TableWriter).
-func resolveFormat(stdout io.Writer, ttyDetector output.TTYDetector, cliFormat string) (output.Format, bool) {
-	isTTY := false
-	if f, ok := stdout.(*os.File); ok {
-		isTTY = ttyDetector.IsTTY(f)
-	}
-	return output.ResolveOutputFormat(cliFormat, isTTY), isTTY
-}
-
-// resolveProjectsClientConfig resolves settings and token for API calls, including org resolution.
-func resolveProjectsClientConfig(cli *CLI, baseDir string, tokenResolver *auth.TokenResolver) (tfcapi.ClientConfig, string, error) {
-	settings, err := config.Load(baseDir)
-	if err != nil {
-		return tfcapi.ClientConfig{}, "", err
-	}
-
-	contextName := cli.Context
-	if contextName == "" {
-		contextName = settings.CurrentContext
-	}
-	ctx, exists := settings.Contexts[contextName]
-	if !exists {
-		return tfcapi.ClientConfig{}, "", fmt.Errorf("context %q not found", contextName)
-	}
-
-	resolved := ctx.WithDefaults()
-	if cli.Address != "" {
-		resolved.Address = cli.Address
-	}
-
-	// Resolve organization: CLI flag takes precedence over context default
-	org := cli.Org
-	if org == "" {
-		org = resolved.DefaultOrg
-	}
-
-	if tokenResolver == nil {
-		tokenResolver = auth.NewTokenResolver()
-	}
-	tokenResult, err := tokenResolver.ResolveToken(resolved.Address)
-	if err != nil {
-		return tfcapi.ClientConfig{}, "", err
-	}
-
-	return tfcapi.ClientConfig{
-		Address: resolved.Address,
-		Token:   tokenResult.Token,
-	}, org, nil
-}
-
 // ProjectsListCmd lists projects in an organization.
 type ProjectsListCmd struct {
 	// Dependencies for testing
@@ -171,7 +119,7 @@ func (c *ProjectsListCmd) Run(cli *CLI) error {
 		c.clientFactory = defaultProjectsClientFactory
 	}
 
-	cfg, org, err := resolveProjectsClientConfig(cli, c.baseDir, c.tokenResolver)
+	cfg, org, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
 	if err != nil {
 		return internalcmd.NewRuntimeError(err)
 	}
@@ -242,7 +190,7 @@ func (c *ProjectsGetCmd) Run(cli *CLI) error {
 		c.clientFactory = defaultProjectsClientFactory
 	}
 
-	cfg, _, err := resolveProjectsClientConfig(cli, c.baseDir, c.tokenResolver)
+	cfg, _, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
 	if err != nil {
 		return internalcmd.NewRuntimeError(err)
 	}
@@ -309,7 +257,7 @@ func (c *ProjectsCreateCmd) Run(cli *CLI) error {
 		c.clientFactory = defaultProjectsClientFactory
 	}
 
-	cfg, org, err := resolveProjectsClientConfig(cli, c.baseDir, c.tokenResolver)
+	cfg, org, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
 	if err != nil {
 		return internalcmd.NewRuntimeError(err)
 	}
@@ -387,7 +335,7 @@ func (c *ProjectsUpdateCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("at least one of --name or --description is required"))
 	}
 
-	cfg, _, err := resolveProjectsClientConfig(cli, c.baseDir, c.tokenResolver)
+	cfg, _, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
 	if err != nil {
 		return internalcmd.NewRuntimeError(err)
 	}
@@ -477,7 +425,7 @@ func (c *ProjectsDeleteCmd) Run(cli *CLI) error {
 		}
 	}
 
-	cfg, _, err := resolveProjectsClientConfig(cli, c.baseDir, c.tokenResolver)
+	cfg, _, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
 	if err != nil {
 		return internalcmd.NewRuntimeError(err)
 	}

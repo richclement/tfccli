@@ -34,9 +34,53 @@ if c.Description != "" {
 
 ### 2. Extract Duplicate `resolveClientConfig` Function
 
+**Status:** DONE
+
 **Files:** `cmd/tfc/workspaces.go:107-145` and `cmd/tfc/projects.go:112-150`
 
 **Problem:** `resolveWorkspacesClientConfig` and `resolveProjectsClientConfig` are identical functions. This violates DRY and increases maintenance burden.
+
+#### Plan (2026-01-21)
+
+**Acceptance criteria:**
+- Shared `resolveClientConfig` helper exists in `cmd/tfc/common.go`
+- `resolveWorkspacesClientConfig` and `resolveProjectsClientConfig` are replaced with calls to shared helper
+- `resolveVariablesClientConfig` and `resolveWorkspaceResourcesClientConfig` are also updated (they have similar duplication)
+- All existing tests pass
+- No behavior changes
+
+**Verification approach:**
+- `make test` passes
+- All command tests still pass
+- Code compiles without errors
+
+**Implementation steps:**
+1. Create `cmd/tfc/common.go` with shared `resolveClientConfig` function
+2. Update `cmd/tfc/workspaces.go` to use shared helper (remove local function)
+3. Update `cmd/tfc/projects.go` to use shared helper (remove local function)
+4. Update `cmd/tfc/workspace_variables.go` to use shared helper
+5. Update `cmd/tfc/workspace_resources.go` to use shared helper
+6. Run feedback loops
+
+#### Progress Note (2026-01-21)
+
+**Files changed:**
+- `cmd/tfc/common.go` (new): Created shared helper file with `resolveClientConfig` and `resolveFormat` functions
+- `cmd/tfc/workspaces.go`: Removed `resolveWorkspacesClientConfig`, updated to use shared `resolveClientConfig`
+- `cmd/tfc/projects.go`: Removed `resolveProjectsClientConfig` and `resolveFormat`, updated to use shared versions
+- `cmd/tfc/workspace_variables.go`: Removed `resolveVariablesClientConfig`, updated to use shared `resolveClientConfig` (ignoring org return)
+- `cmd/tfc/workspace_resources.go`: Removed `resolveWorkspaceResourcesClientConfig`, updated to use shared `resolveClientConfig` (ignoring org return)
+
+**Commands run:**
+- `make fmt` - passed
+- `make lint` - passed
+- `make build` - passed
+- `make test` - passed (all tests green)
+
+**What remains:**
+- Task #2 is DONE
+- Net reduction of ~140 lines of duplicate code
+- Also resolves task #7 (resolveVariablesClientConfig), #29 (resolveWorkspaceResourcesClientConfig), and task #4 (resolveFormat helper moved to common.go)
 
 **Fix:** Create a shared helper in a common location (e.g., `cmd/tfc/common.go` or reuse an existing shared file):
 
@@ -128,6 +172,8 @@ Then update `workspaces_test.go` and other test files to use the shared types.
 
 ### 4. Reuse `resolveFormat` Helper
 
+**Status:** DONE (fixed as part of #2)
+
 **File:** `cmd/tfc/workspaces.go`
 
 **Problem:** The workspaces commands have inline TTY detection (e.g., lines 195-199), while projects.go has a cleaner `resolveFormat` helper (lines 101-109).
@@ -201,6 +247,8 @@ if c.Description != "" {
 ## Code Quality Improvements
 
 ### 7. Duplicate `resolveVariablesClientConfig` Function
+
+**Status:** DONE (fixed as part of #2)
 
 **File:** `cmd/tfc/workspace_variables.go:112-144`
 
@@ -1334,6 +1382,8 @@ func TestWorkspaceResourcesList_TokenResolutionError(t *testing.T) {
 ## Code Quality Improvements
 
 ### 29. Duplicate `resolveWorkspaceResourcesClientConfig` Function
+
+**Status:** DONE (fixed as part of #2)
 
 **File:** `cmd/tfc/workspace_resources.go:84-117`
 
