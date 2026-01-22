@@ -493,6 +493,45 @@ func TestCVUpload_NoUploadURL(t *testing.T) {
 	}
 }
 
+func TestCVUpload_FileReadError(t *testing.T) {
+	baseDir, resolver := setupCVTest(t)
+
+	fakeClient := &fakeCVClient{
+		ReadFunc: func(_ context.Context, cvID string) (*tfe.ConfigurationVersion, error) {
+			return &tfe.ConfigurationVersion{
+				ID:        cvID,
+				Status:    tfe.ConfigurationPending,
+				UploadURL: "https://archivist.example.com/upload",
+			}, nil
+		},
+	}
+
+	var stdout bytes.Buffer
+	cmd := &CVUploadCmd{
+		ID:            "cv-123",
+		File:          "/nonexistent/path/config.tar.gz",
+		baseDir:       baseDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &stdout,
+		clientFactory: func(_ tfcapi.ClientConfig) (cvClient, error) {
+			return fakeClient, nil
+		},
+		fileReader: func(_ string) ([]byte, error) {
+			return nil, os.ErrNotExist
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error for file read failure")
+	}
+	if !strings.Contains(err.Error(), "failed to read file") {
+		t.Errorf("expected file read error, got: %v", err)
+	}
+}
+
 func TestCVDownload_WritesToStdout(t *testing.T) {
 	baseDir, resolver := setupCVTest(t)
 

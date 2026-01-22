@@ -2213,11 +2213,31 @@ func TestCVList_EmptyList(t *testing.T) {
 
 ---
 
-### 44. [ ] Missing test: CVUpload file read error
+### 44. [x] Missing test: CVUpload file read error
+
+**Status:** DONE
 
 **File:** `cmd/tfc/configuration_versions_test.go`
 
 **Problem:** No test verifies error handling when the file specified by `--file` cannot be read (doesn't exist, permission denied, etc.).
+
+#### Plan
+- **Acceptance criteria:** A new test `TestCVUpload_FileReadError` exists that verifies the command returns an error when the file cannot be read. Error message should contain "failed to read file".
+- **Verification:** `make fmt && make lint && make build && make test` all pass; new test passes.
+- **Implementation steps:**
+  1. Add `TestCVUpload_FileReadError` test function after `TestCVUpload_NoUploadURL` in configuration_versions_test.go
+  2. Test uses `fileReader` that returns `os.ErrNotExist` to simulate file not found
+  3. Verify error is returned and contains "failed to read file"
+  4. Run feedback loops to verify
+
+#### Progress Notes
+
+**2026-01-22:** Completed.
+- Changed: `cmd/tfc/configuration_versions_test.go` - added `TestCVUpload_FileReadError` test function after `TestCVUpload_NoUploadURL` (line 495)
+- Test uses `fileReader` that returns `os.ErrNotExist` to simulate file not found
+- Verifies error is returned and contains "failed to read file"
+- Commands: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Result: File read error handling branch in `CVUploadCmd.Run` is now tested
 
 **Fix:** Add test:
 ```go
