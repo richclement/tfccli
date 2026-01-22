@@ -11,7 +11,6 @@ import (
 
 	"github.com/richclement/tfccli/internal/auth"
 	internalcmd "github.com/richclement/tfccli/internal/cmd"
-	"github.com/richclement/tfccli/internal/config"
 	"github.com/richclement/tfccli/internal/output"
 	"github.com/richclement/tfccli/internal/tfcapi"
 )
@@ -80,41 +79,6 @@ func defaultPlansClientFactory(cfg tfcapi.ClientConfig) (plansClient, error) {
 	return &realPlansClient{client: client}, nil
 }
 
-// resolvePlansClientConfig resolves settings and token for API calls.
-func resolvePlansClientConfig(cli *CLI, baseDir string, tokenResolver *auth.TokenResolver) (tfcapi.ClientConfig, error) {
-	settings, err := config.Load(baseDir)
-	if err != nil {
-		return tfcapi.ClientConfig{}, err
-	}
-
-	contextName := cli.Context
-	if contextName == "" {
-		contextName = settings.CurrentContext
-	}
-	ctx, exists := settings.Contexts[contextName]
-	if !exists {
-		return tfcapi.ClientConfig{}, fmt.Errorf("context %q not found", contextName)
-	}
-
-	resolved := ctx.WithDefaults()
-	if cli.Address != "" {
-		resolved.Address = cli.Address
-	}
-
-	if tokenResolver == nil {
-		tokenResolver = auth.NewTokenResolver()
-	}
-	tokenResult, err := tokenResolver.ResolveToken(resolved.Address)
-	if err != nil {
-		return tfcapi.ClientConfig{}, err
-	}
-
-	return tfcapi.ClientConfig{
-		Address: resolved.Address,
-		Token:   tokenResult.Token,
-	}, nil
-}
-
 // PlansGetCmd gets a plan by ID.
 type PlansGetCmd struct {
 	ID string `arg:"" help:"ID of the plan."`
@@ -139,7 +103,7 @@ func (c *PlansGetCmd) Run(cli *CLI) error {
 		c.clientFactory = defaultPlansClientFactory
 	}
 
-	cfg, err := resolvePlansClientConfig(cli, c.baseDir, c.tokenResolver)
+	cfg, _, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
 	if err != nil {
 		return internalcmd.NewRuntimeError(err)
 	}
@@ -209,7 +173,7 @@ func (c *PlansJSONOutputCmd) Run(cli *CLI) error {
 		c.clientFactory = defaultPlansClientFactory
 	}
 
-	cfg, err := resolvePlansClientConfig(cli, c.baseDir, c.tokenResolver)
+	cfg, _, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
 	if err != nil {
 		return internalcmd.NewRuntimeError(err)
 	}
@@ -295,7 +259,7 @@ func (c *PlansSanitizedPlanCmd) Run(cli *CLI) error {
 		c.downloadClient = c.defaultDownloadClient
 	}
 
-	cfg, err := resolvePlansClientConfig(cli, c.baseDir, c.tokenResolver)
+	cfg, _, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
 	if err != nil {
 		return internalcmd.NewRuntimeError(err)
 	}

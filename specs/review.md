@@ -925,7 +925,9 @@ format, isTTY := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
 
 ---
 
-### 18. [ ] `resolvePlansClientConfig` duplicates `resolveClientConfig` from common.go
+### 18. [x] `resolvePlansClientConfig` duplicates `resolveClientConfig` from common.go
+
+**Status:** DONE
 
 **File:** `cmd/tfc/plans.go`
 **Lines:** 84-116
@@ -941,6 +943,23 @@ format, isTTY := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
 ```go
 cfg, _, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
 ```
+
+#### Plan
+- **Acceptance criteria:** The `resolvePlansClientConfig` function is removed and all plans commands use `resolveClientConfig` from common.go, ignoring the org return value.
+- **Verification:** `make fmt && make lint && make build && make test` passes; no functional change in behavior.
+- **Implementation steps:**
+  1. Remove `resolvePlansClientConfig` function from plans.go
+  2. Remove unused `config` import from plans.go
+  3. Update `PlansGetCmd.Run` to use `resolveClientConfig` with `cfg, _, err := ...`
+  4. Update `PlansJSONOutputCmd.Run` to use `resolveClientConfig` with `cfg, _, err := ...`
+  5. Update `PlansSanitizedPlanCmd.Run` to use `resolveClientConfig` with `cfg, _, err := ...`
+
+#### Progress Notes
+
+**2026-01-22:** Completed.
+- Changed: `cmd/tfc/plans.go` - removed `resolvePlansClientConfig` function (~30 lines); removed unused `config` import; updated all 3 command Run methods (`PlansGetCmd`, `PlansJSONOutputCmd`, `PlansSanitizedPlanCmd`) to use `resolveClientConfig` from common.go with `cfg, _, err := resolveClientConfig(...)` pattern
+- Commands: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Result: Code duplication eliminated; plans commands now use shared `resolveClientConfig` helper from common.go
 
 ---
 
