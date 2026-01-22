@@ -264,6 +264,7 @@ type InitCmd struct {
 	// Dependencies (injectable for testing)
 	prompter ui.Prompter
 	baseDir  string
+	stdout   io.Writer
 }
 
 // Run executes the init command.
@@ -272,6 +273,9 @@ func (c *InitCmd) Run(cli *CLI) error {
 	// Use defaults if not injected
 	if c.prompter == nil {
 		c.prompter = ui.NewStdPrompter(os.Stdin, os.Stdout)
+	}
+	if c.stdout == nil {
+		c.stdout = os.Stdout
 	}
 
 	// Check if settings already exist
@@ -295,7 +299,7 @@ func (c *InitCmd) Run(cli *CLI) error {
 				return internalcmd.NewRuntimeError(fmt.Errorf("failed to prompt for confirmation: %w", err))
 			}
 			if !overwrite {
-				fmt.Println("Aborting init (settings unchanged).")
+				fmt.Fprintln(c.stdout, "Aborting init (settings unchanged).")
 				return nil
 			}
 		} else if !c.Yes {
@@ -365,7 +369,7 @@ func (c *InitCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to save settings: %w", err))
 	}
 
-	fmt.Printf("Settings written to %s\n", settingsPath)
+	fmt.Fprintf(c.stdout, "Settings written to %s\n", settingsPath)
 	return nil
 }
 

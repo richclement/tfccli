@@ -281,46 +281,54 @@ Review of `cmd/tfc/main.go` (InitCmd) and `cmd/tfc/init_test.go`.
 
 ### 10. Console Output Not Testable
 
+**Status:** DONE
+
 **File:** `cmd/tfc/main.go:290, 355`
 
 **Problem:** Unlike other commands (e.g., `DoctorCmd`, `WorkspacesListCmd`) that use an injectable `stdout` writer, `InitCmd` writes directly to `os.Stdout` via `fmt.Println()` and `fmt.Printf()`. This makes output untestable and inconsistent with the rest of the codebase.
 
-**Current code:**
-```go
-fmt.Println("Aborting init (settings unchanged).")
-// ...
-fmt.Printf("Settings written to %s\n", settingsPath)
-```
+#### Plan (2026-01-21)
 
-**Fix:**
+**Acceptance criteria (from PRD Section 14):**
+- InitCmd has an injectable `stdout io.Writer` field like other commands
+- Default to `os.Stdout` when not injected
+- Existing tests still pass
+- New tests can verify output content
 
-1. Add `stdout` field to `InitCmd`:
-```go
-type InitCmd struct {
-    NonInteractive bool   `help:"Run in non-interactive mode (for CI/agents)."`
-    DefaultOrg     string `name:"default-org" help:"Default organization."`
-    LogLevel       string `name:"log-level" enum:"debug,info,warn,error," default:"" help:"Log level (debug, info, warn, error)."`
-    Yes            bool   `help:"Skip confirmation prompts (e.g., overwrite existing settings)."`
+**Verification approach:**
+- `make test` passes
+- Existing init tests still pass
+- Add test that injects stdout and verifies message content
 
-    // Dependencies (injectable for testing)
-    prompter ui.Prompter
-    baseDir  string
-    stdout   io.Writer  // Add this
-}
-```
+**Implementation steps:**
+1. Add `stdout io.Writer` field to `InitCmd` struct
+2. Default to `os.Stdout` in `Run()` if nil
+3. Replace `fmt.Println` with `fmt.Fprintln(c.stdout, ...)`
+4. Replace `fmt.Printf` with `fmt.Fprintf(c.stdout, ...)`
+5. Add test verifying abort message output
+6. Add test verifying success message output
 
-2. Set default in Run():
-```go
-if c.stdout == nil {
-    c.stdout = os.Stdout
-}
-```
+#### Progress Note (2026-01-21)
 
-3. Replace `fmt.Println`/`fmt.Printf` with writes to `c.stdout`:
-```go
-fmt.Fprintln(c.stdout, "Aborting init (settings unchanged).")
-fmt.Fprintf(c.stdout, "Settings written to %s\n", settingsPath)
-```
+**Files changed:**
+- `cmd/tfc/main.go`:
+  - Added `stdout io.Writer` field to `InitCmd` struct (line 267)
+  - Added default initialization `if c.stdout == nil { c.stdout = os.Stdout }` in `Run()` (lines 276-278)
+  - Replaced `fmt.Println` with `fmt.Fprintln(c.stdout, ...)` (line 302)
+  - Replaced `fmt.Printf` with `fmt.Fprintf(c.stdout, ...)` (line 372)
+- `cmd/tfc/init_test.go`:
+  - Added `TestInitCmd_OutputAbortMessage` - verifies abort message when user declines overwrite
+  - Added `TestInitCmd_OutputSuccessMessage` - verifies success message with settings path
+
+**Commands run:**
+- `make fmt` - passed
+- `make lint` - passed
+- `make build` - passed
+- `make test` - passed (all 17 init tests green, including 2 new tests)
+
+**What remains:**
+- Task #10 is complete
+- Tests can now inject `stdout` to verify output content
 
 ---
 

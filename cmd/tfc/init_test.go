@@ -582,3 +582,67 @@ func TestInitCmd_StatPermissionError(t *testing.T) {
 		t.Errorf("expected 'failed to check settings file' in error, got: %v", err)
 	}
 }
+
+// TestInitCmd_OutputAbortMessage tests that aborting init outputs the abort message.
+func TestInitCmd_OutputAbortMessage(t *testing.T) {
+	tmpHome := t.TempDir()
+	var buf strings.Builder
+
+	// Create existing settings
+	existingSettings := &config.Settings{
+		CurrentContext: "default",
+		Contexts: map[string]config.Context{
+			"default": {Address: "existing.example.com", LogLevel: "error"},
+		},
+	}
+	if err := config.Save(existingSettings, tmpHome); err != nil {
+		t.Fatalf("Failed to create existing settings: %v", err)
+	}
+
+	// Create prompter that says "no" to overwrite
+	prompter := ui.NewScriptedPrompter().
+		OnConfirm("Settings file already exists. Overwrite?", false)
+
+	cmd := &InitCmd{
+		prompter: prompter,
+		baseDir:  tmpHome,
+		stdout:   &buf,
+	}
+	cli := &CLI{}
+
+	err := cmd.Run(cli)
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	output := buf.String()
+	if !strings.Contains(output, "Aborting init (settings unchanged).") {
+		t.Errorf("expected abort message in output, got: %q", output)
+	}
+}
+
+// TestInitCmd_OutputSuccessMessage tests that successful init outputs the success message.
+func TestInitCmd_OutputSuccessMessage(t *testing.T) {
+	tmpHome := t.TempDir()
+	var buf strings.Builder
+
+	cmd := &InitCmd{
+		NonInteractive: true,
+		baseDir:        tmpHome,
+		stdout:         &buf,
+	}
+	cli := &CLI{}
+
+	err := cmd.Run(cli)
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	output := buf.String()
+	if !strings.Contains(output, "Settings written to") {
+		t.Errorf("expected success message in output, got: %q", output)
+	}
+	if !strings.Contains(output, "settings.json") {
+		t.Errorf("expected settings.json path in output, got: %q", output)
+	}
+}
