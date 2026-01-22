@@ -1925,78 +1925,55 @@ if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated && 
 
 ---
 
-### 38. [ ] `cvJSON` struct missing `created_at` timestamp
+### 38. [x] `cvJSON` struct missing `created_at` timestamp
+
+**Status:** N/A (Not Applicable)
 
 **File:** `cmd/tfc/configuration_versions.go`
 **Lines:** 30-39, 41-52
 
 **Problem:** The `cvJSON` struct doesn't include `CreatedAt` timestamp, but configuration versions have this field. This creates inconsistency with other commands (like runs) that include timestamps in their JSON output.
 
-**Fix:** Add `created_at` to the struct:
-```go
-type cvJSON struct {
-    ID            string `json:"id"`
-    Status        string `json:"status"`
-    Source        string `json:"source,omitempty"`
-    AutoQueueRuns bool   `json:"auto_queue_runs"`
-    Speculative   bool   `json:"speculative"`
-    ErrorMessage  string `json:"error_message,omitempty"`
-    UploadURL     string `json:"upload_url,omitempty"`
-    CreatedAt     string `json:"created_at,omitempty"` // Add this
-}
-```
+#### Progress Notes
 
-And update `toCVJSON`:
-```go
-func toCVJSON(cv *tfe.ConfigurationVersion) *cvJSON {
-    r := &cvJSON{
-        ID:            cv.ID,
-        Status:        string(cv.Status),
-        Source:        string(cv.Source),
-        AutoQueueRuns: cv.AutoQueueRuns,
-        Speculative:   cv.Speculative,
-        ErrorMessage:  cv.ErrorMessage,
-        UploadURL:     cv.UploadURL,
-    }
-    if !cv.CreatedAt.IsZero() {
-        r.CreatedAt = cv.CreatedAt.Format(time.RFC3339)
-    }
-    return r
-}
-```
+**2026-01-22:** Investigated and marked as N/A.
+- Analysis: The `tfe.ConfigurationVersion` struct in go-tfe v1.99.0 does NOT have a `CreatedAt` field like `tfe.Run` does
+- The go-tfe library provides `StatusTimestamps` instead, which contains: `ArchivedAt`, `FetchingAt`, `FinishedAt`, `QueuedAt`, `StartedAt`
+- These are status-specific timestamps, not a creation timestamp
+- The original issue was based on incorrect assumption that the API provides `CreatedAt`
+- No code change needed; the current implementation correctly reflects the available API data
+- If timestamp information is needed in the future, `StatusTimestamps.QueuedAt` could be used as a proxy for "when the CV entered the queue after upload"
 
 ---
 
-### 39. [ ] `CVDownloadCmd` writes binary content to stdout without TTY warning
+### 39. [x] `CVDownloadCmd` writes binary content to stdout without TTY warning
+
+**Status:** DONE
 
 **File:** `cmd/tfc/configuration_versions.go`
-**Lines:** 567-571
+**Lines:** 510-518
 
 **Problem:** When no `--out` flag is specified, the command writes raw tar.gz binary content directly to stdout. If stdout is a TTY, this can corrupt the terminal display. Many CLI tools warn or refuse to write binary to a TTY.
 
-**Current:**
-```go
-} else {
-    // Write to stdout
-    if _, err := c.stdout.Write(content); err != nil {
-        return internalcmd.NewRuntimeError(fmt.Errorf("failed to write output: %w", err))
-    }
-}
-```
+#### Plan
+- **Acceptance criteria:** `CVDownloadCmd` refuses to write binary content when stdout is a TTY, returning an error that suggests using `--out` flag.
+- **Verification:** `make fmt && make lint && make build && make test` passes; new tests verify both TTY rejection and non-TTY acceptance.
+- **Implementation steps:**
+  1. Add TTY check before writing to stdout in `CVDownloadCmd.Run`
+  2. Return error with helpful message when TTY detected
+  3. Add `TestCVDownload_RefusesBinaryToTTY` test
+  4. Add `TestCVDownload_AllowsBinaryToNonTTY` test
+  5. Run feedback loops
 
-**Fix:** Check if stdout is a TTY and warn or require `--out`:
-```go
-} else {
-    // Check if stdout is a TTY - binary content may corrupt display
-    if f, ok := c.stdout.(*os.File); ok && c.ttyDetector.IsTTY(f) {
-        return internalcmd.NewRuntimeError(fmt.Errorf("refusing to write binary content to terminal; use --out to specify output file"))
-    }
-    // Write to stdout
-    if _, err := c.stdout.Write(content); err != nil {
-        return internalcmd.NewRuntimeError(fmt.Errorf("failed to write output: %w", err))
-    }
-}
-```
+#### Progress Notes
+
+**2026-01-22:** Completed.
+- Changed: `cmd/tfc/configuration_versions.go` lines 510-518 - added TTY check before writing binary content to stdout; returns error "refusing to write binary content to terminal; use --out to specify output file" when stdout is a TTY
+- Changed: `cmd/tfc/configuration_versions_test.go` - added 2 new tests:
+  - `TestCVDownload_RefusesBinaryToTTY` - uses `*os.File` stdout with `IsTTYValue: true` to verify error is returned and contains TTY warning
+  - `TestCVDownload_AllowsBinaryToNonTTY` - uses `*os.File` stdout with `IsTTYValue: false` to verify content is written successfully
+- Commands: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Result: `tfc configuration-versions download` now safely refuses to write binary tar.gz content to terminals, preventing terminal corruption
 
 ---
 

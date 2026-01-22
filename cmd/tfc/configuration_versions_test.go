@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -543,6 +544,97 @@ func TestCVDownload_WritesToFile(t *testing.T) {
 	}
 	if meta["written_to"] != outPath {
 		t.Errorf("expected written_to=%s, got %v", outPath, meta["written_to"])
+	}
+}
+
+func TestCVDownload_RefusesBinaryToTTY(t *testing.T) {
+	baseDir, resolver := setupCVTest(t)
+
+	downloadCalled := false
+	fakeClient := &fakeCVClient{
+		DownloadFunc: func(_ context.Context, cvID string) ([]byte, error) {
+			downloadCalled = true
+			return []byte("downloaded-binary-content"), nil
+		},
+	}
+
+	// Use a temp file as stdout so we can test the TTY check
+	// The check is: if stdout is *os.File AND ttyDetector says it's a TTY
+	stdout, err := os.CreateTemp(t.TempDir(), "stdout")
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+	defer stdout.Close()
+
+	cmd := &CVDownloadCmd{
+		ID:            "cv-123",
+		Out:           "", // No --out flag, so write to stdout
+		baseDir:       baseDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: true}, // Simulates TTY
+		stdout:        stdout,                                    // *os.File so TTY check triggers
+		clientFactory: func(_ tfcapi.ClientConfig) (cvClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err = cmd.Run(cli)
+
+	// Should fail with TTY warning
+	if err == nil {
+		t.Fatal("expected error when writing binary to TTY")
+	}
+	if !strings.Contains(err.Error(), "refusing to write binary content to terminal") {
+		t.Errorf("expected TTY warning error, got: %v", err)
+	}
+
+	// Verify the download was still attempted (we get the content before checking TTY)
+	if !downloadCalled {
+		t.Error("expected download to be called before TTY check")
+	}
+}
+
+func TestCVDownload_AllowsBinaryToNonTTY(t *testing.T) {
+	baseDir, resolver := setupCVTest(t)
+
+	fakeClient := &fakeCVClient{
+		DownloadFunc: func(_ context.Context, cvID string) ([]byte, error) {
+			return []byte("downloaded-binary-content"), nil
+		},
+	}
+
+	// Use a temp file as stdout but set IsTTY to false
+	stdout, err := os.CreateTemp(t.TempDir(), "stdout")
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+	defer stdout.Close()
+
+	cmd := &CVDownloadCmd{
+		ID:            "cv-123",
+		Out:           "", // No --out flag, so write to stdout
+		baseDir:       baseDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false}, // Not a TTY
+		stdout:        stdout,                                     // *os.File so check runs but passes
+		clientFactory: func(_ tfcapi.ClientConfig) (cvClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err = cmd.Run(cli)
+	// Should succeed because it's not a TTY
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Verify content was written to the file
+	stdout.Seek(0, 0)
+	content, _ := io.ReadAll(stdout)
+	if string(content) != "downloaded-binary-content" {
+		t.Errorf("expected 'downloaded-binary-content', got %s", string(content))
 	}
 }
 

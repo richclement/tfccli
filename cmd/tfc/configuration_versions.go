@@ -508,6 +508,10 @@ func (c *CVDownloadCmd) Run(cli *CLI) error {
 			fmt.Fprintf(c.stdout, "Configuration downloaded to %s (%d bytes).\n", c.Out, len(content))
 		}
 	} else {
+		// Check if stdout is a TTY - binary content may corrupt terminal display
+		if f, ok := c.stdout.(*os.File); ok && c.ttyDetector.IsTTY(f) {
+			return internalcmd.NewRuntimeError(fmt.Errorf("refusing to write binary content to terminal; use --out to specify output file"))
+		}
 		// Write to stdout
 		if _, err := c.stdout.Write(content); err != nil {
 			return internalcmd.NewRuntimeError(fmt.Errorf("failed to write output: %w", err))
