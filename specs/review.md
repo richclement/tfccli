@@ -354,6 +354,8 @@ Review of `cmd/tfc/main.go` (DoctorCmd, lines 64-248) and `cmd/tfc/doctor_test.g
 
 ### 12. Context Not Found Error Message Lacks Guidance
 
+**Status:** DONE
+
 **File:** `cmd/tfc/main.go:135-143`
 
 **Problem:** When a context is not found (either via `--context` flag or misconfigured `current_context`), the error message only says `context "name" not found`. Unlike the settings error which suggests `run 'tfc init'`, this error doesn't guide users toward resolution.
@@ -375,6 +377,39 @@ if !exists {
 ```go
 Detail: fmt.Sprintf("context %q not found; run 'tfc contexts list' to see available contexts", contextName),
 ```
+
+#### Plan (2026-01-21)
+
+**Acceptance criteria (from PRD Section 8):**
+- Error message for context not found includes actionable guidance
+- Guidance points user to `tfc contexts list` to discover available contexts
+- Consistent with existing pattern (settings error suggests `tfc init`)
+
+**Verification approach:**
+- `make test` passes
+- Existing doctor tests still pass
+- Test verifies error message contains guidance text
+
+**Implementation steps:**
+1. Update error message in `cmd/tfc/main.go:145` to include guidance
+2. Update existing test `TestDoctorCmd_ContextNotFound` to verify guidance text
+3. Run feedback loops
+
+#### Progress Note (2026-01-21)
+
+**Files changed:**
+- `cmd/tfc/main.go:145`: Updated error message from `context %q not found` to `context %q not found; run 'tfc contexts list' to see available contexts`
+- `cmd/tfc/doctor_test.go:712-714`: Added assertion in `TestDoctor_ContextNotFound` to verify guidance text
+
+**Commands run:**
+- `make fmt` - passed
+- `make lint` - passed
+- `make build` - passed
+- `make test` - passed (all tests green)
+
+**What remains:**
+- Task #12 is complete
+- Error now provides actionable guidance consistent with settings error pattern
 
 ---
 

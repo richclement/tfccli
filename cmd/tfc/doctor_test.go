@@ -709,6 +709,9 @@ func TestDoctor_ContextNotFound(t *testing.T) {
 	if !strings.Contains(ctxCheck.Detail, "nonexistent") {
 		t.Errorf("expected detail to contain 'nonexistent', got: %s", ctxCheck.Detail)
 	}
+	if !strings.Contains(ctxCheck.Detail, "tfc contexts list") {
+		t.Errorf("expected detail to contain guidance 'tfc contexts list', got: %s", ctxCheck.Detail)
+	}
 }
 
 // TestDoctor_InvalidAddressFormat tests error when address is malformed.

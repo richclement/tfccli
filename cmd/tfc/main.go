@@ -142,7 +142,7 @@ func (d *DoctorCmd) Run(cli *CLI) error {
 		result.Checks = append(result.Checks, DoctorCheck{
 			Name:   "context",
 			Status: string(output.StatusFail),
-			Detail: fmt.Sprintf("context %q not found", contextName),
+			Detail: fmt.Sprintf("context %q not found; run 'tfc contexts list' to see available contexts", contextName),
 		})
 		hasFailure = true
 		return d.outputAndError(result, format, isTTY, hasFailure)
