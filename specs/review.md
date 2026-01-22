@@ -2003,7 +2003,9 @@ if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated && 
 
 ---
 
-### 40. [ ] Missing test: client factory returns error
+### 40. [x] Missing test: client factory returns error
+
+**Status:** DONE
 
 **File:** `cmd/tfc/configuration_versions_test.go`
 
@@ -2036,6 +2038,24 @@ func TestCVList_ClientFactoryError(t *testing.T) {
     }
 }
 ```
+
+#### Plan
+- **Acceptance criteria:** A test `TestCVList_ClientFactoryError` exists that verifies the command returns an error when the client factory fails.
+- **Verification:** `make fmt && make lint && make build && make test` all pass; new test passes.
+- **Implementation steps:**
+  1. Add `TestCVList_ClientFactoryError` test function after `TestCVList_APIError` in configuration_versions_test.go
+  2. Test uses clientFactory that returns an error
+  3. Verify error is propagated correctly to caller
+  4. Run feedback loops to verify
+
+#### Progress Notes
+
+**2026-01-22:** Completed.
+- Changed: `cmd/tfc/configuration_versions_test.go` - added `TestCVList_ClientFactoryError` test function after `TestCVList_APIError` (line 818)
+- Test uses clientFactory that returns `errors.New("failed to create TFC client")`
+- Verifies error is returned and contains "failed to create client" message
+- Commands: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Result: Client factory error handling branch in `CVListCmd.Run` is now tested
 
 ---
 

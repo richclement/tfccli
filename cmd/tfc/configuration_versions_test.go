@@ -815,6 +815,31 @@ func TestCVList_APIError(t *testing.T) {
 	}
 }
 
+func TestCVList_ClientFactoryError(t *testing.T) {
+	tmpDir, resolver := setupCVTest(t)
+
+	var stdout bytes.Buffer
+	cmd := &CVListCmd{
+		WorkspaceID:   "ws-123",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &stdout,
+		clientFactory: func(_ tfcapi.ClientConfig) (cvClient, error) {
+			return nil, errors.New("failed to create TFC client")
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error for client factory failure")
+	}
+	if !strings.Contains(err.Error(), "failed to create client") {
+		t.Errorf("expected client error message, got: %v", err)
+	}
+}
+
 func TestCVGet_NotFound(t *testing.T) {
 	baseDir, resolver := setupCVTest(t)
 
