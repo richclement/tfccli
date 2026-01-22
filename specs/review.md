@@ -1501,11 +1501,30 @@ func TestPlansSanitizedPlan_NilLinks(t *testing.T) {
 
 ---
 
-### 29. [ ] Missing test: empty JSON output from `ReadJSONOutput`
+### 29. [x] Missing test: empty JSON output from `ReadJSONOutput`
+
+**Status:** DONE
 
 **File:** `cmd/tfc/plans_test.go`
 
 **Problem:** No test verifies behavior when `ReadJSONOutput` returns an empty byte slice. This could happen if the plan has no JSON output yet.
+
+#### Plan
+- **Acceptance criteria:** A new test `TestPlansJSONOutput_EmptyOutput` exists that verifies the command succeeds and writes nothing to stdout when `ReadJSONOutput` returns an empty byte slice.
+- **Verification:** `make fmt && make lint && make build && make test` all pass; new test passes.
+- **Implementation steps:**
+  1. Add `TestPlansJSONOutput_EmptyOutput` test function after `TestPlansJSONOutput_FileWriteError`
+  2. Test uses `fakeClient.jsonOutput = []byte{}` to simulate empty output
+  3. Verify no error is returned and stdout is empty
+  4. Run feedback loops to verify
+
+#### Progress Notes
+
+**2026-01-22:** Completed.
+- Changed: `cmd/tfc/plans_test.go` - added `TestPlansJSONOutput_EmptyOutput` test function after `TestPlansJSONOutput_FileWriteError`
+- Test verifies command succeeds without error and outputs 0 bytes when ReadJSONOutput returns empty slice
+- Commands: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Result: Empty JSON output edge case now covered
 
 **Fix:** Add test:
 ```go

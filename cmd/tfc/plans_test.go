@@ -591,6 +591,36 @@ func TestPlansJSONOutput_FileWriteError(t *testing.T) {
 	}
 }
 
+func TestPlansJSONOutput_EmptyOutput(t *testing.T) {
+	tmpDir, resolver := setupPlansTest(t)
+
+	fakeClient := &fakePlansClient{
+		jsonOutput: []byte{}, // Empty
+	}
+
+	var stdout bytes.Buffer
+	cmd := &PlansJSONOutputCmd{
+		ID:            "plan-empty",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &stdout,
+		clientFactory: func(_ tfcapi.ClientConfig) (plansClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{}
+	err := cmd.Run(cli)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if stdout.Len() != 0 {
+		t.Errorf("expected empty output, got %d bytes", stdout.Len())
+	}
+}
+
 func TestPlansSanitizedPlan_WritesToStdout(t *testing.T) {
 	tmpDir, resolver := setupPlansTest(t)
 
