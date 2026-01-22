@@ -1005,9 +1005,46 @@ type workspaceResourcesClient interface {
 
 ### 25. Missing Test: Client Factory Error
 
+**Status:** DONE
+
 **File:** `cmd/tfc/workspace_resources_test.go`
 
 **Problem:** No test verifies error handling when `clientFactory` returns an error. This tests lines 148-151 in the Run method.
+
+#### Plan (2026-01-21)
+
+**Acceptance criteria:**
+- Test exists that triggers `clientFactory` failure in `WorkspaceResourcesListCmd.Run()`
+- Test verifies error message contains "failed to create client"
+- Test uses same pattern as other error tests in the file (e.g., `TestWorkspaceResourcesList_APIError`)
+
+**Verification approach:**
+- `make test` passes
+- New test specifically tests lines 148-151 in workspace_resources.go
+
+**Implementation steps:**
+1. Add `TestWorkspaceResourcesList_ClientFactoryError` test following pattern from review.md
+2. Run feedback loops
+3. Update review.md with results
+
+#### Progress Note (2026-01-21)
+
+**Files changed:**
+- `cmd/tfc/workspace_resources_test.go`: Added `TestWorkspaceResourcesList_ClientFactoryError` test (lines 400-421)
+  - Reuses `setupWorkspaceResourcesTestSettings` helper for consistency
+  - Injects a `clientFactory` that returns an error
+  - Verifies error contains "failed to create client"
+
+**Commands run:**
+- `make fmt` - passed
+- `make lint` - passed
+- `make build` - passed
+- `make test` - passed (all tests green)
+- `go test -v -run TestWorkspaceResourcesList_ClientFactoryError ./cmd/tfc/...` - passed
+
+**What remains:**
+- Task #25 is complete
+- Test coverage now includes client factory failure path (workspace_resources.go:148-151)
 
 **Test to add:**
 ```go
@@ -1042,9 +1079,50 @@ func TestWorkspaceResourcesList_ClientFactoryError(t *testing.T) {
 
 ### 26. Missing Test: Context Not Found
 
+**Status:** DONE
+
 **File:** `cmd/tfc/workspace_resources_test.go`
 
 **Problem:** No test verifies error handling when the specified `--context` flag references a non-existent context.
+
+#### Plan (2026-01-21)
+
+**Acceptance criteria (from PRD Section 6):**
+- Test exists that triggers "context not found" error in `WorkspaceResourcesListCmd.Run()`
+- Test verifies error message contains "context" and "not found"
+- Test uses same pattern as other error tests in the file (e.g., `TestWorkspaceResourcesList_FailsWhenSettingsMissing`)
+
+**Verification approach:**
+- `make test` passes
+- New test specifically tests line 96-98 in workspace_resources.go (context lookup failure)
+
+**Implementation steps:**
+1. Add `TestWorkspaceResourcesList_ContextNotFound` test following pattern from review.md
+2. Create settings with only "default" context
+3. Use `cli.Context = "nonexistent"` to trigger context not found
+4. Verify error contains "context" and "not found"
+5. Run feedback loops
+6. Update review.md with results
+
+#### Progress Note (2026-01-21)
+
+**Files changed:**
+- `cmd/tfc/workspace_resources_test.go`: Added `TestWorkspaceResourcesList_ContextNotFound` test (lines 426-474)
+  - Creates test settings with only "default" context
+  - Uses `cli.Context = "nonexistent"` to trigger context lookup failure
+  - Verifies error contains "context" and "not found"
+  - Follows same pattern as other error tests in file
+
+**Commands run:**
+- `make fmt` - passed
+- `make lint` - passed
+- `make build` - passed
+- `make test` - passed (all tests green)
+- `go test -v -run TestWorkspaceResourcesList_ContextNotFound ./cmd/tfc/...` - passed
+
+**What remains:**
+- Task #26 is complete
+- Test coverage now includes context not found error path (workspace_resources.go:96-98)
 
 **Test to add:**
 ```go

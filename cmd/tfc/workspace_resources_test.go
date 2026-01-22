@@ -422,3 +422,55 @@ func TestWorkspaceResourcesList_ClientFactoryError(t *testing.T) {
 		t.Errorf("expected 'failed to create client' in error, got: %v", err)
 	}
 }
+
+// TestWorkspaceResourcesList_ContextNotFound tests error when context doesn't exist.
+func TestWorkspaceResourcesList_ContextNotFound(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create settings with only "default" context
+	settings := &config.Settings{
+		CurrentContext: "default",
+		Contexts: map[string]config.Context{
+			"default": {
+				Address:  "app.terraform.io",
+				LogLevel: "info",
+			},
+		},
+	}
+	if err := config.Save(settings, tmpDir); err != nil {
+		t.Fatalf("failed to save test settings: %v", err)
+	}
+
+	fakeEnv := &wsrTestEnv{
+		vars: map[string]string{
+			"TF_TOKEN_app_terraform_io": "test-token",
+		},
+	}
+	fakeFS := &wsrTestFS{
+		homeDir: tmpDir,
+		files:   make(map[string][]byte),
+	}
+	resolver := &auth.TokenResolver{Env: fakeEnv, FS: fakeFS}
+
+	var buf bytes.Buffer
+	cmd := &WorkspaceResourcesListCmd{
+		WorkspaceID:   "ws-123",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &buf,
+		clientFactory: func(_ tfcapi.ClientConfig) (workspaceResourcesClient, error) {
+			return &fakeWorkspaceResourcesClient{}, nil
+		},
+	}
+
+	// Use --context flag to select nonexistent context
+	cli := &CLI{OutputFormat: "json", Context: "nonexistent"}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error when context not found, got nil")
+	}
+	if !strings.Contains(err.Error(), "context") || !strings.Contains(err.Error(), "not found") {
+		t.Errorf("expected 'context not found' error, got: %v", err)
+	}
+}
