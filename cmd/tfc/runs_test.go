@@ -1113,6 +1113,31 @@ func TestRunsList_ClientFactoryError(t *testing.T) {
 	}
 }
 
+func TestRunsList_InvalidContext(t *testing.T) {
+	tmpDir, resolver := setupRunsTest(t)
+
+	var stdout bytes.Buffer
+	cmd := &RunsListCmd{
+		WorkspaceID:   "ws-test",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &stdout,
+		clientFactory: func(_ tfcapi.ClientConfig) (runsClient, error) {
+			return &fakeRunsClient{}, nil
+		},
+	}
+
+	cli := &CLI{Context: "nonexistent"}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error for invalid context")
+	}
+	if !strings.Contains(err.Error(), "not found") {
+		t.Errorf("expected context not found error, got: %v", err)
+	}
+}
+
 func TestRunsGet_NotFound(t *testing.T) {
 	tmpDir, resolver := setupRunsTest(t)
 

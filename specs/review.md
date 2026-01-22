@@ -524,7 +524,9 @@ func TestRunsList_ClientFactoryError(t *testing.T) {
 
 ---
 
-### 10. [ ] Missing test: invalid context specified via --context flag
+### 10. [x] Missing test: invalid context specified via --context flag
+
+**Status:** DONE
 
 **File:** `cmd/tfc/runs_test.go`
 
@@ -557,6 +559,23 @@ func TestRunsList_InvalidContext(t *testing.T) {
     }
 }
 ```
+
+#### Plan
+- **Acceptance criteria:** A new test `TestRunsList_InvalidContext` exists that verifies the command returns an error when `--context` specifies a non-existent context name.
+- **Verification:** `make fmt && make lint && make build && make test` all pass; new test passes.
+- **Implementation steps:**
+  1. Add `TestRunsList_InvalidContext` test function after `TestRunsList_ClientFactoryError` in runs_test.go
+  2. Test sets `cli.Context` to "nonexistent" and verifies error contains "not found"
+  3. Run feedback loops to verify
+
+#### Progress Notes
+
+**2026-01-22:** Completed.
+- Changed: `cmd/tfc/runs_test.go` - added `TestRunsList_InvalidContext` test function after `TestRunsList_ClientFactoryError` (line 1116)
+- Test uses `setupRunsTest(t)` which creates settings with "default" context, then passes `cli.Context = "nonexistent"` to trigger the error path in `resolveRunsClientConfig`
+- Verifies error is returned and contains "not found" message
+- Commands: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Result: Invalid context error handling in `RunsListCmd.Run` is now tested
 
 ---
 
