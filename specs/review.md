@@ -1834,7 +1834,9 @@ format, isTTY := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
 
 ---
 
-### 36. [ ] `resolveCVClientConfig` duplicates `resolveClientConfig` from common.go
+### 36. [x] `resolveCVClientConfig` duplicates `resolveClientConfig` from common.go
+
+**Status:** DONE
 
 **File:** `cmd/tfc/configuration_versions.go`
 **Lines:** 105-138
@@ -1849,6 +1851,26 @@ cfg, _, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
 ```
 
 Then delete `resolveCVClientConfig` entirely.
+
+#### Plan
+- **Acceptance criteria:** The `resolveCVClientConfig` function is removed and all 6 CV commands use `resolveClientConfig` from common.go, ignoring the org return value.
+- **Verification:** `make fmt && make lint && make build && make test` passes; no functional change in behavior.
+- **Implementation steps:**
+  1. Update `CVListCmd.Run` to use `cfg, _, err := resolveClientConfig(...)` instead of `resolveCVClientConfig`
+  2. Update `CVGetCmd.Run` to use `cfg, _, err := resolveClientConfig(...)`
+  3. Update `CVCreateCmd.Run` to use `cfg, _, err := resolveClientConfig(...)`
+  4. Update `CVUploadCmd.Run` to use `cfg, _, err := resolveClientConfig(...)`
+  5. Update `CVDownloadCmd.Run` to use `cfg, _, err := resolveClientConfig(...)`
+  6. Update `CVArchiveCmd.Run` to use `cfg, _, err := resolveClientConfig(...)`
+  7. Delete `resolveCVClientConfig` function entirely
+  8. Remove unused `config` import from configuration_versions.go
+
+#### Progress Notes
+
+**2026-01-22:** Completed.
+- Changed: `cmd/tfc/configuration_versions.go` - removed `resolveCVClientConfig` function (~33 lines); updated all 6 CV commands (`CVListCmd`, `CVGetCmd`, `CVCreateCmd`, `CVUploadCmd`, `CVDownloadCmd`, `CVArchiveCmd`) to use `resolveClientConfig` from common.go with `cfg, _, err := resolveClientConfig(...)` pattern; removed unused `config` import
+- Commands: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Result: Code duplication eliminated; configuration-versions commands now use shared `resolveClientConfig` helper from common.go, consistent with runs and plans commands
 
 ---
 
