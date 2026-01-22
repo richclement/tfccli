@@ -257,6 +257,11 @@ func TestRunsList_JSON(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
+	// Verify correct workspace ID was passed to the API
+	if fakeClient.listWorkspaceID != "ws-test" {
+		t.Errorf("expected workspace ID ws-test, got %s", fakeClient.listWorkspaceID)
+	}
+
 	var result map[string]any
 	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
 		t.Fatalf("failed to parse JSON: %v", err)

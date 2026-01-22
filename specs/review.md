@@ -839,7 +839,9 @@ if fakeClient.applyRunID != "run-1" {
 
 ---
 
-### 16. [ ] Missing test: verify correct workspace ID passed to List
+### 16. [x] Missing test: verify correct workspace ID passed to List
+
+**Status:** DONE
 
 **File:** `cmd/tfc/runs_test.go`
 
@@ -852,6 +854,20 @@ if fakeClient.listWorkspaceID != "ws-test" {
     t.Errorf("expected workspace ID ws-test, got %s", fakeClient.listWorkspaceID)
 }
 ```
+
+#### Plan
+- **Acceptance criteria:** Existing `TestRunsList_JSON` test verifies that the correct workspace ID ("ws-test") is passed to the API's List method.
+- **Verification:** `make fmt && make lint && make build && make test` all pass.
+- **Implementation steps:**
+  1. Add workspace ID assertion to `TestRunsList_JSON` after the `err != nil` check (line ~258)
+  2. Run feedback loops to verify
+
+#### Progress Notes
+
+**2026-01-22:** Completed.
+- Changed: `cmd/tfc/runs_test.go` - added workspace ID verification assertion to `TestRunsList_JSON` (line ~262)
+- Commands: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Result: Test now verifies correct workspace ID ("ws-test") is passed to the API, catching potential bugs where wrong IDs could be used
 
 ---
 
