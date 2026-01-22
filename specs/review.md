@@ -2114,11 +2114,22 @@ func TestCVList_InvalidContext(t *testing.T) {
 
 ---
 
-### 42. [ ] Missing test: empty configuration versions list
+### 42. [x] Missing test: empty configuration versions list
+
+**Status:** DONE
 
 **File:** `cmd/tfc/configuration_versions_test.go`
 
 **Problem:** No test verifies behavior when workspace has zero configuration versions. Both JSON and table output should handle empty results gracefully.
+
+#### Plan
+- **Acceptance criteria:** A new test `TestCVList_EmptyList` exists with two subtests that verify both JSON and table output handle empty results gracefully (JSON returns empty `data` array, table shows headers with no rows).
+- **Verification:** `make fmt && make lint && make build && make test` all pass; new test passes.
+- **Implementation steps:**
+  1. Add `TestCVList_EmptyList` test function after `TestCVList_InvalidContext` in configuration_versions_test.go
+  2. Add `json_output` subtest: verify empty `data` array in JSON response
+  3. Add `table_output` subtest: verify headers are present even with no data
+  4. Run feedback loops to verify
 
 **Fix:** Add test:
 ```go
@@ -2163,6 +2174,15 @@ func TestCVList_EmptyList(t *testing.T) {
     }
 }
 ```
+
+#### Progress Notes
+
+**2026-01-22:** Completed.
+- Changed: `cmd/tfc/configuration_versions_test.go` - added `TestCVList_EmptyList` test function after `TestCVList_InvalidContext` (line 868) with 2 subtests:
+  - `json_output` - verifies empty `data` array in JSON response
+  - `table_output` - verifies headers (ID, STATUS) are present even with no data
+- Commands: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Result: Empty configuration versions list edge case now covered for both output formats
 
 ---
 

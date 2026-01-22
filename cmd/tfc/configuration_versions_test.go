@@ -865,6 +865,75 @@ func TestCVList_InvalidContext(t *testing.T) {
 	}
 }
 
+func TestCVList_EmptyList(t *testing.T) {
+	baseDir, resolver := setupCVTest(t)
+
+	fakeClient := &fakeCVClient{
+		ListFunc: func(_ context.Context, _ string, _ *tfe.ConfigurationVersionListOptions) ([]*tfe.ConfigurationVersion, error) {
+			return []*tfe.ConfigurationVersion{}, nil // Empty list
+		},
+	}
+
+	t.Run("json_output", func(t *testing.T) {
+		var stdout bytes.Buffer
+		cmd := &CVListCmd{
+			WorkspaceID:   "ws-empty",
+			baseDir:       baseDir,
+			tokenResolver: resolver,
+			ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+			stdout:        &stdout,
+			clientFactory: func(_ tfcapi.ClientConfig) (cvClient, error) {
+				return fakeClient, nil
+			},
+		}
+
+		cli := &CLI{OutputFormat: "json"}
+		err := cmd.Run(cli)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		var result map[string]any
+		if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+			t.Fatalf("failed to parse JSON: %v", err)
+		}
+
+		data, ok := result["data"].([]any)
+		if !ok {
+			t.Fatalf("expected data array, got %T", result["data"])
+		}
+		if len(data) != 0 {
+			t.Errorf("expected 0 CVs, got %d", len(data))
+		}
+	})
+
+	t.Run("table_output", func(t *testing.T) {
+		var stdout bytes.Buffer
+		cmd := &CVListCmd{
+			WorkspaceID:   "ws-empty",
+			baseDir:       baseDir,
+			tokenResolver: resolver,
+			ttyDetector:   &output.FakeTTYDetector{IsTTYValue: true},
+			stdout:        &stdout,
+			clientFactory: func(_ tfcapi.ClientConfig) (cvClient, error) {
+				return fakeClient, nil
+			},
+		}
+
+		cli := &CLI{OutputFormat: "table"}
+		err := cmd.Run(cli)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		out := stdout.String()
+		// Table output should include headers even with no data
+		if !strings.Contains(out, "ID") || !strings.Contains(out, "STATUS") {
+			t.Errorf("expected table headers ID, STATUS in output, got: %s", out)
+		}
+	})
+}
+
 func TestCVGet_NotFound(t *testing.T) {
 	baseDir, resolver := setupCVTest(t)
 
