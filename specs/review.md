@@ -2824,9 +2824,30 @@ func TestContextsListCmd_NoSettings(t *testing.T) {
 
 ### 53. Missing Test: ContextsAddCmd Settings File Not Found
 
+**Status: DONE** (2026-01-21)
+
 **File:** `cmd/tfc/contexts_test.go`
 
 **Problem:** No test verifies error handling when `config.Load()` fails before adding a context.
+
+**Plan (2026-01-21):**
+- Acceptance criteria: Test `TestContextsAddCmd_NoSettings` exists and verifies that when settings file doesn't exist, ContextsAddCmd returns an error
+- Verification: Run `go test -v -run "TestContextsAddCmd_NoSettings" ./cmd/tfc/...`
+- Implementation:
+  1. Add test `TestContextsAddCmd_NoSettings` to `contexts_test.go`
+  2. Run feedback loops
+
+**Progress notes (2026-01-21):**
+
+Changes made:
+- `cmd/tfc/contexts_test.go:149-162` - Added `TestContextsAddCmd_NoSettings` test
+
+Verification:
+- `make fmt` - passed
+- `make lint` - passed (with temp caches)
+- `make build` - passed
+- `make test` - all tests pass
+- `go test -v -run "TestContextsAddCmd_NoSettings" ./cmd/tfc/...` - pass
 
 **Test to add:**
 ```go
@@ -3341,8 +3362,8 @@ func TestContextsShowCmd_JSONOutput(t *testing.T) {
 | List settings not found | ✅ | #52 |
 | Add new context | ✅ | - |
 | Add existing context (error) | ✅ | - |
-| Add with invalid address | ❌ | #61 |
-| Add settings not found | ❌ | #53 |
+| Add with invalid address | ✅ | #48 |
+| Add settings not found | ✅ | #53 |
 | Add config.Save failure | ❌ | #58 |
 | Use/switch context | ✅ | - |
 | Use nonexistent context (error) | ✅ | - |

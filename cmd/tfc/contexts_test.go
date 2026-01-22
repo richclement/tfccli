@@ -146,6 +146,23 @@ func TestContextsAddCmd_InvalidAddressRejected(t *testing.T) {
 	}
 }
 
+// TestContextsAddCmd_NoSettings tests error when settings file doesn't exist.
+func TestContextsAddCmd_NoSettings(t *testing.T) {
+	tmpHome := t.TempDir()
+	// Don't create settings file
+
+	cmd := &ContextsAddCmd{
+		Name:       "new-context",
+		CtxAddress: "tfe.example.com",
+		baseDir:    tmpHome,
+	}
+
+	err := cmd.Run()
+	if err == nil {
+		t.Fatal("expected error when settings not found, got nil")
+	}
+}
+
 func TestContextsUseCmd_SwitchesCurrentContext(t *testing.T) {
 	tmpHome := t.TempDir()
 
