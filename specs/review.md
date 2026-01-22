@@ -1637,7 +1637,9 @@ if downloadedURL != "https://archivist.example/sanitized.json" {
 
 ---
 
-### 32. [ ] `plansClient` interface missing `ReadSanitizedJSON` method
+### 32. [x] `plansClient` interface missing `ReadSanitizedJSON` method
+
+**Status:** N/A (Intentional Design)
 
 **File:** `cmd/tfc/plans.go`
 **Lines:** 52-56
@@ -1657,9 +1659,22 @@ type plansClient interface {
 }
 ```
 
+#### Progress Notes
+
+**2026-01-22:** Marked as N/A - intentional design decision.
+- Analysis: The current design using a custom `downloadClient` is **intentional** and correct.
+- The sanitized plan URL is a redirect URL (e.g., to S3/GCS) that should NOT receive the TFC Authorization header.
+- The PRD Section 10 explicitly states: "Do not forward the Terraform API token (Authorization header) to the redirected host."
+- Using `go-tfe`'s `ReadSanitizedJSONOutput()` would need verification that it properly strips auth headers on redirects.
+- The current implementation correctly separates concerns: `plansClient.Read()` fetches the plan with auth, then `downloadClient` fetches the sanitized content WITHOUT auth.
+- Code comment at line 334-336 already documents this: "This is used for downloading from redirect URLs which should not have auth forwarded."
+- No code change needed; design is correct for security reasons.
+
 ---
 
-### 33. [ ] No integration test for `defaultDownloadClient`
+### 33. [x] No integration test for `defaultDownloadClient`
+
+**Status:** N/A (Already Covered)
 
 **File:** `cmd/tfc/plans_test.go`
 
@@ -1712,6 +1727,17 @@ func TestDefaultDownloadClient(t *testing.T) {
     })
 }
 ```
+
+#### Progress Notes
+
+**2026-01-22:** Marked as N/A - already covered by existing test.
+- Analysis: `TestDefaultDownloadClient_HTTPError_IncludesBody` (lines 1051-1118) already provides complete integration testing of `defaultDownloadClient` using `httptest.Server`.
+- The existing test covers 3 scenarios:
+  1. `with_body` - HTTP error with response body (403 + body content)
+  2. `without_body` - HTTP error without response body (404)
+  3. `success` - Successful 200 response with content verification
+- This was added as part of task #20 (completed).
+- No additional test needed; task #33 is redundant with task #20.
 
 ---
 
