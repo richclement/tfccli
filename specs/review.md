@@ -2186,45 +2186,30 @@ func TestCVList_EmptyList(t *testing.T) {
 
 ---
 
-### 43. [ ] Missing test: CVCreate API error
+### 43. [x] Missing test: CVCreate API error
+
+**Status:** DONE
 
 **File:** `cmd/tfc/configuration_versions_test.go`
 
 **Problem:** While `TestCVList_APIError` and `TestCVGet_NotFound` test API failures for those commands, there's no equivalent for `CVCreateCmd`.
 
-**Fix:** Add test:
-```go
-func TestCVCreate_APIError(t *testing.T) {
-    baseDir, resolver := setupCVTest(t)
+#### Plan
+- **Acceptance criteria:** A new test `TestCVCreate_APIError` exists that verifies the command returns an error when the API fails during configuration version creation.
+- **Verification:** `make fmt && make lint && make build && make test` all pass; new test passes.
+- **Implementation steps:**
+  1. Add `TestCVCreate_APIError` test function after `TestCVCreate_WithSpeculative`
+  2. Test uses `fakeCVClient` with `CreateFunc` returning an error
+  3. Verify error is propagated correctly to caller
 
-    fakeClient := &fakeCVClient{
-        CreateFunc: func(_ context.Context, _ string, _ tfe.ConfigurationVersionCreateOptions) (*tfe.ConfigurationVersion, error) {
-            return nil, errors.New("workspace not found")
-        },
-    }
+#### Progress Notes
 
-    var stdout bytes.Buffer
-    cmd := &CVCreateCmd{
-        WorkspaceID:   "ws-invalid",
-        baseDir:       baseDir,
-        tokenResolver: resolver,
-        ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
-        stdout:        &stdout,
-        clientFactory: func(_ tfcapi.ClientConfig) (cvClient, error) {
-            return fakeClient, nil
-        },
-    }
-
-    cli := &CLI{OutputFormat: "json"}
-    err := cmd.Run(cli)
-    if err == nil {
-        t.Fatal("expected error for API failure")
-    }
-    if !strings.Contains(err.Error(), "workspace not found") {
-        t.Errorf("expected error message, got: %v", err)
-    }
-}
-```
+**2026-01-22:** Completed.
+- Changed: `cmd/tfc/configuration_versions_test.go` - added `TestCVCreate_APIError` test function after `TestCVCreate_WithSpeculative` (line 362)
+- Test uses `fakeCVClient` with `CreateFunc` returning `errors.New("workspace not found")`
+- Verifies error is returned and contains expected message
+- Commands: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Result: API error handling branch in `CVCreateCmd.Run` is now tested
 
 ---
 

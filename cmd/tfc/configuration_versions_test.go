@@ -360,6 +360,37 @@ func TestCVCreate_WithSpeculative(t *testing.T) {
 	}
 }
 
+func TestCVCreate_APIError(t *testing.T) {
+	baseDir, resolver := setupCVTest(t)
+
+	fakeClient := &fakeCVClient{
+		CreateFunc: func(_ context.Context, _ string, _ tfe.ConfigurationVersionCreateOptions) (*tfe.ConfigurationVersion, error) {
+			return nil, errors.New("workspace not found")
+		},
+	}
+
+	var stdout bytes.Buffer
+	cmd := &CVCreateCmd{
+		WorkspaceID:   "ws-invalid",
+		baseDir:       baseDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &stdout,
+		clientFactory: func(_ tfcapi.ClientConfig) (cvClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error for API failure")
+	}
+	if !strings.Contains(err.Error(), "workspace not found") {
+		t.Errorf("expected error message, got: %v", err)
+	}
+}
+
 func TestCVUpload_JSON(t *testing.T) {
 	baseDir, resolver := setupCVTest(t)
 
