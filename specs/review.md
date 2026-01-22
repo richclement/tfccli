@@ -295,6 +295,8 @@ Review of `cmd/tfc/workspace_variables.go` and `cmd/tfc/workspace_variables_test
 
 ### 5. Value Cannot Be Cleared
 
+**Status:** DONE
+
 **File:** `cmd/tfc/workspace_variables.go:349-351`
 
 **Problem:** The empty string check `if c.Value != ""` means users cannot clear a variable value by passing `--value ""`. This is more problematic for variables than descriptions since empty values may be legitimate (e.g., disabling a feature flag).
@@ -315,9 +317,70 @@ if c.Value != "" {
 
 **Note:** This same pattern exists for Description (line 352-354). Decide on a consistent approach across the codebase before fixing.
 
+#### Plan (2026-01-21)
+
+**Acceptance criteria:**
+- Users can clear a variable value using `tfc workspace-variables update <id> --workspace-id <ws-id> --clear-value`
+- Users can clear a variable description using `tfc workspace-variables update <id> --workspace-id <ws-id> --clear-description`
+- Both flags are mutually exclusive with their respective value flags (error if both provided)
+- Tests verify clearing value/description sends empty string to API
+- Tests verify errors when both flags provided
+- Consistent with workspaces update pattern (task #1)
+
+**Verification approach:**
+- `make test` passes
+- New tests cover --clear-value and --clear-description behavior
+- Existing tests still pass
+
+**Implementation steps:**
+1. Add `ClearValue bool` and `ClearDescription bool` fields to `WorkspaceVariablesUpdateCmd` with Kong tags
+2. Update validation: error if both `--value` and `--clear-value` provided
+3. Update validation: error if both `--description` and `--clear-description` provided
+4. Update validation: include new flags in "at least one field" check
+5. Update logic: if `--clear-value` set, pass empty string to API
+6. Update logic: if `--clear-description` set, pass empty string to API
+7. Add test: `TestWorkspaceVariablesUpdate_ClearValue`
+8. Add test: `TestWorkspaceVariablesUpdate_ClearValueConflict`
+9. Add test: `TestWorkspaceVariablesUpdate_ClearDescription`
+10. Add test: `TestWorkspaceVariablesUpdate_ClearDescriptionConflict`
+11. Update `TestWorkspaceVariablesUpdate_FailsWhenNoFields` error message
+12. Run feedback loops
+
+#### Progress Note (2026-01-21)
+
+**Files changed:**
+- `cmd/tfc/workspace_variables.go`:
+  - Added `ClearValue bool` field to `WorkspaceVariablesUpdateCmd` struct (line 353)
+  - Added `ClearDescription bool` field to `WorkspaceVariablesUpdateCmd` struct (line 355)
+  - Added validation for mutual exclusivity of `--value` and `--clear-value` (lines 380-382)
+  - Added validation for mutual exclusivity of `--description` and `--clear-description` (lines 385-387)
+  - Updated "at least one field" validation to include `--clear-value` and `--clear-description` (lines 390-392)
+  - Added logic to pass empty string to API when `--clear-value` is set (lines 405-407)
+  - Added logic to pass empty string to API when `--clear-description` is set (lines 411-413)
+- `cmd/tfc/workspace_variables_test.go`:
+  - Added `TestWorkspaceVariablesUpdate_ClearValue` - verifies empty string sent to API
+  - Added `TestWorkspaceVariablesUpdate_ClearValueConflict` - verifies mutual exclusivity error
+  - Added `TestWorkspaceVariablesUpdate_ClearDescription` - verifies empty string sent to API
+  - Added `TestWorkspaceVariablesUpdate_ClearDescriptionConflict` - verifies mutual exclusivity error
+
+**Commands run:**
+- `make fmt` - passed
+- `make lint` - passed (with GOCACHE override for sandbox)
+- `make build` - passed
+- `make test` - passed (all tests green)
+- `go test -v -run 'TestWorkspaceVariablesUpdate_Clear' ./cmd/tfc/...` - all 4 new tests pass
+
+**What remains:**
+- Task #5 is DONE
+- Task #6 is also DONE (fixed as part of #5)
+- Users can now clear variable values using `tfc workspace-variables update <id> --workspace-id <ws-id> --clear-value`
+- Users can now clear variable descriptions using `tfc workspace-variables update <id> --workspace-id <ws-id> --clear-description`
+
 ---
 
 ### 6. Description Cannot Be Cleared
+
+**Status:** DONE (fixed as part of #5)
 
 **File:** `cmd/tfc/workspace_variables.go:352-354`
 

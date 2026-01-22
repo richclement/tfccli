@@ -346,13 +346,15 @@ func (c *WorkspaceVariablesCreateCmd) Run(cli *CLI) error {
 
 // WorkspaceVariablesUpdateCmd updates a variable.
 type WorkspaceVariablesUpdateCmd struct {
-	VariableID  string `arg:"" help:"ID of the variable to update."`
-	WorkspaceID string `required:"" name:"workspace-id" help:"ID of the workspace."`
-	Key         string `help:"New key name of the variable."`
-	Value       string `help:"New value of the variable."`
-	Description string `help:"New description of the variable."`
-	Sensitive   *bool  `help:"Mark the variable as sensitive."`
-	HCL         *bool  `help:"Parse the value as HCL."`
+	VariableID       string `arg:"" help:"ID of the variable to update."`
+	WorkspaceID      string `required:"" name:"workspace-id" help:"ID of the workspace."`
+	Key              string `help:"New key name of the variable."`
+	Value            string `help:"New value of the variable."`
+	ClearValue       bool   `name:"clear-value" help:"Clear the variable value."`
+	Description      string `help:"New description of the variable."`
+	ClearDescription bool   `name:"clear-description" help:"Clear the variable description."`
+	Sensitive        *bool  `help:"Mark the variable as sensitive."`
+	HCL              *bool  `help:"Parse the value as HCL."`
 
 	// Dependencies for testing
 	baseDir       string
@@ -374,9 +376,19 @@ func (c *WorkspaceVariablesUpdateCmd) Run(cli *CLI) error {
 		c.clientFactory = defaultVariablesClientFactory
 	}
 
+	// Validate --value and --clear-value are mutually exclusive
+	if c.Value != "" && c.ClearValue {
+		return internalcmd.NewRuntimeError(fmt.Errorf("--value and --clear-value are mutually exclusive"))
+	}
+
+	// Validate --description and --clear-description are mutually exclusive
+	if c.Description != "" && c.ClearDescription {
+		return internalcmd.NewRuntimeError(fmt.Errorf("--description and --clear-description are mutually exclusive"))
+	}
+
 	// Validate at least one field is being updated
-	if c.Key == "" && c.Value == "" && c.Description == "" && c.Sensitive == nil && c.HCL == nil {
-		return internalcmd.NewRuntimeError(fmt.Errorf("at least one of --key, --value, --description, --sensitive, or --hcl is required"))
+	if c.Key == "" && c.Value == "" && !c.ClearValue && c.Description == "" && !c.ClearDescription && c.Sensitive == nil && c.HCL == nil {
+		return internalcmd.NewRuntimeError(fmt.Errorf("at least one of --key, --value, --clear-value, --description, --clear-description, --sensitive, or --hcl is required"))
 	}
 
 	cfg, _, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
@@ -396,9 +408,13 @@ func (c *WorkspaceVariablesUpdateCmd) Run(cli *CLI) error {
 	}
 	if c.Value != "" {
 		opts.Value = tfe.String(c.Value)
+	} else if c.ClearValue {
+		opts.Value = tfe.String("")
 	}
 	if c.Description != "" {
 		opts.Description = tfe.String(c.Description)
+	} else if c.ClearDescription {
+		opts.Description = tfe.String("")
 	}
 	if c.Sensitive != nil {
 		opts.Sensitive = c.Sensitive

@@ -976,3 +976,159 @@ func TestWorkspaceVariablesDelete_APIError(t *testing.T) {
 		t.Errorf("expected delete failure message, got: %v", err)
 	}
 }
+
+// TestWorkspaceVariablesUpdate_ClearValue tests that --clear-value sends empty string to API.
+func TestWorkspaceVariablesUpdate_ClearValue(t *testing.T) {
+	tmpDir, resolver := setupVariablesTestSettings(t)
+
+	fakeClient := &fakeVariablesClient{
+		variable: &tfe.Variable{
+			ID:       "var-123",
+			Key:      "MY_VAR",
+			Value:    "", // Cleared
+			Category: tfe.CategoryEnv,
+		},
+	}
+
+	var buf bytes.Buffer
+	cmd := &WorkspaceVariablesUpdateCmd{
+		VariableID:    "var-123",
+		WorkspaceID:   "ws-123",
+		ClearValue:    true,
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &buf,
+		clientFactory: func(_ tfcapi.ClientConfig) (variablesClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Verify the update was called with empty value
+	if fakeClient.lastUpdate.Value == nil {
+		t.Fatal("expected Value to be set in update options")
+	}
+	if *fakeClient.lastUpdate.Value != "" {
+		t.Errorf("expected empty value, got %q", *fakeClient.lastUpdate.Value)
+	}
+}
+
+// TestWorkspaceVariablesUpdate_ClearValueConflict tests that --value and --clear-value are mutually exclusive.
+func TestWorkspaceVariablesUpdate_ClearValueConflict(t *testing.T) {
+	tmpDir, resolver := setupVariablesTestSettings(t)
+
+	cmd := &WorkspaceVariablesUpdateCmd{
+		VariableID:    "var-123",
+		WorkspaceID:   "ws-123",
+		Value:         "some-value",
+		ClearValue:    true, // Conflict!
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &bytes.Buffer{},
+		clientFactory: func(_ tfcapi.ClientConfig) (variablesClient, error) {
+			return &fakeVariablesClient{}, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error when both --value and --clear-value provided, got nil")
+	}
+
+	// Verify it's a RuntimeError for exit code 2
+	var runtimeErr internalcmd.RuntimeError
+	if !errors.As(err, &runtimeErr) {
+		t.Errorf("expected RuntimeError, got %T", err)
+	}
+
+	// Verify error message mentions mutual exclusivity
+	if !strings.Contains(err.Error(), "mutually exclusive") {
+		t.Errorf("expected 'mutually exclusive' error message, got: %v", err)
+	}
+}
+
+// TestWorkspaceVariablesUpdate_ClearDescription tests that --clear-description sends empty string to API.
+func TestWorkspaceVariablesUpdate_ClearDescription(t *testing.T) {
+	tmpDir, resolver := setupVariablesTestSettings(t)
+
+	fakeClient := &fakeVariablesClient{
+		variable: &tfe.Variable{
+			ID:          "var-123",
+			Key:         "MY_VAR",
+			Description: "", // Cleared
+			Category:    tfe.CategoryEnv,
+		},
+	}
+
+	var buf bytes.Buffer
+	cmd := &WorkspaceVariablesUpdateCmd{
+		VariableID:       "var-123",
+		WorkspaceID:      "ws-123",
+		ClearDescription: true,
+		baseDir:          tmpDir,
+		tokenResolver:    resolver,
+		ttyDetector:      &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:           &buf,
+		clientFactory: func(_ tfcapi.ClientConfig) (variablesClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Verify the update was called with empty description
+	if fakeClient.lastUpdate.Description == nil {
+		t.Fatal("expected Description to be set in update options")
+	}
+	if *fakeClient.lastUpdate.Description != "" {
+		t.Errorf("expected empty description, got %q", *fakeClient.lastUpdate.Description)
+	}
+}
+
+// TestWorkspaceVariablesUpdate_ClearDescriptionConflict tests that --description and --clear-description are mutually exclusive.
+func TestWorkspaceVariablesUpdate_ClearDescriptionConflict(t *testing.T) {
+	tmpDir, resolver := setupVariablesTestSettings(t)
+
+	cmd := &WorkspaceVariablesUpdateCmd{
+		VariableID:       "var-123",
+		WorkspaceID:      "ws-123",
+		Description:      "some description",
+		ClearDescription: true, // Conflict!
+		baseDir:          tmpDir,
+		tokenResolver:    resolver,
+		ttyDetector:      &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:           &bytes.Buffer{},
+		clientFactory: func(_ tfcapi.ClientConfig) (variablesClient, error) {
+			return &fakeVariablesClient{}, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error when both --description and --clear-description provided, got nil")
+	}
+
+	// Verify it's a RuntimeError for exit code 2
+	var runtimeErr internalcmd.RuntimeError
+	if !errors.As(err, &runtimeErr) {
+		t.Errorf("expected RuntimeError, got %T", err)
+	}
+
+	// Verify error message mentions mutual exclusivity
+	if !strings.Contains(err.Error(), "mutually exclusive") {
+		t.Errorf("expected 'mutually exclusive' error message, got: %v", err)
+	}
+}
