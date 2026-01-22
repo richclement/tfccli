@@ -1741,11 +1741,13 @@ func (f *wsrTestFS) UserHomeDir() (string, error) {
 
 ### 31. Inline TTY Detection Pattern
 
-**File:** `cmd/tfc/workspace_resources.go:163-168`
+**Status:** DONE
 
-**Problem:** The code has inline TTY detection and format resolution instead of using the `resolveFormat` helper defined in `projects.go:101-109`.
+**File:** `cmd/tfc/workspace_resources.go:127-128`
 
-**Current inline code:**
+**Problem:** The code had inline TTY detection and format resolution instead of using the `resolveFormat` helper defined in `common.go:56-64`.
+
+**Current inline code (before fix):**
 ```go
 // Determine output format
 isTTY := false
@@ -1755,11 +1757,43 @@ if f, ok := c.stdout.(*os.File); ok {
 format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
 ```
 
-**Fix:** After moving `resolveFormat` from `projects.go` to a shared location (as suggested in finding #4), use the helper:
+**Fix:** Use the shared `resolveFormat` helper from `common.go`:
 
 ```go
 format, isTTY := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
 ```
+
+#### Plan (2026-01-21)
+
+**Acceptance criteria:**
+- Inline TTY detection pattern in `workspace_resources.go:127-132` replaced with `resolveFormat` helper
+- No behavior changes
+- All existing tests pass
+
+**Verification approach:**
+- `make test` passes
+- All workspace-resources tests still pass
+
+**Implementation steps:**
+1. Replace inline TTY detection in `WorkspaceResourcesListCmd.Run()` with `resolveFormat` call
+2. Run feedback loops
+3. Update review.md with progress note
+
+#### Progress Note (2026-01-21)
+
+**Files changed:**
+- `cmd/tfc/workspace_resources.go:127-128`: Replaced 5-line inline TTY detection with single `resolveFormat` call
+
+**Commands run:**
+- `make fmt` - passed
+- `make lint` - passed
+- `make build` - passed
+- `make test` - passed (all tests green)
+- `go test -v -run 'TestWorkspaceResources' ./cmd/tfc/...` - all 11 workspace-resources tests pass
+
+**What remains:**
+- Task #31 is complete
+- Consistent use of `resolveFormat` helper across all command files
 
 ---
 
