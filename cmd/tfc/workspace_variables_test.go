@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"os"
 	"strings"
 	"testing"
 
@@ -70,62 +69,6 @@ func (c *fakeVariablesClient) Delete(_ context.Context, _, _ string) error {
 	return nil
 }
 
-// varsTestEnv implements auth.EnvGetter for testing.
-type varsTestEnv struct {
-	vars map[string]string
-}
-
-func (e *varsTestEnv) Getenv(key string) string {
-	return e.vars[key]
-}
-
-// varsTestFS implements auth.FSReader for testing.
-type varsTestFS struct {
-	files   map[string][]byte
-	homeDir string
-}
-
-func (f *varsTestFS) ReadFile(path string) ([]byte, error) {
-	if data, ok := f.files[path]; ok {
-		return data, nil
-	}
-	return nil, os.ErrNotExist
-}
-
-func (f *varsTestFS) UserHomeDir() (string, error) {
-	return f.homeDir, nil
-}
-
-// varsAcceptingPrompter always returns true for confirms.
-type varsAcceptingPrompter struct{}
-
-func (p *varsAcceptingPrompter) PromptString(_, defaultValue string) (string, error) {
-	return defaultValue, nil
-}
-
-func (p *varsAcceptingPrompter) Confirm(_ string, _ bool) (bool, error) {
-	return true, nil
-}
-
-func (p *varsAcceptingPrompter) PromptSelect(_ string, _ []string, defaultValue string) (string, error) {
-	return defaultValue, nil
-}
-
-// varsRejectingPrompter always returns false for confirms.
-type varsRejectingPrompter struct{}
-
-func (p *varsRejectingPrompter) PromptString(_, defaultValue string) (string, error) {
-	return defaultValue, nil
-}
-
-func (p *varsRejectingPrompter) Confirm(_ string, _ bool) (bool, error) {
-	return false, nil
-}
-
-func (p *varsRejectingPrompter) PromptSelect(_ string, _ []string, defaultValue string) (string, error) {
-	return defaultValue, nil
-}
-
 // setupVariablesTestSettings creates test settings with token and returns the temp directory and token resolver.
 func setupVariablesTestSettings(t *testing.T) (string, *auth.TokenResolver) {
 	t.Helper()
@@ -145,12 +88,12 @@ func setupVariablesTestSettings(t *testing.T) (string, *auth.TokenResolver) {
 	}
 
 	// Create fake env with token
-	fakeEnv := &varsTestEnv{
+	fakeEnv := &testEnv{
 		vars: map[string]string{
 			"TF_TOKEN_app_terraform_io": "test-token",
 		},
 	}
-	fakeFS := &varsTestFS{
+	fakeFS := &testFS{
 		homeDir: tmpDir,
 		files:   make(map[string][]byte),
 	}
@@ -612,7 +555,7 @@ func TestWorkspaceVariablesDelete_PromptsWithoutForce(t *testing.T) {
 	fakeClient := &fakeVariablesClient{}
 
 	var buf bytes.Buffer
-	prompter := &varsRejectingPrompter{} // User answers "no"
+	prompter := &rejectingPrompter{} // User answers "no"
 	cmd := &WorkspaceVariablesDeleteCmd{
 		VariableID:    "var-1",
 		WorkspaceID:   "ws-123",
@@ -719,7 +662,7 @@ func TestWorkspaceVariablesDelete_ConfirmYes(t *testing.T) {
 	fakeClient := &fakeVariablesClient{}
 
 	var buf bytes.Buffer
-	prompter := &varsAcceptingPrompter{} // User answers "yes"
+	prompter := &acceptingPrompter{} // User answers "yes"
 	cmd := &WorkspaceVariablesDeleteCmd{
 		VariableID:    "var-1",
 		WorkspaceID:   "ws-123",

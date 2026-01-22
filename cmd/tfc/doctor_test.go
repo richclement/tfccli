@@ -16,32 +16,6 @@ import (
 	"github.com/richclement/tfccli/internal/tfcapi"
 )
 
-// fakeEnv implements auth.EnvGetter for testing.
-type fakeEnv struct {
-	vars map[string]string
-}
-
-func (e *fakeEnv) Getenv(key string) string {
-	return e.vars[key]
-}
-
-// fakeFS implements auth.FSReader for testing.
-type fakeFS struct {
-	files   map[string][]byte
-	homeDir string
-}
-
-func (f *fakeFS) ReadFile(path string) ([]byte, error) {
-	if data, ok := f.files[path]; ok {
-		return data, nil
-	}
-	return nil, os.ErrNotExist
-}
-
-func (f *fakeFS) UserHomeDir() (string, error) {
-	return f.homeDir, nil
-}
-
 // fakeDoctorClient implements doctorClient for testing.
 type fakeDoctorClient struct {
 	pingErr error
@@ -128,12 +102,12 @@ func TestDoctor_ReportsTokenSource(t *testing.T) {
 	stdout, getOutput := captureStdout(t)
 
 	// Create fake env with token
-	fakeEnvMap := &fakeEnv{
+	fakeEnvMap := &testEnv{
 		vars: map[string]string{
 			"TF_TOKEN_app_terraform_io": "fake-token",
 		},
 	}
-	fakeFSMap := &fakeFS{
+	fakeFSMap := &testFS{
 		homeDir: tmpDir,
 		files:   make(map[string][]byte),
 	}
@@ -200,12 +174,12 @@ func TestDoctor_FailsOnConnectivityError(t *testing.T) {
 	stdout, getOutput := captureStdout(t)
 
 	// Create fake env with token
-	fakeEnvMap := &fakeEnv{
+	fakeEnvMap := &testEnv{
 		vars: map[string]string{
 			"TF_TOKEN_app_terraform_io": "fake-token",
 		},
 	}
-	fakeFSMap := &fakeFS{
+	fakeFSMap := &testFS{
 		homeDir: tmpDir,
 		files:   make(map[string][]byte),
 	}
@@ -268,12 +242,12 @@ func TestDoctor_TableOutput(t *testing.T) {
 	stdout, getOutput := captureStdout(t)
 
 	// Create fake env with token
-	fakeEnvMap := &fakeEnv{
+	fakeEnvMap := &testEnv{
 		vars: map[string]string{
 			"TF_TOKEN_app_terraform_io": "fake-token",
 		},
 	}
-	fakeFSMap := &fakeFS{
+	fakeFSMap := &testFS{
 		homeDir: tmpDir,
 		files:   make(map[string][]byte),
 	}
@@ -344,12 +318,12 @@ func TestDoctor_ContextOverride(t *testing.T) {
 	stdout, getOutput := captureStdout(t)
 
 	// Create fake env with token for prod
-	fakeEnvMap := &fakeEnv{
+	fakeEnvMap := &testEnv{
 		vars: map[string]string{
 			"TF_TOKEN_tfe_example_com": "prod-token",
 		},
 	}
-	fakeFSMap := &fakeFS{
+	fakeFSMap := &testFS{
 		homeDir: tmpDir,
 		files:   make(map[string][]byte),
 	}
@@ -417,12 +391,12 @@ func TestDoctor_AddressOverride(t *testing.T) {
 	stdout, getOutput := captureStdout(t)
 
 	// Create fake env with token for override address
-	fakeEnvMap := &fakeEnv{
+	fakeEnvMap := &testEnv{
 		vars: map[string]string{
 			"TF_TOKEN_override_example_com": "override-token",
 		},
 	}
-	fakeFSMap := &fakeFS{
+	fakeFSMap := &testFS{
 		homeDir: tmpDir,
 		files:   make(map[string][]byte),
 	}
@@ -482,10 +456,10 @@ func TestDoctor_TokenFromCredentialsFile(t *testing.T) {
 
 	// Create fake credentials file
 	credPath := filepath.Join(tmpDir, ".terraform.d", "credentials.tfrc.json")
-	fakeEnvMap := &fakeEnv{
+	fakeEnvMap := &testEnv{
 		vars: make(map[string]string), // No env token
 	}
-	fakeFSMap := &fakeFS{
+	fakeFSMap := &testFS{
 		homeDir: tmpDir,
 		files: map[string][]byte{
 			credPath: []byte(`{"credentials":{"app.terraform.io":{"token":"file-token"}}}`),
@@ -547,12 +521,12 @@ func TestDoctor_AllChecksPASS(t *testing.T) {
 
 	stdout, getOutput := captureStdout(t)
 
-	fakeEnvMap := &fakeEnv{
+	fakeEnvMap := &testEnv{
 		vars: map[string]string{
 			"TF_TOKEN_app_terraform_io": "fake-token",
 		},
 	}
-	fakeFSMap := &fakeFS{
+	fakeFSMap := &testFS{
 		homeDir: tmpDir,
 		files:   make(map[string][]byte),
 	}
@@ -616,10 +590,10 @@ func TestDoctor_NoTokenError(t *testing.T) {
 	stdout, getOutput := captureStdout(t)
 
 	// No token anywhere
-	fakeEnvMap := &fakeEnv{
+	fakeEnvMap := &testEnv{
 		vars: make(map[string]string),
 	}
-	fakeFSMap := &fakeFS{
+	fakeFSMap := &testFS{
 		homeDir: tmpDir,
 		files:   make(map[string][]byte),
 	}
@@ -785,12 +759,12 @@ func TestDoctor_ClientFactoryError(t *testing.T) {
 
 	stdout, getOutput := captureStdout(t)
 
-	fakeEnvMap := &fakeEnv{
+	fakeEnvMap := &testEnv{
 		vars: map[string]string{
 			"TF_TOKEN_app_terraform_io": "fake-token",
 		},
 	}
-	fakeFSMap := &fakeFS{
+	fakeFSMap := &testFS{
 		homeDir: tmpDir,
 		files:   make(map[string][]byte),
 	}
@@ -851,12 +825,12 @@ func TestDoctor_EmptyAddressUsesDefault(t *testing.T) {
 
 	stdout, getOutput := captureStdout(t)
 
-	fakeEnvMap := &fakeEnv{
+	fakeEnvMap := &testEnv{
 		vars: map[string]string{
 			"TF_TOKEN_app_terraform_io": "fake-token",
 		},
 	}
-	fakeFSMap := &fakeFS{
+	fakeFSMap := &testFS{
 		homeDir: tmpDir,
 		files:   make(map[string][]byte),
 	}

@@ -1,6 +1,35 @@
 package main
 
-import "errors"
+import (
+	"errors"
+	"os"
+)
+
+// testEnv implements auth.EnvGetter for testing.
+type testEnv struct {
+	vars map[string]string
+}
+
+func (e *testEnv) Getenv(key string) string {
+	return e.vars[key]
+}
+
+// testFS implements auth.FSReader for testing.
+type testFS struct {
+	files   map[string][]byte
+	homeDir string
+}
+
+func (f *testFS) ReadFile(path string) ([]byte, error) {
+	if data, ok := f.files[path]; ok {
+		return data, nil
+	}
+	return nil, os.ErrNotExist
+}
+
+func (f *testFS) UserHomeDir() (string, error) {
+	return f.homeDir, nil
+}
 
 // acceptingPrompter always returns true for confirms.
 type acceptingPrompter struct{}

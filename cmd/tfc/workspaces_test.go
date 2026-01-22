@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"os"
 	"strings"
 	"testing"
 
@@ -91,77 +90,6 @@ func (f *fakeWorkspacesClient) DeleteByID(_ context.Context, workspaceID string)
 	return f.deleteErr
 }
 
-// workspacesTestEnv implements auth.EnvGetter for testing.
-type workspacesTestEnv struct {
-	vars map[string]string
-}
-
-func (e *workspacesTestEnv) Getenv(key string) string {
-	return e.vars[key]
-}
-
-// workspacesTestFS implements auth.FSReader for testing.
-type workspacesTestFS struct {
-	files   map[string][]byte
-	homeDir string
-}
-
-func (f *workspacesTestFS) ReadFile(path string) ([]byte, error) {
-	if data, ok := f.files[path]; ok {
-		return data, nil
-	}
-	return nil, os.ErrNotExist
-}
-
-func (f *workspacesTestFS) UserHomeDir() (string, error) {
-	return f.homeDir, nil
-}
-
-// wsAcceptingPrompter always returns true for confirms.
-type wsAcceptingPrompter struct{}
-
-func (p *wsAcceptingPrompter) PromptString(_, defaultValue string) (string, error) {
-	return defaultValue, nil
-}
-
-func (p *wsAcceptingPrompter) Confirm(_ string, _ bool) (bool, error) {
-	return true, nil
-}
-
-func (p *wsAcceptingPrompter) PromptSelect(_ string, _ []string, defaultValue string) (string, error) {
-	return defaultValue, nil
-}
-
-// wsRejectingPrompter always returns false for confirms.
-type wsRejectingPrompter struct{}
-
-func (p *wsRejectingPrompter) PromptString(_, defaultValue string) (string, error) {
-	return defaultValue, nil
-}
-
-func (p *wsRejectingPrompter) Confirm(_ string, _ bool) (bool, error) {
-	return false, nil
-}
-
-func (p *wsRejectingPrompter) PromptSelect(_ string, _ []string, defaultValue string) (string, error) {
-	return defaultValue, nil
-}
-
-// wsFailingPrompter returns an error to verify prompts are bypassed with --force.
-type wsFailingPrompter struct{}
-
-func (p *wsFailingPrompter) PromptString(_, _ string) (string, error) {
-	return "", errors.New("should not be called with --force")
-}
-
-func (p *wsFailingPrompter) Confirm(_ string, _ bool) (bool, error) {
-	return false, errors.New("should not be called with --force")
-}
-
-func (p *wsFailingPrompter) PromptSelect(_ string, _ []string, _ string) (string, error) {
-	return "", errors.New("should not be called with --force")
-}
-
 // setupWorkspacesTestSettings creates test settings with default_org and returns the temp directory and token resolver.
 func setupWorkspacesTestSettings(t *testing.T, defaultOrg string) (string, *auth.TokenResolver) {
 	t.Helper()
@@ -182,12 +110,12 @@ func setupWorkspacesTestSettings(t *testing.T, defaultOrg string) (string, *auth
 	}
 
 	// Create fake env with token
-	fakeEnvMap := &workspacesTestEnv{
+	fakeEnvMap := &testEnv{
 		vars: map[string]string{
 			"TF_TOKEN_app_terraform_io": "test-token",
 		},
 	}
-	fakeFSMap := &workspacesTestFS{
+	fakeFSMap := &testFS{
 		homeDir: tmpDir,
 		files:   make(map[string][]byte),
 	}
@@ -817,7 +745,7 @@ func TestWorkspacesDelete_PromptsWithoutForce(t *testing.T) {
 		clientFactory: func(_ tfcapi.ClientConfig) (workspacesClient, error) {
 			return fakeClient, nil
 		},
-		prompter: &wsRejectingPrompter{},
+		prompter: &rejectingPrompter{},
 	}
 
 	cli := &CLI{Force: false}
@@ -853,7 +781,7 @@ func TestWorkspacesDelete_WithForce(t *testing.T) {
 		clientFactory: func(_ tfcapi.ClientConfig) (workspacesClient, error) {
 			return fakeClient, nil
 		},
-		prompter:  &wsFailingPrompter{}, // Would fail if called
+		prompter:  &failingPrompter{}, // Would fail if called
 		forceFlag: &forceFlag,
 	}
 
@@ -886,7 +814,7 @@ func TestWorkspacesDelete_JSON(t *testing.T) {
 		clientFactory: func(_ tfcapi.ClientConfig) (workspacesClient, error) {
 			return fakeClient, nil
 		},
-		prompter:  &wsFailingPrompter{},
+		prompter:  &failingPrompter{},
 		forceFlag: &forceFlag,
 	}
 
@@ -1041,7 +969,7 @@ func TestWorkspacesDelete_ConfirmYes(t *testing.T) {
 		clientFactory: func(_ tfcapi.ClientConfig) (workspacesClient, error) {
 			return fakeClient, nil
 		},
-		prompter: &wsAcceptingPrompter{},
+		prompter: &acceptingPrompter{},
 	}
 
 	cli := &CLI{Force: false}
@@ -1107,7 +1035,7 @@ func TestWorkspacesDelete_APIError(t *testing.T) {
 		clientFactory: func(_ tfcapi.ClientConfig) (workspacesClient, error) {
 			return fakeClient, nil
 		},
-		prompter:  &wsFailingPrompter{},
+		prompter:  &failingPrompter{},
 		forceFlag: &forceFlag,
 	}
 

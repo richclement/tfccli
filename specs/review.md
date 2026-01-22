@@ -132,6 +132,8 @@ Then update both files to use this shared function.
 
 ### 3. Extract Duplicate Test Helper Types
 
+**Status:** DONE
+
 **File:** `cmd/tfc/workspaces_test.go:94-117`
 
 **Problem:** `workspacesTestEnv` and `workspacesTestFS` duplicate the same types defined in other test files. Recent commit `861f345` extracted prompters to `testhelpers_test.go`.
@@ -167,6 +169,48 @@ func (f *testFS) UserHomeDir() (string, error) {
 ```
 
 Then update `workspaces_test.go` and other test files to use the shared types.
+
+#### Plan (2026-01-21)
+
+**Acceptance criteria:**
+- Shared `testEnv` and `testFS` types exist in `cmd/tfc/testhelpers_test.go`
+- All duplicate types removed from test files (`fakeEnv`/`fakeFS`, `workspacesTestEnv`/`workspacesTestFS`, `varsTestEnv`/`varsTestFS`, `wsrTestEnv`/`wsrTestFS`)
+- All prompter duplicates removed from test files (`wsAcceptingPrompter`/`wsRejectingPrompter`/`wsFailingPrompter`, `varsAcceptingPrompter`/`varsRejectingPrompter`)
+- All existing tests pass
+- No behavior changes
+
+**Verification approach:**
+- `make test` passes
+- All command tests still pass
+- Code compiles without errors
+
+**Implementation steps:**
+1. Add `testEnv` and `testFS` types to `cmd/tfc/testhelpers_test.go`
+2. Update `cmd/tfc/doctor_test.go` to use shared types (rename `fakeEnv`/`fakeFS` usage)
+3. Update `cmd/tfc/workspaces_test.go` to use shared types and prompters
+4. Update `cmd/tfc/workspace_variables_test.go` to use shared types and prompters
+5. Update `cmd/tfc/workspace_resources_test.go` to use shared types
+6. Run feedback loops
+
+#### Progress Note (2026-01-21)
+
+**Files changed:**
+- `cmd/tfc/testhelpers_test.go`: Added shared `testEnv` and `testFS` types
+- `cmd/tfc/doctor_test.go`: Removed `fakeEnv`/`fakeFS` definitions, updated to use `testEnv`/`testFS`
+- `cmd/tfc/workspaces_test.go`: Removed `workspacesTestEnv`/`workspacesTestFS`/`wsAcceptingPrompter`/`wsRejectingPrompter`/`wsFailingPrompter`, updated to use shared types
+- `cmd/tfc/workspace_variables_test.go`: Removed `varsTestEnv`/`varsTestFS`/`varsAcceptingPrompter`/`varsRejectingPrompter`, updated to use shared types
+- `cmd/tfc/workspace_resources_test.go`: Removed `wsrTestEnv`/`wsrTestFS`, updated to use shared types
+
+**Commands run:**
+- `make fmt` - passed
+- `make lint` - passed
+- `make build` - passed
+- `make test` - passed (all tests green)
+
+**What remains:**
+- Task #3 is complete
+- Also resolves task #8 (workspace-variables duplicates), #13 (doctor duplicates), #30 (workspace-resources duplicates)
+- Net reduction of ~200 lines of duplicate test helper code across 4 files
 
 ---
 
@@ -270,6 +314,8 @@ Or create two variants:
 ---
 
 ### 8. Duplicate Test Helper Types
+
+**Status:** DONE (fixed as part of #3)
 
 **File:** `cmd/tfc/workspace_variables_test.go:72-126`
 
@@ -464,6 +510,8 @@ Detail: fmt.Sprintf("context %q not found; run 'tfc contexts list' to see availa
 ## Code Quality Improvements
 
 ### 13. Duplicate Test Helper Types
+
+**Status:** DONE (fixed as part of #3)
 
 **File:** `cmd/tfc/doctor_test.go:19-43`
 
@@ -1409,6 +1457,8 @@ cfg, err := resolveClientConfigNoOrg(cli, c.baseDir, c.tokenResolver)
 ---
 
 ### 30. Duplicate Test Helper Types
+
+**Status:** DONE (fixed as part of #3)
 
 **File:** `cmd/tfc/workspace_resources_test.go:33-57`
 

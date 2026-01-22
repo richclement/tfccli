@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"os"
 	"strings"
 	"testing"
 
@@ -30,32 +29,6 @@ func (c *fakeWorkspaceResourcesClient) List(_ context.Context, _ string, _ *tfe.
 	return c.resources, nil
 }
 
-// wsrTestEnv implements auth.EnvGetter for testing.
-type wsrTestEnv struct {
-	vars map[string]string
-}
-
-func (e *wsrTestEnv) Getenv(key string) string {
-	return e.vars[key]
-}
-
-// wsrTestFS implements auth.FSReader for testing.
-type wsrTestFS struct {
-	files   map[string][]byte
-	homeDir string
-}
-
-func (f *wsrTestFS) ReadFile(path string) ([]byte, error) {
-	if data, ok := f.files[path]; ok {
-		return data, nil
-	}
-	return nil, os.ErrNotExist
-}
-
-func (f *wsrTestFS) UserHomeDir() (string, error) {
-	return f.homeDir, nil
-}
-
 // setupWorkspaceResourcesTestSettings creates test settings with token and returns the temp directory and token resolver.
 func setupWorkspaceResourcesTestSettings(t *testing.T) (string, *auth.TokenResolver) {
 	t.Helper()
@@ -75,12 +48,12 @@ func setupWorkspaceResourcesTestSettings(t *testing.T) (string, *auth.TokenResol
 	}
 
 	// Create fake env with token
-	fakeEnv := &wsrTestEnv{
+	fakeEnv := &testEnv{
 		vars: map[string]string{
 			"TF_TOKEN_app_terraform_io": "test-token",
 		},
 	}
-	fakeFS := &wsrTestFS{
+	fakeFS := &testFS{
 		homeDir: tmpDir,
 		files:   make(map[string][]byte),
 	}
@@ -294,13 +267,13 @@ func TestWorkspaceResourcesList_ContextOverride(t *testing.T) {
 	}
 
 	// Create fake env with token for both hosts
-	fakeEnv := &wsrTestEnv{
+	fakeEnv := &testEnv{
 		vars: map[string]string{
 			"TF_TOKEN_app_terraform_io": "default-token",
 			"TF_TOKEN_tfe_example_com":  "other-token",
 		},
 	}
-	fakeFS := &wsrTestFS{
+	fakeFS := &testFS{
 		homeDir: tmpDir,
 		files:   make(map[string][]byte),
 	}
@@ -356,12 +329,12 @@ func TestWorkspaceResourcesList_AddressOverride(t *testing.T) {
 	}
 
 	// Create fake env with token for custom address
-	fakeEnv := &wsrTestEnv{
+	fakeEnv := &testEnv{
 		vars: map[string]string{
 			"TF_TOKEN_custom_tfe_io": "custom-token",
 		},
 	}
-	fakeFS := &wsrTestFS{
+	fakeFS := &testFS{
 		homeDir: tmpDir,
 		files:   make(map[string][]byte),
 	}
@@ -441,12 +414,12 @@ func TestWorkspaceResourcesList_ContextNotFound(t *testing.T) {
 		t.Fatalf("failed to save test settings: %v", err)
 	}
 
-	fakeEnv := &wsrTestEnv{
+	fakeEnv := &testEnv{
 		vars: map[string]string{
 			"TF_TOKEN_app_terraform_io": "test-token",
 		},
 	}
-	fakeFS := &wsrTestFS{
+	fakeFS := &testFS{
 		homeDir: tmpDir,
 		files:   make(map[string][]byte),
 	}
@@ -493,10 +466,10 @@ func TestWorkspaceResourcesList_TokenResolutionError(t *testing.T) {
 	}
 
 	// Create resolver with no tokens available
-	fakeEnv := &wsrTestEnv{
+	fakeEnv := &testEnv{
 		vars: map[string]string{}, // No tokens
 	}
-	fakeFS := &wsrTestFS{
+	fakeFS := &testFS{
 		homeDir: tmpDir,
 		files:   make(map[string][]byte), // No credentials file
 	}
