@@ -105,12 +105,8 @@ func (d *DoctorCmd) Run(cli *CLI) error {
 		d.clientFactory = defaultClientFactory
 	}
 
-	// Determine output format (use type assertion for TTY detection)
-	isTTY := false
-	if f, ok := d.stdout.(*os.File); ok {
-		isTTY = d.ttyDetector.IsTTY(f)
-	}
-	format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
+	// Determine output format
+	format, isTTY := resolveFormat(d.stdout, d.ttyDetector, cli.OutputFormat)
 
 	result := &DoctorResult{Checks: make([]DoctorCheck, 0)}
 	hasFailure := false

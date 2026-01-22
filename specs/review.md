@@ -702,22 +702,61 @@ func (f *fakeFS) UserHomeDir() (string, error) {
 
 ### 14. Consider Using `resolveFormat` Helper
 
-**File:** `cmd/tfc/main.go:106-107`
+**Status:** DONE
 
-**Problem:** The doctor command has inline TTY detection and format resolution, while `projects.go:103` has a `resolveFormat` helper that encapsulates this logic. For consistency, the doctor command could use this helper.
+**File:** `cmd/tfc/main.go:108-113`
+
+**Problem:** The doctor command has inline TTY detection and format resolution, while `common.go:56-64` has a `resolveFormat` helper that encapsulates this logic. For consistency, the doctor command should use this helper.
 
 **Current code:**
 ```go
-isTTY := d.ttyDetector.IsTTY(d.stdout)
+// Determine output format (use type assertion for TTY detection)
+isTTY := false
+if f, ok := d.stdout.(*os.File); ok {
+    isTTY = d.ttyDetector.IsTTY(f)
+}
 format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
 ```
 
-**Alternative (after moving resolveFormat to shared location):**
+**Alternative (using shared resolveFormat helper):**
 ```go
 format, isTTY := resolveFormat(d.stdout, d.ttyDetector, cli.OutputFormat)
 ```
 
-**Note:** This depends on first moving `resolveFormat` from `projects.go` to a shared location as suggested in finding #4.
+**Note:** The `resolveFormat` helper was moved to `common.go` as part of task #2/#4.
+
+#### Plan (2026-01-21)
+
+**Acceptance criteria:**
+- Inline TTY detection in DoctorCmd.Run() replaced with `resolveFormat` helper call
+- No behavior changes
+- All existing tests pass
+
+**Verification approach:**
+- `make test` passes
+- All doctor tests still pass
+- Code compiles without errors
+
+**Implementation steps:**
+1. Replace inline TTY detection in `cmd/tfc/main.go:108-113` with `resolveFormat` call
+2. Run feedback loops (fmt, lint, build, test)
+3. Update review.md with progress note
+
+#### Progress Note (2026-01-21)
+
+**Files changed:**
+- `cmd/tfc/main.go:108-113`: Replaced 6-line inline TTY detection with single `resolveFormat` call
+- `cmd/tfc/configuration_versions_test.go:823`: Fixed pre-existing lint error (unused `resolver` variable)
+
+**Commands run:**
+- `make fmt` - passed
+- `make lint` - passed (via `GOLANGCI_LINT_CACHE=/tmp/claude/golangci-lint GOCACHE=/tmp/claude/go-build .tools/golangci-lint run`)
+- `make build` - passed (via `GOCACHE=/tmp/claude/go-build go build`)
+- `make test` - passed (via `GOCACHE=/tmp/claude/go-build go test ./...`)
+
+**What remains:**
+- Task #14 is DONE
+- Consistent use of `resolveFormat` helper across doctor, projects, workspaces, workspace-variables, and workspace-resources commands
 
 ---
 

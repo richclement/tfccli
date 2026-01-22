@@ -820,7 +820,7 @@ func TestCV_ContextOverride(t *testing.T) {
 }
 
 func TestCV_AddressOverride(t *testing.T) {
-	baseDir, resolver := setupCVTest(t)
+	baseDir, _ := setupCVTest(t)
 
 	// Also set token for overridden host
 	fakeEnv := &cvTestEnv{
@@ -832,7 +832,7 @@ func TestCV_AddressOverride(t *testing.T) {
 		homeDir: baseDir,
 		files:   make(map[string][]byte),
 	}
-	resolver = &auth.TokenResolver{Env: fakeEnv, FS: fakeFS}
+	resolver := &auth.TokenResolver{Env: fakeEnv, FS: fakeFS}
 
 	fakeClient := &fakeCVClient{
 		ListFunc: func(_ context.Context, _ string, _ *tfe.ConfigurationVersionListOptions) ([]*tfe.ConfigurationVersion, error) {
