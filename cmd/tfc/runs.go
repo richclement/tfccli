@@ -64,7 +64,7 @@ func toRunJSONList(runs []*tfe.Run) []*runJSON {
 
 // runsClient abstracts the TFC runs API for testing.
 type runsClient interface {
-	List(ctx context.Context, workspaceID string, opts *tfe.RunListOptions) ([]*tfe.Run, error)
+	List(ctx context.Context, workspaceID string, opts *tfe.RunListOptions, limit int) ([]*tfe.Run, error)
 	Read(ctx context.Context, runID string) (*tfe.Run, error)
 	Create(ctx context.Context, opts tfe.RunCreateOptions) (*tfe.Run, error)
 	Apply(ctx context.Context, runID string, opts tfe.RunApplyOptions) error
@@ -81,8 +81,8 @@ type realRunsClient struct {
 	client *tfe.Client
 }
 
-func (c *realRunsClient) List(ctx context.Context, workspaceID string, opts *tfe.RunListOptions) ([]*tfe.Run, error) {
-	return tfcapi.CollectAllRuns(ctx, c.client, workspaceID, opts)
+func (c *realRunsClient) List(ctx context.Context, workspaceID string, opts *tfe.RunListOptions, limit int) ([]*tfe.Run, error) {
+	return tfcapi.CollectRunsWithLimit(ctx, c.client, workspaceID, opts, limit)
 }
 
 func (c *realRunsClient) Read(ctx context.Context, runID string) (*tfe.Run, error) {
@@ -156,6 +156,7 @@ func resolveRunsClientConfig(cli *CLI, baseDir string, tokenResolver *auth.Token
 // RunsListCmd lists runs for a workspace.
 type RunsListCmd struct {
 	WorkspaceID string `name:"workspace-id" required:"" help:"ID of the workspace."`
+	Limit       int    `help:"Maximum number of runs to return (0 = all)." default:"0"`
 
 	// Dependencies for testing
 	baseDir       string
@@ -188,7 +189,7 @@ func (c *RunsListCmd) Run(cli *CLI) error {
 	}
 
 	ctx := context.Background()
-	runs, err := client.List(ctx, c.WorkspaceID, nil)
+	runs, err := client.List(ctx, c.WorkspaceID, nil, c.Limit)
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
 		if apiErr != nil {

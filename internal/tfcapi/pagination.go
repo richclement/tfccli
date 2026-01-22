@@ -109,6 +109,18 @@ func CollectAllRuns(
 	workspaceID string,
 	opts *tfe.RunListOptions,
 ) ([]*tfe.Run, error) {
+	return CollectRunsWithLimit(ctx, client, workspaceID, opts, 0)
+}
+
+// CollectRunsWithLimit fetches runs for a workspace up to a limit.
+// If limit is 0 or negative, all runs are fetched.
+func CollectRunsWithLimit(
+	ctx context.Context,
+	client *tfe.Client,
+	workspaceID string,
+	opts *tfe.RunListOptions,
+	limit int,
+) ([]*tfe.Run, error) {
 	if opts == nil {
 		opts = &tfe.RunListOptions{}
 	}
@@ -124,6 +136,12 @@ func CollectAllRuns(
 			return nil, err
 		}
 		all = append(all, list.Items...)
+
+		// If we've reached the limit, stop
+		if limit > 0 && len(all) >= limit {
+			all = all[:limit]
+			break
+		}
 
 		if len(list.Items) == 0 || list.Pagination == nil || list.Pagination.NextPage == 0 {
 			break

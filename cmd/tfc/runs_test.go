@@ -39,6 +39,7 @@ type fakeRunsClient struct {
 	// Captured parameters for verification
 	listWorkspaceID  string
 	listOpts         *tfe.RunListOptions
+	listLimit        int
 	readRunID        string
 	applyRunID       string
 	applyOpts        tfe.RunApplyOptions
@@ -50,11 +51,16 @@ type fakeRunsClient struct {
 	forceCancelOpts  tfe.RunForceCancelOptions
 }
 
-func (c *fakeRunsClient) List(_ context.Context, workspaceID string, opts *tfe.RunListOptions) ([]*tfe.Run, error) {
+func (c *fakeRunsClient) List(_ context.Context, workspaceID string, opts *tfe.RunListOptions, limit int) ([]*tfe.Run, error) {
 	c.listWorkspaceID = workspaceID
 	c.listOpts = opts
+	c.listLimit = limit
 	if c.listErr != nil {
 		return nil, c.listErr
+	}
+	// Respect limit if set
+	if limit > 0 && len(c.runs) > limit {
+		return c.runs[:limit], nil
 	}
 	return c.runs, nil
 }
@@ -367,6 +373,112 @@ func TestRunsList_EmptyList(t *testing.T) {
 			t.Errorf("expected table headers in empty output, got: %s", out)
 		}
 	})
+}
+
+func TestRunsList_WithLimit(t *testing.T) {
+	tmpDir, resolver := setupRunsTest(t)
+
+	// Create 5 runs for testing
+	createdAt := time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC)
+	fakeClient := &fakeRunsClient{
+		runs: []*tfe.Run{
+			{ID: "run-1", Status: tfe.RunPlanned, Message: "Run 1", CreatedAt: createdAt},
+			{ID: "run-2", Status: tfe.RunApplied, Message: "Run 2", CreatedAt: createdAt},
+			{ID: "run-3", Status: tfe.RunPlanning, Message: "Run 3", CreatedAt: createdAt},
+			{ID: "run-4", Status: tfe.RunPending, Message: "Run 4", CreatedAt: createdAt},
+			{ID: "run-5", Status: tfe.RunCanceled, Message: "Run 5", CreatedAt: createdAt},
+		},
+	}
+
+	var stdout bytes.Buffer
+	cmd := &RunsListCmd{
+		WorkspaceID:   "ws-test",
+		Limit:         3,
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &stdout,
+		clientFactory: func(_ tfcapi.ClientConfig) (runsClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Verify limit was passed to client
+	if fakeClient.listLimit != 3 {
+		t.Errorf("expected limit 3 to be passed to client, got %d", fakeClient.listLimit)
+	}
+
+	var result map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+		t.Fatalf("failed to parse JSON: %v", err)
+	}
+
+	data, ok := result["data"].([]any)
+	if !ok {
+		t.Fatalf("expected data array, got %T", result["data"])
+	}
+	if len(data) != 3 {
+		t.Errorf("expected 3 runs with limit, got %d", len(data))
+	}
+}
+
+func TestRunsList_LimitZeroFetchesAll(t *testing.T) {
+	tmpDir, resolver := setupRunsTest(t)
+
+	// Create 5 runs for testing
+	createdAt := time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC)
+	fakeClient := &fakeRunsClient{
+		runs: []*tfe.Run{
+			{ID: "run-1", Status: tfe.RunPlanned, Message: "Run 1", CreatedAt: createdAt},
+			{ID: "run-2", Status: tfe.RunApplied, Message: "Run 2", CreatedAt: createdAt},
+			{ID: "run-3", Status: tfe.RunPlanning, Message: "Run 3", CreatedAt: createdAt},
+			{ID: "run-4", Status: tfe.RunPending, Message: "Run 4", CreatedAt: createdAt},
+			{ID: "run-5", Status: tfe.RunCanceled, Message: "Run 5", CreatedAt: createdAt},
+		},
+	}
+
+	var stdout bytes.Buffer
+	cmd := &RunsListCmd{
+		WorkspaceID:   "ws-test",
+		Limit:         0, // 0 = all
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &stdout,
+		clientFactory: func(_ tfcapi.ClientConfig) (runsClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Verify limit was passed as 0
+	if fakeClient.listLimit != 0 {
+		t.Errorf("expected limit 0 to be passed to client, got %d", fakeClient.listLimit)
+	}
+
+	var result map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+		t.Fatalf("failed to parse JSON: %v", err)
+	}
+
+	data, ok := result["data"].([]any)
+	if !ok {
+		t.Fatalf("expected data array, got %T", result["data"])
+	}
+	if len(data) != 5 {
+		t.Errorf("expected all 5 runs with limit=0, got %d", len(data))
+	}
 }
 
 func TestRunsGet_JSON(t *testing.T) {

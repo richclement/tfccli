@@ -703,7 +703,9 @@ func TestRunsApply_PrompterError(t *testing.T) {
 
 ---
 
-### 13. [ ] `RunsListCmd` lacks `--limit` flag for large workspaces
+### 13. [x] `RunsListCmd` lacks `--limit` flag for large workspaces
+
+**Status:** DONE
 
 **File:** `cmd/tfc/runs.go`
 **Lines:** 151-161, 185-186
@@ -720,6 +722,32 @@ type RunsListCmd struct {
 ```
 
 Then implement pagination limit in the Run method, or add a separate `CollectRunsWithLimit` function.
+
+#### Plan
+- **Acceptance criteria:**
+  1. `RunsListCmd` accepts `--limit N` flag (default 0 = all runs)
+  2. When limit > 0, fetch only up to N runs (stopping pagination early)
+  3. When limit = 0 or not specified, existing behavior (fetch all) is preserved
+  4. Tests verify limit functionality works correctly
+- **Verification:** `make fmt && make lint && make build && make test` passes; new tests pass; command help shows `--limit` flag
+- **Implementation steps:**
+  1. Add `Limit int` field to `RunsListCmd` struct with kong tag
+  2. Add `CollectRunsWithLimit` function to `internal/tfcapi/pagination.go`
+  3. Update `runsClient.List` interface to accept limit parameter
+  4. Update `realRunsClient.List` to use `CollectRunsWithLimit`
+  5. Update `fakeRunsClient.List` in tests to capture limit
+  6. Add tests: `TestRunsList_WithLimit`, `TestRunsList_LimitZeroFetchesAll`
+  7. Run feedback loops
+
+#### Progress Notes
+
+**2026-01-22:** Completed.
+- Changed: `internal/tfcapi/pagination.go` - added `CollectRunsWithLimit` function; refactored `CollectAllRuns` to call it with limit=0
+- Changed: `cmd/tfc/runs.go` - added `Limit int` field to `RunsListCmd` struct; updated `runsClient.List` interface to accept limit parameter; updated `realRunsClient.List` to pass limit
+- Changed: `cmd/tfc/runs_test.go` - updated `fakeRunsClient.List` to capture and respect limit; added `listLimit` capture field; added `TestRunsList_WithLimit` and `TestRunsList_LimitZeroFetchesAll` tests
+- Commands: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Verified: `./bin/tfc runs list --help` shows `--limit=0` flag with help text
+- Result: Users can now use `tfc runs list --workspace-id ws-xxx --limit 10` to fetch only the most recent N runs, improving performance for large workspaces
 
 ---
 
