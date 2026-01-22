@@ -6,8 +6,11 @@ import (
 	"os"
 
 	"github.com/alecthomas/kong"
+	"github.com/go-logr/logr"
 
 	internalcmd "github.com/richclement/tfccli/internal/cmd"
+	"github.com/richclement/tfccli/internal/config"
+	"github.com/richclement/tfccli/internal/logging"
 )
 
 var (
@@ -54,6 +57,9 @@ type CLI struct {
 	ConfigurationVersions ConfigurationVersionsCmd `cmd:"" name:"configuration-versions" help:"Manage configuration versions."`
 	Users                 UsersCmd                 `cmd:"" help:"Manage users."`
 	Invoices              InvoicesCmd              `cmd:"" help:"Manage invoices (HCP Terraform Cloud only)."`
+
+	// Logger is the logr.Logger used for debug output. Set by run() based on --debug flag and settings.
+	Logger logr.Logger `kong:"-"`
 }
 
 type exitError struct {
@@ -93,6 +99,21 @@ func run() (exitCode int) {
 		printParseError(err)
 		return 1
 	}
+
+	// Create logger based on --debug flag and settings log_level.
+	// Default to info level if settings don't exist (e.g., before init).
+	logLevel := "info"
+	if settings, err := config.Load(""); err == nil {
+		contextName := cli.Context
+		if contextName == "" {
+			contextName = settings.CurrentContext
+		}
+		if ctx, exists := settings.Contexts[contextName]; exists {
+			resolved := ctx.WithDefaults()
+			logLevel = resolved.LogLevel
+		}
+	}
+	cli.Logger = logging.NewLogger(logLevel, cli.Debug)
 
 	if err := ctx.Run(); err != nil {
 		return exitCodeForError(err)

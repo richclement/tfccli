@@ -638,3 +638,54 @@ Commands run:
 - `make test` - passed (all tests pass, behavior unchanged)
 
 Net effect: Reduced main.go from 724 lines to 119 lines by extracting DoctorCmd (202 lines), InitCmd (132 lines), and ContextsCmd with subcommands (305 lines) into focused files. No circular imports, all tests pass unchanged.
+
+---
+
+### Task: #3 Unused logging infrastructure
+
+**Status:** DONE
+**Priority:** P2
+
+**Acceptance Criteria:**
+- The `internal/logging` package is actually used by commands
+- The `--debug` flag connects to the logging infrastructure
+- Debug output shows useful information (context resolution, API address) when `--debug` is set
+- Logger is passed through `resolveClientConfig` to enable debug logging for config resolution
+- Tests pass unchanged (behavior is identical when --debug is not set)
+- Logs never include secrets (tokens, sensitive variable values)
+
+**Verification:**
+- `make fmt` passes
+- `make lint` passes
+- `make build` passes
+- `make test` passes
+- Running `tfc --debug organizations list` shows debug output to stderr
+
+**Implementation Plan:**
+1. Add `Logger` field to CLI struct and create logger in `run()` based on `--debug` flag
+2. Update `resolveClientConfig` to accept logger parameter and log context/address resolution at debug level
+3. Update commands to pass logger through to resolveClientConfig
+4. Add minimal debug logging when API calls are made
+5. Run feedback loops and verify
+
+**Progress Notes:**
+
+_2026-01-22:_ Completed.
+
+Files changed:
+- `cmd/tfc/main.go`: Added imports for `logr`, `config`, `logging`. Added `Logger logr.Logger` field to CLI struct (with `kong:"-"` to exclude from CLI parsing). Updated `run()` to create logger based on settings log_level and `--debug` flag before running commands.
+- `cmd/tfc/common.go`: Updated `resolveClientConfig` to use `cli.Logger` for debug output. Added debug logging for: context resolution (name + address), address override from `--address` flag, organization resolution, and token discovery source (NOT the token itself - security requirement).
+
+Verification:
+- `make fmt` - passed
+- `make lint` - passed
+- `make build` - passed
+- `make test` - passed (all tests pass)
+- Manual test: `./bin/tfc --debug organizations list` shows debug output:
+  ```
+  2026/01/22 12:12:03 "level"=2 "msg"="resolved context" "context"="default" "address"="app.terraform.io"
+  2026/01/22 12:12:03 "level"=2 "msg"="resolved organization" "org"="Sonatype-Cloud"
+  2026/01/22 12:12:03 "level"=2 "msg"="token discovered" "source"="terraform config"
+  ```
+
+Net effect: Connected the `--debug` flag and settings `log_level` to the logging infrastructure. Debug output now shows useful context resolution information when making API calls. The logger is passed through `resolveClientConfig` to all commands that use it. Token values are never logged (security requirement met).

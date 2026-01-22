@@ -13,7 +13,10 @@ import (
 
 // resolveClientConfig resolves settings and token for API calls, including org resolution.
 // Returns the client config, resolved org name, and any error.
+// Debug logging is output via cli.Logger when --debug is enabled.
 func resolveClientConfig(cli *CLI, baseDir string, tokenResolver *auth.TokenResolver) (tfcapi.ClientConfig, string, error) {
+	logger := cli.Logger
+
 	settings, err := config.Load(baseDir)
 	if err != nil {
 		return tfcapi.ClientConfig{}, "", err
@@ -31,12 +34,18 @@ func resolveClientConfig(cli *CLI, baseDir string, tokenResolver *auth.TokenReso
 	resolved := ctx.WithDefaults()
 	if cli.Address != "" {
 		resolved.Address = cli.Address
+		logger.V(2).Info("address overridden by --address flag", "address", resolved.Address)
 	}
+
+	logger.V(2).Info("resolved context", "context", contextName, "address", resolved.Address)
 
 	// Resolve organization: CLI flag takes precedence over context default
 	org := cli.Org
 	if org == "" {
 		org = resolved.DefaultOrg
+	}
+	if org != "" {
+		logger.V(2).Info("resolved organization", "org", org)
 	}
 
 	if tokenResolver == nil {
@@ -47,9 +56,13 @@ func resolveClientConfig(cli *CLI, baseDir string, tokenResolver *auth.TokenReso
 		return tfcapi.ClientConfig{}, "", err
 	}
 
+	// Log token source but NOT the token itself (security requirement)
+	logger.V(2).Info("token discovered", "source", tokenResult.Source)
+
 	return tfcapi.ClientConfig{
 		Address: resolved.Address,
 		Token:   tokenResult.Token,
+		Logger:  logger,
 	}, org, nil
 }
 
