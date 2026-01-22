@@ -54,6 +54,10 @@ func TestContextsListCmd_ListsAllContexts(t *testing.T) {
 	if !strings.Contains(out, "prod") {
 		t.Errorf("expected 'prod' in output, got: %s", out)
 	}
+	// Verify current context is marked with asterisk
+	if !strings.Contains(out, "*") {
+		t.Errorf("expected '*' marker for current context, got: %s", out)
+	}
 }
 
 func TestContextsAddCmd_CreatesNewContext(t *testing.T) {
@@ -491,6 +495,13 @@ func TestContextsShowCmd_ShowsCurrentContext(t *testing.T) {
 	if !strings.Contains(out, "myorg") {
 		t.Errorf("expected 'myorg' in output, got: %s", out)
 	}
+	// Verify address and log level are also displayed
+	if !strings.Contains(out, "app.terraform.io") {
+		t.Errorf("expected 'app.terraform.io' in output, got: %s", out)
+	}
+	if !strings.Contains(out, "info") {
+		t.Errorf("expected 'info' log level in output, got: %s", out)
+	}
 }
 
 func TestContextsShowCmd_ShowsNamedContext(t *testing.T) {
@@ -525,6 +536,17 @@ func TestContextsShowCmd_ShowsNamedContext(t *testing.T) {
 	}
 	if !strings.Contains(out, "acme") {
 		t.Errorf("expected 'acme' in output, got: %s", out)
+	}
+	// Verify address and log level are also displayed
+	if !strings.Contains(out, "tfe.example.com") {
+		t.Errorf("expected 'tfe.example.com' in output, got: %s", out)
+	}
+	if !strings.Contains(out, "warn") {
+		t.Errorf("expected 'warn' log level in output, got: %s", out)
+	}
+	// Verify non-current context is NOT marked as current
+	if strings.Contains(out, "(current)") {
+		t.Errorf("expected non-current context to NOT have '(current)' marker, got: %s", out)
 	}
 }
 

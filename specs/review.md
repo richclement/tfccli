@@ -950,6 +950,8 @@ func TestContextsRemoveCmd_SaveError(t *testing.T) {
 
 ### 21. Tests Don't Verify Output Content
 
+**Status:** DONE
+
 **File:** `cmd/tfc/contexts_test.go:18-38, 306-326`
 
 **Problem:** Several tests pass but include comments noting they don't verify stdout content. After fixing #16 (injectable stdout), these tests should be updated to capture and verify output.
@@ -958,6 +960,41 @@ func TestContextsRemoveCmd_SaveError(t *testing.T) {
 - `TestContextsListCmd_ListsAllContexts` (line 18)
 - `TestContextsShowCmd_ShowsCurrentContext` (line 306)
 - `TestContextsShowCmd_ShowsNamedContext` (line 328)
+
+#### Plan (2026-01-21)
+
+**Acceptance criteria:**
+- `TestContextsListCmd_ListsAllContexts` verifies `*` marker appears for current context
+- `TestContextsShowCmd_ShowsCurrentContext` verifies address and log_level fields in output
+- `TestContextsShowCmd_ShowsNamedContext` verifies address, log_level, and absence of `(current)` marker
+
+**Verification approach:**
+- `make test` passes
+- All enhanced tests verify output content
+
+**Implementation steps:**
+1. Add `*` marker assertion to `TestContextsListCmd_ListsAllContexts`
+2. Add address and log_level assertions to `TestContextsShowCmd_ShowsCurrentContext`
+3. Add address, log_level, and non-current verification to `TestContextsShowCmd_ShowsNamedContext`
+4. Run feedback loops
+
+#### Progress Note (2026-01-21)
+
+**Files changed:**
+- `cmd/tfc/contexts_test.go`:
+  - `TestContextsListCmd_ListsAllContexts`: Added assertion for `*` marker for current context
+  - `TestContextsShowCmd_ShowsCurrentContext`: Added assertions for `app.terraform.io` address and `info` log level
+  - `TestContextsShowCmd_ShowsNamedContext`: Added assertions for `tfe.example.com` address, `warn` log level, and verification that `(current)` marker is absent
+
+**Commands run:**
+- `make fmt` - passed
+- `make lint` - passed (with GOCACHE override for sandbox)
+- `make build` - passed
+- `make test` - passed (all tests green)
+
+**What remains:**
+- Task #21 is complete
+- Tests now comprehensively verify output content including markers, all displayed fields, and correct absence of markers for non-current contexts
 
 **Example fix for `TestContextsListCmd_ListsAllContexts`:**
 ```go
