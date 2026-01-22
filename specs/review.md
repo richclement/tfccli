@@ -580,11 +580,15 @@ Review of `cmd/tfc/main.go` (InitCmd) and `cmd/tfc/init_test.go`.
 
 ### 11. Missing Test: SettingsPath Error
 
+**Status:** SKIPPED (low priority, difficult to test)
+
 **File:** `cmd/tfc/init_test.go`
 
 **Problem:** No test verifies error handling when `config.SettingsPath()` fails. This is difficult to trigger since `SettingsPath` only fails if `os.UserHomeDir()` fails and no `baseDir` is provided. Consider adding a test with a mock or skip if not feasible.
 
 **Note:** This is a low-priority test since the error path is unlikely in practice (only fails if HOME env var is unset and no baseDir override). The error is properly wrapped with RuntimeError at line 273-274.
+
+**Rationale for skipping:** The code path is properly implemented with correct error wrapping. Testing would require significant infrastructure changes (mocking os.UserHomeDir globally) for minimal benefit. All tests use baseDir override, so this path is effectively unreachable in test scenarios.
 
 ---
 
@@ -957,6 +961,8 @@ func (c *ContextsListCmd) Run(cli *CLI) error {
 
 ### 18. ContextsListCmd Signature Missing CLI Parameter
 
+**Status:** DONE (fixed as part of #15)
+
 **File:** `cmd/tfc/main.go:373`
 
 **Problem:** `ContextsListCmd.Run()` takes no parameters, unlike other list commands which take `cli *CLI`. This prevents access to the `--output-format` flag, which is why JSON output isn't supported. The same applies to `ContextsShowCmd.Run()`.
@@ -1224,6 +1230,8 @@ func TestContextsListCmd_ListsAllContexts(t *testing.T) {
 
 ### 22. Missing Test: ContextsListCmd JSON Output
 
+**Status:** DONE (added as part of #15)
+
 **File:** `cmd/tfc/contexts_test.go`
 
 **Problem:** After implementing JSON output support (#15), needs tests for JSON format.
@@ -1270,6 +1278,8 @@ func TestContextsListCmd_JSONOutput(t *testing.T) {
 ---
 
 ### 23. Missing Test: ContextsShowCmd JSON Output
+
+**Status:** DONE (added as part of #15)
 
 **File:** `cmd/tfc/contexts_test.go`
 
