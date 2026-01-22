@@ -468,7 +468,9 @@ func TestRunsApply_WithComment(t *testing.T) {
 
 ---
 
-### 9. [ ] Missing test: client factory returns error
+### 9. [x] Missing test: client factory returns error
+
+**Status:** DONE
 
 **File:** `cmd/tfc/runs_test.go`
 
@@ -501,6 +503,24 @@ func TestRunsList_ClientFactoryError(t *testing.T) {
     }
 }
 ```
+
+#### Plan
+- **Acceptance criteria:** A new test `TestRunsList_ClientFactoryError` exists that verifies the command returns an error when the client factory fails.
+- **Verification:** `make fmt && make lint && make build && make test` passes; new test passes.
+- **Implementation steps:**
+  1. Add `TestRunsList_ClientFactoryError` test function after `TestRunsList_APIError` in runs_test.go
+  2. Test uses a clientFactory that returns an error
+  3. Verify error is propagated correctly to caller
+  4. Run feedback loops to verify
+
+#### Progress Notes
+
+**2026-01-22:** Completed.
+- Changed: `cmd/tfc/runs_test.go` - added `TestRunsList_ClientFactoryError` test function after `TestRunsList_APIError`
+- Test uses clientFactory that returns `errors.New("failed to create TFC client")`
+- Verifies error is returned and contains "failed to create client" message
+- Commands: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Result: Client factory error handling branch in `RunsListCmd.Run` is now tested
 
 ---
 

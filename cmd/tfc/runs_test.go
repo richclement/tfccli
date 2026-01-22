@@ -1088,6 +1088,31 @@ func TestRunsList_APIError(t *testing.T) {
 	}
 }
 
+func TestRunsList_ClientFactoryError(t *testing.T) {
+	tmpDir, resolver := setupRunsTest(t)
+
+	var stdout bytes.Buffer
+	cmd := &RunsListCmd{
+		WorkspaceID:   "ws-test",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &stdout,
+		clientFactory: func(_ tfcapi.ClientConfig) (runsClient, error) {
+			return nil, errors.New("failed to create TFC client")
+		},
+	}
+
+	cli := &CLI{}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error for client factory failure")
+	}
+	if !strings.Contains(err.Error(), "failed to create client") {
+		t.Errorf("expected client error message, got: %v", err)
+	}
+}
+
 func TestRunsGet_NotFound(t *testing.T) {
 	tmpDir, resolver := setupRunsTest(t)
 
