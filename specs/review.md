@@ -1001,10 +1001,12 @@ if plan.LogReadURL != "" {
 
 ---
 
-### 20. [ ] `defaultDownloadClient` doesn't include response body in error
+### 20. [x] `defaultDownloadClient` doesn't include response body in error
+
+**Status:** DONE
 
 **File:** `cmd/tfc/plans.go`
-**Lines:** 377-389
+**Lines:** 339-340
 
 **Problem:** When the HTTP status code is not 200, the function returns a generic error with just the status code. The response body (which often contains useful error details from the server) is discarded.
 
@@ -1025,6 +1027,26 @@ if resp.StatusCode != http.StatusOK {
     return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 }
 ```
+
+#### Plan
+- **Acceptance criteria:** Error messages from `defaultDownloadClient` include the response body when available (for non-200 status codes), providing actionable error details from the server.
+- **Verification:** `make fmt && make lint && make build && make test` passes; new test verifies error includes body.
+- **Implementation steps:**
+  1. Update `defaultDownloadClient` to read response body on non-200 status
+  2. Include body in error message if non-empty
+  3. Add test `TestDefaultDownloadClient_HTTPError_IncludesBody` using httptest
+  4. Run feedback loops to verify
+
+#### Progress Notes
+
+**2026-01-22:** Completed.
+- Changed: `cmd/tfc/plans.go` lines 339-344 - added response body reading on non-200 status; body is included in error message when available
+- Changed: `cmd/tfc/plans_test.go` - added `TestDefaultDownloadClient_HTTPError_IncludesBody` test with 3 subtests:
+  - `with_body` - verifies error includes status code (403) and body content ("Access denied")
+  - `without_body` - verifies error includes status code (404) when no body present
+  - `success` - verifies normal 200 response works correctly
+- Commands: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Result: Error messages now include actionable server response details, improving debuggability
 
 ---
 

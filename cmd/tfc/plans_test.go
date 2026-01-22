@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -779,4 +781,73 @@ func TestPlansSanitizedPlan_NoAuthorizationForwarded(t *testing.T) {
 	if downloadedURL != "https://archivist.example/sanitized.json" {
 		t.Errorf("expected download URL https://archivist.example/sanitized.json, got %s", downloadedURL)
 	}
+}
+
+func TestDefaultDownloadClient_HTTPError_IncludesBody(t *testing.T) {
+	// Test that defaultDownloadClient includes response body in error message
+	t.Run("with_body", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte(`{"error":"Access denied: invalid credentials"}`))
+		}))
+		defer server.Close()
+
+		cmd := &PlansSanitizedPlanCmd{
+			httpClient: server.Client(),
+		}
+		cmd.downloadClient = cmd.defaultDownloadClient
+
+		_, err := cmd.downloadClient(server.URL)
+		if err == nil {
+			t.Fatal("expected error for non-200 status")
+		}
+		if !strings.Contains(err.Error(), "403") {
+			t.Errorf("expected status code 403 in error, got: %v", err)
+		}
+		if !strings.Contains(err.Error(), "Access denied") {
+			t.Errorf("expected response body in error, got: %v", err)
+		}
+	})
+
+	t.Run("without_body", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer server.Close()
+
+		cmd := &PlansSanitizedPlanCmd{
+			httpClient: server.Client(),
+		}
+		cmd.downloadClient = cmd.defaultDownloadClient
+
+		_, err := cmd.downloadClient(server.URL)
+		if err == nil {
+			t.Fatal("expected error for non-200 status")
+		}
+		if !strings.Contains(err.Error(), "404") {
+			t.Errorf("expected status code 404 in error, got: %v", err)
+		}
+	})
+
+	t.Run("success", func(t *testing.T) {
+		expectedContent := `{"sanitized":"data"}`
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(expectedContent))
+		}))
+		defer server.Close()
+
+		cmd := &PlansSanitizedPlanCmd{
+			httpClient: server.Client(),
+		}
+		cmd.downloadClient = cmd.defaultDownloadClient
+
+		data, err := cmd.downloadClient(server.URL)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if string(data) != expectedContent {
+			t.Errorf("expected %q, got %q", expectedContent, string(data))
+		}
+	})
 }
