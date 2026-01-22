@@ -237,6 +237,42 @@ func TestContextsUseCmd_NoSettings(t *testing.T) {
 	}
 }
 
+// TestContextsUseCmd_SaveError tests that save errors are properly surfaced.
+func TestContextsUseCmd_SaveError(t *testing.T) {
+	tmpHome := t.TempDir()
+
+	settings := &config.Settings{
+		CurrentContext: "default",
+		Contexts: map[string]config.Context{
+			"default": {Address: "app.terraform.io", LogLevel: "info"},
+			"prod":    {Address: "tfe.example.com", LogLevel: "warn"},
+		},
+	}
+	createTestSettings(t, tmpHome, settings)
+
+	// Make the settings file read-only to prevent writing
+	settingsPath := filepath.Join(tmpHome, ".tfccli", "settings.json")
+	if err := os.Chmod(settingsPath, 0o400); err != nil {
+		t.Fatalf("Failed to chmod settings file: %v", err)
+	}
+	t.Cleanup(func() {
+		os.Chmod(settingsPath, 0o600) // Restore so cleanup can delete
+	})
+
+	cmd := &ContextsUseCmd{
+		Name:    "prod",
+		baseDir: tmpHome,
+	}
+
+	err := cmd.Run()
+	if err == nil {
+		t.Fatal("expected error when save fails, got nil")
+	}
+	if !strings.Contains(err.Error(), "failed to save settings") {
+		t.Errorf("expected save failure message, got: %v", err)
+	}
+}
+
 func TestContextsRemoveCmd_RemovesContext(t *testing.T) {
 	tmpHome := t.TempDir()
 

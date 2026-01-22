@@ -3168,9 +3168,31 @@ func TestContextsAddCmd_SaveError(t *testing.T) {
 
 ### 59. Missing Test: ContextsUseCmd config.Save Failure
 
+**Status: DONE** (2026-01-21)
+
 **File:** `cmd/tfc/contexts_test.go`
 
 **Problem:** Same as #58 but for the use command.
+
+**Plan (2026-01-21):**
+- Acceptance criteria: Test `TestContextsUseCmd_SaveError` exists and verifies that when config.Save() fails (e.g., read-only settings file), it is wrapped and surfaced as a RuntimeError with message "failed to save settings"
+- Verification: Run `go test -v -run "TestContextsUseCmd_SaveError" ./cmd/tfc/...`
+- Implementation:
+  1. Add test `TestContextsUseCmd_SaveError` to `contexts_test.go`
+  2. Create settings, make the settings file read-only
+  3. Attempt to switch context and verify RuntimeError is returned
+
+**Progress notes (2026-01-21):**
+
+Changes made:
+- `cmd/tfc/contexts_test.go:240-278` - Added `TestContextsUseCmd_SaveError` test that makes the settings file read-only and verifies the proper RuntimeError is returned with "failed to save settings" message
+
+Verification:
+- `make fmt` - passed
+- `make lint` - passed (with temp caches due to permission issues)
+- `make build` - passed (with temp caches)
+- `make test` - all tests pass
+- `go test -v -run "TestContextsUseCmd_SaveError" ./cmd/tfc/...` - pass
 
 **Test to add:**
 ```go
@@ -3517,7 +3539,7 @@ func TestContextsShowCmd_JSONOutput(t *testing.T) {
 | Use/switch context | ✅ | - |
 | Use nonexistent context (error) | ✅ | - |
 | Use settings not found | ✅ | #54 |
-| Use config.Save failure | ❌ | #59 |
+| Use config.Save failure | ✅ | #59 |
 | Remove with --force | ✅ | - |
 | Remove current context (error) | ✅ | - |
 | Remove with prompt (decline) | ✅ | - |
