@@ -1561,7 +1561,9 @@ func TestPlansJSONOutput_EmptyOutput(t *testing.T) {
 
 ---
 
-### 30. [ ] Missing test: verify correct plan ID passed to API
+### 30. [x] Missing test: verify correct plan ID passed to API
+
+**Status:** DONE
 
 **File:** `cmd/tfc/plans_test.go`
 
@@ -1579,6 +1581,13 @@ if fakeClient.jsonOutputPlanID != "plan-123" {
     t.Errorf("expected plan ID plan-123, got %s", fakeClient.jsonOutputPlanID)
 }
 ```
+
+#### Progress Notes
+
+**2026-01-22:** Verified already completed as part of issue #22.
+- Assertions already exist in `TestPlansGet_JSON` (lines 141-144) and `TestPlansJSONOutput_WritesToStdout` (lines 437-440)
+- Commands: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Result: Plan ID verification is already in place; marking as DONE
 
 ---
 
