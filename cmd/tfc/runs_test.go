@@ -309,6 +309,53 @@ func TestRunsGet_JSON(t *testing.T) {
 	}
 }
 
+func TestRunsGet_JSON_WithWorkspace(t *testing.T) {
+	tmpDir, resolver := setupRunsTest(t)
+
+	createdAt := time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC)
+	fakeClient := &fakeRunsClient{
+		run: &tfe.Run{
+			ID:        "run-1",
+			Status:    tfe.RunPlanned,
+			Message:   "Test run",
+			CreatedAt: createdAt,
+			Source:    tfe.RunSourceAPI,
+			Workspace: &tfe.Workspace{ID: "ws-test123"},
+		},
+	}
+
+	var stdout bytes.Buffer
+	cmd := &RunsGetCmd{
+		ID:            "run-1",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &stdout,
+		clientFactory: func(_ tfcapi.ClientConfig) (runsClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var result map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+		t.Fatalf("failed to parse JSON: %v", err)
+	}
+
+	data, ok := result["data"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected data object, got %T", result["data"])
+	}
+	if data["workspace_id"] != "ws-test123" {
+		t.Errorf("expected workspace_id ws-test123, got %v", data["workspace_id"])
+	}
+}
+
 func TestRunsCreate_JSON(t *testing.T) {
 	tmpDir, resolver := setupRunsTest(t)
 

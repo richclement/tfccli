@@ -30,22 +30,27 @@ type RunsCmd struct {
 
 // runJSON is a JSON-serializable representation of a run.
 type runJSON struct {
-	ID        string `json:"id"`
-	Status    string `json:"status"`
-	Message   string `json:"message,omitempty"`
-	CreatedAt string `json:"created_at"`
-	Source    string `json:"source,omitempty"`
+	ID          string `json:"id"`
+	Status      string `json:"status"`
+	Message     string `json:"message,omitempty"`
+	CreatedAt   string `json:"created_at"`
+	Source      string `json:"source,omitempty"`
+	WorkspaceID string `json:"workspace_id,omitempty"`
 }
 
 // toRunJSON converts a tfe.Run to a JSON-serializable form.
 func toRunJSON(run *tfe.Run) *runJSON {
-	return &runJSON{
+	r := &runJSON{
 		ID:        run.ID,
 		Status:    string(run.Status),
 		Message:   run.Message,
 		CreatedAt: run.CreatedAt.Format(time.RFC3339),
 		Source:    string(run.Source),
 	}
+	if run.Workspace != nil {
+		r.WorkspaceID = run.Workspace.ID
+	}
+	return r
 }
 
 // toRunJSONList converts a slice of tfe.Run to JSON-serializable form.

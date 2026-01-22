@@ -54,7 +54,9 @@ format, isTTY := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
 
 ---
 
-### 2. [ ] `runJSON` struct missing workspace_id field
+### 2. [x] `runJSON` struct missing workspace_id field
+
+**Status:** DONE
 
 **File:** `cmd/tfc/runs.go`
 **Lines:** 32-38, 41-48
@@ -89,6 +91,23 @@ func toRunJSON(run *tfe.Run) *runJSON {
     return r
 }
 ```
+
+#### Plan
+- **Acceptance criteria:** JSON output includes `workspace_id` field when the run has a workspace, matching table output behavior.
+- **Verification:** Tests pass; JSON output contains workspace_id when run.Workspace is not nil; field is omitted (omitempty) when nil.
+- **Implementation steps:**
+  1. Add `WorkspaceID string` field to `runJSON` struct with `json:"workspace_id,omitempty"` tag
+  2. Update `toRunJSON` function to conditionally populate `WorkspaceID` from `run.Workspace.ID`
+  3. Update existing tests to include workspace in test runs and verify JSON output
+  4. Run `make fmt && make lint && make test` to verify
+
+#### Progress Notes
+
+**2026-01-22:** Completed.
+- Changed: `cmd/tfc/runs.go` - added `WorkspaceID` field to `runJSON` struct with `json:"workspace_id,omitempty"` tag; updated `toRunJSON` to conditionally populate it from `run.Workspace.ID`
+- Changed: `cmd/tfc/runs_test.go` - added `TestRunsGet_JSON_WithWorkspace` test to verify workspace_id appears in JSON output
+- Commands: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Result: JSON and table output are now consistent - both include workspace_id when workspace is present
 
 ---
 
