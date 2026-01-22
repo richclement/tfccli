@@ -17,6 +17,10 @@ import (
 	"github.com/richclement/tfccli/internal/tfcapi"
 )
 
+// NOTE: invoices client still uses direct HTTP because it has special pagination
+// (cursor-based) and special error handling for invoices not available.
+// It uses tfcapi.ParseJSONAPIErrorResponse for error parsing to share that logic.
+
 // InvoicesCmd groups all invoices subcommands.
 type InvoicesCmd struct {
 	List InvoicesListCmd `cmd:"" help:"List invoices for an organization."`
@@ -159,6 +163,7 @@ func (c *realInvoicesClient) GetNext(ctx context.Context, org string) (*InvoiceR
 }
 
 // handleErrorResponse handles HTTP error responses.
+// Uses tfcapi.ParseJSONAPIErrorResponse for shared JSON:API error parsing.
 func (c *realInvoicesClient) handleErrorResponse(statusCode int, body []byte) error {
 	if statusCode == http.StatusOK {
 		return nil
@@ -183,16 +188,13 @@ func (c *realInvoicesClient) handleErrorResponse(statusCode int, body []byte) er
 		return &invoicesNotAvailableError{}
 	}
 
-	// Try to parse JSON:API error
-	var errResp struct {
-		Errors []struct {
-			Status string `json:"status"`
-			Title  string `json:"title"`
-			Detail string `json:"detail"`
-		} `json:"errors"`
-	}
-	if err := json.Unmarshal(body, &errResp); err == nil && len(errResp.Errors) > 0 {
-		return fmt.Errorf("%s: %s", errResp.Errors[0].Title, errResp.Errors[0].Detail)
+	// Use shared JSON:API error parsing
+	if errResp := tfcapi.ParseJSONAPIErrorResponse(body); errResp != nil && len(errResp.Errors) > 0 {
+		e := errResp.Errors[0]
+		if e.Detail != "" {
+			return fmt.Errorf("%s: %s", e.Title, e.Detail)
+		}
+		return fmt.Errorf("%s", e.Title)
 	}
 
 	return fmt.Errorf("API request failed with status %d", statusCode)

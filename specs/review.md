@@ -689,3 +689,59 @@ Verification:
   ```
 
 Net effect: Connected the `--debug` flag and settings `log_level` to the logging infrastructure. Debug output now shows useful context resolution information when making API calls. The logger is passed through `resolveClientConfig` to all commands that use it. Token values are never logged (security requirement met).
+
+---
+
+### Task: #7 Duplicated HTTP client code
+
+**Status:** DONE
+**Priority:** P2
+
+**Acceptance Criteria:**
+- A shared HTTP client helper exists in `internal/tfcapi/` that handles:
+  - Request construction with Authorization header
+  - JSON:API error parsing
+  - Common status code handling (401, 403, 404)
+- `users.go` and `invoices.go` use the shared helper instead of duplicating error parsing
+- Tests pass unchanged (behavior is identical)
+- No security regressions (token never logged, redirects don't forward auth)
+
+**Verification:**
+- `make fmt` passes
+- `make lint` passes
+- `make build` passes
+- `make test` passes
+
+**Implementation Plan:**
+1. Create `internal/tfcapi/httpclient.go` with shared HTTP client helper type
+2. Add `DoRequest` method that handles request construction with auth header
+3. Add `ParseJSONAPIErrorResponse` function for common error response parsing
+4. Update `users.go` to use the shared HTTP client and error parsing
+5. Update `invoices.go` to use the shared HTTP client and error parsing
+6. Run feedback loops and verify
+
+**Progress Notes:**
+
+_2026-01-22:_ Completed.
+
+Files created:
+- `internal/tfcapi/httpclient.go` (106 lines): `HTTPClient` type with `DoRequest` method for authenticated API requests, `ParseHTTPError` for common error handling, `ParseJSONAPIErrorResponse` for shared JSON:API error parsing
+- `internal/tfcapi/httpclient_test.go` (270 lines): Comprehensive tests for new HTTP client helper
+
+Files changed:
+- `cmd/tfc/users.go`: Simplified `realUsersClient` to use shared `tfcapi.HTTPClient`. Removed inline HTTP request/response handling (~40 lines removed). Client now uses `httpClient.DoRequest()` for authenticated requests.
+- `cmd/tfc/invoices.go`: Updated `handleErrorResponse` to use `tfcapi.ParseJSONAPIErrorResponse` instead of duplicate inline struct. Added note explaining why invoices keeps direct HTTP (cursor pagination + special error handling).
+
+Commands run:
+- `make fmt` - passed
+- `make lint` - passed
+- `make build` - passed
+- `make test` - passed (all tests pass)
+
+Net effect:
+- Created shared `tfcapi.HTTPClient` with `DoRequest` method for authenticated TFC API requests
+- Created shared `tfcapi.ParseHTTPError` for common HTTP status handling (401, 403, 404)
+- Created shared `tfcapi.ParseJSONAPIErrorResponse` for JSON:API error body parsing
+- Updated users.go to use shared HTTP client (~40 lines reduced)
+- Updated invoices.go to use shared JSON:API error parsing (removed duplicate struct)
+- Behavior unchanged, tests pass

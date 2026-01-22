@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"net/url"
 	"os"
 
@@ -49,55 +48,18 @@ type UserAttributes struct {
 // usersClientFactory creates a usersClient from config.
 type usersClientFactory func(cfg tfcapi.ClientConfig) (usersClient, error)
 
-// realUsersClient implements usersClient using raw HTTP calls.
+// realUsersClient implements usersClient using the shared HTTP client.
 // go-tfe doesn't expose GET /users/:id, so we make the call directly.
 type realUsersClient struct {
-	baseURL    string
-	token      string
-	httpClient *http.Client
+	httpClient *tfcapi.HTTPClient
 }
 
 func (c *realUsersClient) Read(ctx context.Context, userID string) (*UserResponse, error) {
-	apiURL := fmt.Sprintf("%s/api/v2/users/%s", c.baseURL, url.PathEscape(userID))
+	path := fmt.Sprintf("/api/v2/users/%s", url.PathEscape(userID))
 
-	req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
+	body, err := c.httpClient.DoRequest(ctx, "GET", path, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Set("Authorization", "Bearer "+c.token)
-	req.Header.Set("Content-Type", "application/vnd.api+json")
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to make request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response: %w", err)
-	}
-
-	if resp.StatusCode == http.StatusNotFound {
-		return nil, fmt.Errorf("user not found: %s", userID)
-	}
-	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, fmt.Errorf("unauthorized: invalid or missing API token")
-	}
-	if resp.StatusCode != http.StatusOK {
-		// Try to parse JSON:API error
-		var errResp struct {
-			Errors []struct {
-				Status string `json:"status"`
-				Title  string `json:"title"`
-				Detail string `json:"detail"`
-			} `json:"errors"`
-		}
-		if err := json.Unmarshal(body, &errResp); err == nil && len(errResp.Errors) > 0 {
-			return nil, fmt.Errorf("%s: %s", errResp.Errors[0].Title, errResp.Errors[0].Detail)
-		}
-		return nil, fmt.Errorf("API request failed with status %d", resp.StatusCode)
+		return nil, err
 	}
 
 	var userResp UserResponse
@@ -110,15 +72,8 @@ func (c *realUsersClient) Read(ctx context.Context, userID string) (*UserRespons
 
 // defaultUsersClientFactory creates a real TFC client that satisfies usersClient.
 func defaultUsersClientFactory(cfg tfcapi.ClientConfig) (usersClient, error) {
-	baseURL := tfcapi.NormalizeAddress(cfg.Address)
-	if baseURL == "" {
-		baseURL = "https://app.terraform.io"
-	}
-
 	return &realUsersClient{
-		baseURL:    baseURL,
-		token:      cfg.Token,
-		httpClient: &http.Client{},
+		httpClient: tfcapi.NewHTTPClient(cfg),
 	}, nil
 }
 
