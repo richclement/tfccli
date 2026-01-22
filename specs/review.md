@@ -204,11 +204,28 @@ Then update the methods to capture these values.
 
 ---
 
-### 5. [ ] Missing test: `RunsGet` table output
+### 5. [x] Missing test: `RunsGet` table output
+
+**Status:** DONE
 
 **File:** `cmd/tfc/runs_test.go`
 
 **Problem:** There's `TestRunsGet_JSON` but no test for table output format, which has different logic (field/value pairs instead of data object).
+
+#### Plan
+- **Acceptance criteria:** A new test `TestRunsGet_Table` exists that verifies table output contains expected fields (ID, Status, Message, Source, Created At, Workspace ID).
+- **Verification:** `make fmt && make lint && make test` passes; test covers table output branch in `RunsGetCmd.Run`.
+- **Implementation steps:**
+  1. Add `TestRunsGet_Table` test function after `TestRunsGet_JSON_WithWorkspace`
+  2. Test verifies run ID, Status, Message, Source, Created At, and Workspace ID appear in output
+  3. Run feedback loops to verify
+
+#### Progress Notes
+
+**2026-01-22:** Completed.
+- Changed: `cmd/tfc/runs_test.go` - added `TestRunsGet_Table` test function that verifies table output contains: run ID (`run-1`), status (`planned`), message (`Test run`), source (`tfe-api`), created_at date (`2025-01-15`), Workspace ID field and value (`ws-test`)
+- Commands: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Result: Table output branch in `RunsGetCmd.Run` is now tested, covering field/value pair rendering including conditional Workspace ID
 
 **Fix:** Add test:
 ```go

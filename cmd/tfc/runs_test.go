@@ -380,6 +380,63 @@ func TestRunsGet_JSON_WithWorkspace(t *testing.T) {
 	}
 }
 
+func TestRunsGet_Table(t *testing.T) {
+	tmpDir, resolver := setupRunsTest(t)
+
+	createdAt := time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC)
+	fakeClient := &fakeRunsClient{
+		run: &tfe.Run{
+			ID:        "run-1",
+			Status:    tfe.RunPlanned,
+			Message:   "Test run",
+			CreatedAt: createdAt,
+			Source:    tfe.RunSourceAPI,
+			Workspace: &tfe.Workspace{ID: "ws-test"},
+		},
+	}
+
+	var stdout bytes.Buffer
+	cmd := &RunsGetCmd{
+		ID:            "run-1",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &stdout,
+		clientFactory: func(_ tfcapi.ClientConfig) (runsClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "table"}
+	err := cmd.Run(cli)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	out := stdout.String()
+	if !strings.Contains(out, "run-1") {
+		t.Errorf("expected run ID in output, got: %s", out)
+	}
+	if !strings.Contains(out, "planned") {
+		t.Errorf("expected status 'planned' in output, got: %s", out)
+	}
+	if !strings.Contains(out, "Test run") {
+		t.Errorf("expected message in output, got: %s", out)
+	}
+	if !strings.Contains(out, "tfe-api") {
+		t.Errorf("expected source 'tfe-api' in output, got: %s", out)
+	}
+	if !strings.Contains(out, "2025-01-15") {
+		t.Errorf("expected created_at date in output, got: %s", out)
+	}
+	if !strings.Contains(out, "Workspace ID") {
+		t.Errorf("expected Workspace ID field in output, got: %s", out)
+	}
+	if !strings.Contains(out, "ws-test") {
+		t.Errorf("expected workspace ID value in output, got: %s", out)
+	}
+}
+
 func TestRunsCreate_JSON(t *testing.T) {
 	tmpDir, resolver := setupRunsTest(t)
 
