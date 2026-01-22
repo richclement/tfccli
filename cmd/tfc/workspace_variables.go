@@ -152,12 +152,7 @@ func (c *WorkspaceVariablesListCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to list variables: %w", err))
 	}
 
-	// Determine output format
-	isTTY := false
-	if f, ok := c.stdout.(*os.File); ok {
-		isTTY = c.ttyDetector.IsTTY(f)
-	}
-	format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
+	format, isTTY := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
 
 	if format == output.FormatJSON {
 		result := map[string]any{"data": toVariableJSONList(variables)}
@@ -222,12 +217,7 @@ func (c *WorkspaceVariablesGetCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to get variable: %w", err))
 	}
 
-	// Determine output format
-	isTTY := false
-	if f, ok := c.stdout.(*os.File); ok {
-		isTTY = c.ttyDetector.IsTTY(f)
-	}
-	format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
+	format, isTTY := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
 
 	if format == output.FormatJSON {
 		result := map[string]any{"data": toVariableJSON(variable)}
@@ -325,12 +315,7 @@ func (c *WorkspaceVariablesCreateCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create variable: %w", err))
 	}
 
-	// Determine output format
-	isTTY := false
-	if f, ok := c.stdout.(*os.File); ok {
-		isTTY = c.ttyDetector.IsTTY(f)
-	}
-	format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
+	format, _ := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
 
 	if format == output.FormatJSON {
 		result := map[string]any{"data": toVariableJSON(variable)}
@@ -432,12 +417,7 @@ func (c *WorkspaceVariablesUpdateCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to update variable: %w", err))
 	}
 
-	// Determine output format
-	isTTY := false
-	if f, ok := c.stdout.(*os.File); ok {
-		isTTY = c.ttyDetector.IsTTY(f)
-	}
-	format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
+	format, _ := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
 
 	if format == output.FormatJSON {
 		result := map[string]any{"data": toVariableJSON(variable)}
@@ -519,12 +499,7 @@ func (c *WorkspaceVariablesDeleteCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to delete variable: %w", err))
 	}
 
-	// Determine output format
-	isTTY := false
-	if f, ok := c.stdout.(*os.File); ok {
-		isTTY = c.ttyDetector.IsTTY(f)
-	}
-	format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
+	format, _ := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
 
 	if format == output.FormatJSON {
 		if err := output.WriteEmptySuccess(c.stdout, 204); err != nil {

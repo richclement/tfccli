@@ -457,11 +457,13 @@ prompter := &acceptingPrompter{}
 
 ### 9. Inline TTY Detection Pattern
 
-**File:** `cmd/tfc/workspace_variables.go:191-195, 286-290, 372-376, 459-463`
+**Status:** DONE
 
-**Problem:** Same inline TTY detection pattern repeated 4 times. This could use the `resolveFormat` helper pattern from `projects.go`.
+**File:** `cmd/tfc/workspace_variables.go`
 
-**Current inline code (repeated 4 times):**
+**Problem:** Same inline TTY detection pattern repeated 5 times. This could use the `resolveFormat` helper from `common.go`.
+
+**Current inline code (repeated 5 times):**
 ```go
 isTTY := false
 if f, ok := c.stdout.(*os.File); ok {
@@ -470,7 +472,46 @@ if f, ok := c.stdout.(*os.File); ok {
 format := output.ResolveOutputFormat(cli.OutputFormat, isTTY)
 ```
 
-**Fix:** Use a shared helper function as suggested in finding #4. After creating the shared helper, update all 4 locations in workspace_variables.go.
+**Fix:** Use the shared `resolveFormat` helper from `common.go`.
+
+#### Plan (2026-01-21)
+
+**Acceptance criteria:**
+- All 5 inline TTY detection patterns in workspace_variables.go replaced with `resolveFormat` helper
+- No behavior changes
+- All existing tests pass
+
+**Verification approach:**
+- `make test` passes
+- All workspace-variables tests still pass
+
+**Implementation steps:**
+1. Replace inline TTY detection in `WorkspaceVariablesListCmd.Run()` (lines 155-160)
+2. Replace inline TTY detection in `WorkspaceVariablesGetCmd.Run()` (lines 225-230)
+3. Replace inline TTY detection in `WorkspaceVariablesCreateCmd.Run()` (lines 328-333)
+4. Replace inline TTY detection in `WorkspaceVariablesUpdateCmd.Run()` (lines 435-440)
+5. Replace inline TTY detection in `WorkspaceVariablesDeleteCmd.Run()` (lines 522-527)
+6. Run feedback loops
+
+#### Progress Note (2026-01-21)
+
+**Files changed:**
+- `cmd/tfc/workspace_variables.go`: Replaced all 5 inline TTY detection patterns with calls to `resolveFormat` helper
+  - `WorkspaceVariablesListCmd.Run()`: Uses `format, isTTY := resolveFormat(...)` (isTTY needed for TableWriter)
+  - `WorkspaceVariablesGetCmd.Run()`: Uses `format, isTTY := resolveFormat(...)` (isTTY needed for TableWriter)
+  - `WorkspaceVariablesCreateCmd.Run()`: Uses `format, _ := resolveFormat(...)` (only format needed)
+  - `WorkspaceVariablesUpdateCmd.Run()`: Uses `format, _ := resolveFormat(...)` (only format needed)
+  - `WorkspaceVariablesDeleteCmd.Run()`: Uses `format, _ := resolveFormat(...)` (only format needed)
+
+**Commands run:**
+- `make fmt` - passed
+- `make lint` - passed
+- `make build` - passed
+- `make test` - passed (all tests green)
+
+**What remains:**
+- Task #9 is DONE
+- Net reduction of ~25 lines of duplicate code (5 blocks × 5 lines each)
 
 ---
 
@@ -1245,9 +1286,15 @@ Review of `cmd/tfc/workspace_resources.go` and `cmd/tfc/workspace_resources_test
 
 ### 24. Missing Get Subcommand
 
+**Status:** BLOCKED
+
 **File:** `cmd/tfc/workspace_resources.go:18-21`
 
 **Problem:** The `WorkspaceResourcesCmd` only implements a `List` subcommand. Unlike other resource commands (`ProjectsCmd`, `WorkspacesCmd`, `WorkspaceVariablesCmd`) which have Get/Read operations, there's no way to retrieve a single workspace resource by ID.
+
+**Blocker (2026-01-21):** The Terraform Cloud API does not provide a single-resource GET endpoint for workspace resources. The only available endpoint is `GET /workspaces/:workspace_id/resources` which lists all resources. The `github.com/hashicorp/go-tfe` library reflects this - `WorkspaceResources` interface only has a `List` method, no `Read` method. See https://developer.hashicorp.com/terraform/cloud-docs/api-docs/workspace-resources
+
+**TODO:** This feature cannot be implemented until HashiCorp adds a single-resource endpoint to the TFC API. Mark as out of scope for v1.
 
 **Current code:**
 ```go
