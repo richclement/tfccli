@@ -2059,7 +2059,9 @@ func TestCVList_ClientFactoryError(t *testing.T) {
 
 ---
 
-### 41. [ ] Missing test: invalid context specified via --context flag
+### 41. [x] Missing test: invalid context specified via --context flag
+
+**Status:** DONE
 
 **File:** `cmd/tfc/configuration_versions_test.go`
 
@@ -2092,6 +2094,23 @@ func TestCVList_InvalidContext(t *testing.T) {
     }
 }
 ```
+
+#### Plan
+- **Acceptance criteria:** A new test `TestCVList_InvalidContext` exists that verifies the command returns an error when `--context` specifies a non-existent context name.
+- **Verification:** `make fmt && make lint && make build && make test` all pass; new test passes.
+- **Implementation steps:**
+  1. Add `TestCVList_InvalidContext` test function after `TestCVList_ClientFactoryError` in configuration_versions_test.go
+  2. Test sets `cli.Context` to "nonexistent" and verifies error contains "not found"
+  3. Run feedback loops to verify
+
+#### Progress Notes
+
+**2026-01-22:** Completed.
+- Changed: `cmd/tfc/configuration_versions_test.go` - added `TestCVList_InvalidContext` test function after `TestCVList_ClientFactoryError` (line 843)
+- Test uses `setupCVTest(t)` which creates settings with "default" context, then passes `cli.Context = "nonexistent"` to trigger the error path in `resolveClientConfig`
+- Verifies error is returned and contains "not found" message
+- Commands: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Result: Invalid context error handling in `CVListCmd.Run` is now tested
 
 ---
 

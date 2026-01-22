@@ -840,6 +840,31 @@ func TestCVList_ClientFactoryError(t *testing.T) {
 	}
 }
 
+func TestCVList_InvalidContext(t *testing.T) {
+	tmpDir, resolver := setupCVTest(t)
+
+	var stdout bytes.Buffer
+	cmd := &CVListCmd{
+		WorkspaceID:   "ws-123",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &stdout,
+		clientFactory: func(_ tfcapi.ClientConfig) (cvClient, error) {
+			return &fakeCVClient{}, nil
+		},
+	}
+
+	cli := &CLI{Context: "nonexistent", OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error for invalid context")
+	}
+	if !strings.Contains(err.Error(), "not found") {
+		t.Errorf("expected context not found error, got: %v", err)
+	}
+}
+
 func TestCVGet_NotFound(t *testing.T) {
 	baseDir, resolver := setupCVTest(t)
 
