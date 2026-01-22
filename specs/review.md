@@ -532,3 +532,61 @@ Commands run:
 - `grep -r "isTTY := false" cmd/tfc/` - only shows `common.go:59` (the helper itself)
 
 Net effect: Removed 17 inline TTY detection patterns (5 lines each = ~85 lines removed). All commands now use the consistent `resolveFormat()` helper from `common.go`.
+
+---
+
+### Task: #8 Inconsistent API error handling format
+
+**Status:** DONE
+**Priority:** P1
+
+**Acceptance Criteria:**
+- All API error wrapping uses `%w` verb with the error directly (e.g., `fmt.Errorf("failed to X: %w", apiErr)`)
+- No instances of `%s` with `.Error()` method call (e.g., `fmt.Errorf("failed to X: %s", apiErr.Error())`)
+- This preserves error chain for callers who want to inspect the underlying error with `errors.As()`
+- Tests pass unchanged (behavior is identical for error messages)
+
+**Verification:**
+- `make fmt` passes
+- `make lint` passes
+- `make build` passes
+- `make test` passes
+- `grep -r "apiErr.Error()" cmd/tfc/` returns no results
+
+**Implementation Plan:**
+1. Update invoices.go (2 occurrences)
+2. Update projects.go (5 occurrences)
+3. Update runs.go (7 occurrences)
+4. Update workspace_variables.go (5 occurrences)
+5. Update workspaces.go (5 occurrences)
+6. Update configuration_versions.go (6 occurrences)
+7. Update plans.go (3 occurrences)
+8. Update applies.go (1 occurrence)
+9. Update workspace_resources.go (1 occurrence)
+10. Update users.go (1 occurrence)
+11. Run feedback loops and verify
+
+**Progress Notes:**
+
+_2026-01-22:_ Completed.
+
+Files changed:
+- `cmd/tfc/invoices.go`: Changed 2 occurrences from `%s", apiErr.Error()` to `%w", apiErr`
+- `cmd/tfc/projects.go`: Changed 5 occurrences
+- `cmd/tfc/runs.go`: Changed 7 occurrences
+- `cmd/tfc/workspace_variables.go`: Changed 5 occurrences
+- `cmd/tfc/workspaces.go`: Changed 5 occurrences
+- `cmd/tfc/configuration_versions.go`: Changed 6 occurrences
+- `cmd/tfc/plans.go`: Changed 3 occurrences
+- `cmd/tfc/applies.go`: Changed 1 occurrence
+- `cmd/tfc/workspace_resources.go`: Changed 1 occurrence
+- `cmd/tfc/users.go`: Changed 1 occurrence
+
+Commands run:
+- `make fmt` - passed
+- `make lint` - passed (cache permission warnings only)
+- `make build` - passed
+- `make test` - passed (all tests pass)
+- `grep -r "apiErr.Error()" cmd/tfc/` - no matches found (verified all replaced)
+
+Net effect: Changed 36 error wrapping statements from `%s` with `.Error()` to `%w` with the error directly. This preserves the error chain for callers using `errors.As()` to inspect underlying errors.

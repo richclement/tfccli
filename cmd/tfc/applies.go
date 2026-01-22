@@ -159,7 +159,7 @@ func (c *AppliesGetCmd) Run(cli *CLI) error {
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
 		if apiErr != nil {
-			return internalcmd.NewRuntimeError(fmt.Errorf("failed to get apply: %s", apiErr.Error()))
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to get apply: %w", apiErr))
 		}
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to get apply: %w", err))
 	}

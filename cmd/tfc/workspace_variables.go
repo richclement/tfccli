@@ -147,7 +147,7 @@ func (c *WorkspaceVariablesListCmd) Run(cli *CLI) error {
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
 		if apiErr != nil {
-			return internalcmd.NewRuntimeError(fmt.Errorf("failed to list variables: %s", apiErr.Error()))
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to list variables: %w", apiErr))
 		}
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to list variables: %w", err))
 	}
@@ -212,7 +212,7 @@ func (c *WorkspaceVariablesGetCmd) Run(cli *CLI) error {
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
 		if apiErr != nil {
-			return internalcmd.NewRuntimeError(fmt.Errorf("failed to get variable: %s", apiErr.Error()))
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to get variable: %w", apiErr))
 		}
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to get variable: %w", err))
 	}
@@ -310,7 +310,7 @@ func (c *WorkspaceVariablesCreateCmd) Run(cli *CLI) error {
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
 		if apiErr != nil {
-			return internalcmd.NewRuntimeError(fmt.Errorf("failed to create variable: %s", apiErr.Error()))
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to create variable: %w", apiErr))
 		}
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create variable: %w", err))
 	}
@@ -412,7 +412,7 @@ func (c *WorkspaceVariablesUpdateCmd) Run(cli *CLI) error {
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
 		if apiErr != nil {
-			return internalcmd.NewRuntimeError(fmt.Errorf("failed to update variable: %s", apiErr.Error()))
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to update variable: %w", apiErr))
 		}
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to update variable: %w", err))
 	}
@@ -494,7 +494,7 @@ func (c *WorkspaceVariablesDeleteCmd) Run(cli *CLI) error {
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
 		if apiErr != nil {
-			return internalcmd.NewRuntimeError(fmt.Errorf("failed to delete variable: %s", apiErr.Error()))
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to delete variable: %w", apiErr))
 		}
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to delete variable: %w", err))
 	}

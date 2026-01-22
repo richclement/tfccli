@@ -265,7 +265,7 @@ func (c *InvoicesListCmd) Run(cli *CLI) error {
 		}
 		apiErr, _ := tfcapi.ParseAPIError(err)
 		if apiErr != nil {
-			return internalcmd.NewRuntimeError(fmt.Errorf("failed to list invoices: %s", apiErr.Error()))
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to list invoices: %w", apiErr))
 		}
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to list invoices: %w", err))
 	}
@@ -349,7 +349,7 @@ func (c *InvoicesNextCmd) Run(cli *CLI) error {
 		}
 		apiErr, _ := tfcapi.ParseAPIError(err)
 		if apiErr != nil {
-			return internalcmd.NewRuntimeError(fmt.Errorf("failed to get next invoice: %s", apiErr.Error()))
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to get next invoice: %w", apiErr))
 		}
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to get next invoice: %w", err))
 	}

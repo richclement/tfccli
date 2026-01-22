@@ -139,7 +139,7 @@ func (c *ProjectsListCmd) Run(cli *CLI) error {
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
 		if apiErr != nil {
-			return internalcmd.NewRuntimeError(fmt.Errorf("failed to list projects: %s", apiErr.Error()))
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to list projects: %w", apiErr))
 		}
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to list projects: %w", err))
 	}
@@ -205,7 +205,7 @@ func (c *ProjectsGetCmd) Run(cli *CLI) error {
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
 		if apiErr != nil {
-			return internalcmd.NewRuntimeError(fmt.Errorf("failed to get project: %s", apiErr.Error()))
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to get project: %w", apiErr))
 		}
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to get project: %w", err))
 	}
@@ -284,7 +284,7 @@ func (c *ProjectsCreateCmd) Run(cli *CLI) error {
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
 		if apiErr != nil {
-			return internalcmd.NewRuntimeError(fmt.Errorf("failed to create project: %s", apiErr.Error()))
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to create project: %w", apiErr))
 		}
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create project: %w", err))
 	}
@@ -358,7 +358,7 @@ func (c *ProjectsUpdateCmd) Run(cli *CLI) error {
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
 		if apiErr != nil {
-			return internalcmd.NewRuntimeError(fmt.Errorf("failed to update project: %s", apiErr.Error()))
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to update project: %w", apiErr))
 		}
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to update project: %w", err))
 	}
@@ -440,7 +440,7 @@ func (c *ProjectsDeleteCmd) Run(cli *CLI) error {
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
 		if apiErr != nil {
-			return internalcmd.NewRuntimeError(fmt.Errorf("failed to delete project: %s", apiErr.Error()))
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to delete project: %w", apiErr))
 		}
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to delete project: %w", err))
 	}

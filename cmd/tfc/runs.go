@@ -157,7 +157,7 @@ func (c *RunsListCmd) Run(cli *CLI) error {
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
 		if apiErr != nil {
-			return internalcmd.NewRuntimeError(fmt.Errorf("failed to list runs: %s", apiErr.Error()))
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to list runs: %w", apiErr))
 		}
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to list runs: %w", err))
 	}
@@ -222,7 +222,7 @@ func (c *RunsGetCmd) Run(cli *CLI) error {
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
 		if apiErr != nil {
-			return internalcmd.NewRuntimeError(fmt.Errorf("failed to get run: %s", apiErr.Error()))
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to get run: %w", apiErr))
 		}
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to get run: %w", err))
 	}
@@ -304,7 +304,7 @@ func (c *RunsCreateCmd) Run(cli *CLI) error {
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
 		if apiErr != nil {
-			return internalcmd.NewRuntimeError(fmt.Errorf("failed to create run: %s", apiErr.Error()))
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to create run: %w", apiErr))
 		}
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create run: %w", err))
 	}
@@ -392,7 +392,7 @@ func (c *RunsApplyCmd) Run(cli *CLI) error {
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
 		if apiErr != nil {
-			return internalcmd.NewRuntimeError(fmt.Errorf("failed to apply run: %s", apiErr.Error()))
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to apply run: %w", apiErr))
 		}
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to apply run: %w", err))
 	}
@@ -479,7 +479,7 @@ func (c *RunsDiscardCmd) Run(cli *CLI) error {
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
 		if apiErr != nil {
-			return internalcmd.NewRuntimeError(fmt.Errorf("failed to discard run: %s", apiErr.Error()))
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to discard run: %w", apiErr))
 		}
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to discard run: %w", err))
 	}
@@ -566,7 +566,7 @@ func (c *RunsCancelCmd) Run(cli *CLI) error {
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
 		if apiErr != nil {
-			return internalcmd.NewRuntimeError(fmt.Errorf("failed to cancel run: %s", apiErr.Error()))
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to cancel run: %w", apiErr))
 		}
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to cancel run: %w", err))
 	}
@@ -653,7 +653,7 @@ func (c *RunsForceCancelCmd) Run(cli *CLI) error {
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
 		if apiErr != nil {
-			return internalcmd.NewRuntimeError(fmt.Errorf("failed to force-cancel run: %s", apiErr.Error()))
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to force-cancel run: %w", apiErr))
 		}
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to force-cancel run: %w", err))
 	}

@@ -164,7 +164,7 @@ func (c *WorkspacesListCmd) Run(cli *CLI) error {
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
 		if apiErr != nil {
-			return internalcmd.NewRuntimeError(fmt.Errorf("failed to list workspaces: %s", apiErr.Error()))
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to list workspaces: %w", apiErr))
 		}
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to list workspaces: %w", err))
 	}
@@ -232,7 +232,7 @@ func (c *WorkspacesGetCmd) Run(cli *CLI) error {
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
 		if apiErr != nil {
-			return internalcmd.NewRuntimeError(fmt.Errorf("failed to get workspace: %s", apiErr.Error()))
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to get workspace: %w", apiErr))
 		}
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to get workspace: %w", err))
 	}
@@ -317,7 +317,7 @@ func (c *WorkspacesCreateCmd) Run(cli *CLI) error {
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
 		if apiErr != nil {
-			return internalcmd.NewRuntimeError(fmt.Errorf("failed to create workspace: %s", apiErr.Error()))
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to create workspace: %w", apiErr))
 		}
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create workspace: %w", err))
 	}
@@ -398,7 +398,7 @@ func (c *WorkspacesUpdateCmd) Run(cli *CLI) error {
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
 		if apiErr != nil {
-			return internalcmd.NewRuntimeError(fmt.Errorf("failed to update workspace: %s", apiErr.Error()))
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to update workspace: %w", apiErr))
 		}
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to update workspace: %w", err))
 	}
@@ -479,7 +479,7 @@ func (c *WorkspacesDeleteCmd) Run(cli *CLI) error {
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
 		if apiErr != nil {
-			return internalcmd.NewRuntimeError(fmt.Errorf("failed to delete workspace: %s", apiErr.Error()))
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to delete workspace: %w", apiErr))
 		}
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to delete workspace: %w", err))
 	}

@@ -135,7 +135,7 @@ func (c *CVListCmd) Run(cli *CLI) error {
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
 		if apiErr != nil {
-			return internalcmd.NewRuntimeError(fmt.Errorf("failed to list configuration versions: %s", apiErr.Error()))
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to list configuration versions: %w", apiErr))
 		}
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to list configuration versions: %w", err))
 	}
@@ -204,7 +204,7 @@ func (c *CVGetCmd) Run(cli *CLI) error {
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
 		if apiErr != nil {
-			return internalcmd.NewRuntimeError(fmt.Errorf("failed to get configuration version: %s", apiErr.Error()))
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to get configuration version: %w", apiErr))
 		}
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to get configuration version: %w", err))
 	}
@@ -286,7 +286,7 @@ func (c *CVCreateCmd) Run(cli *CLI) error {
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
 		if apiErr != nil {
-			return internalcmd.NewRuntimeError(fmt.Errorf("failed to create configuration version: %s", apiErr.Error()))
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to create configuration version: %w", apiErr))
 		}
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to create configuration version: %w", err))
 	}
@@ -359,7 +359,7 @@ func (c *CVUploadCmd) Run(cli *CLI) error {
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
 		if apiErr != nil {
-			return internalcmd.NewRuntimeError(fmt.Errorf("failed to get configuration version: %s", apiErr.Error()))
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to get configuration version: %w", apiErr))
 		}
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to get configuration version: %w", err))
 	}
@@ -479,7 +479,7 @@ func (c *CVDownloadCmd) Run(cli *CLI) error {
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
 		if apiErr != nil {
-			return internalcmd.NewRuntimeError(fmt.Errorf("failed to download configuration: %s", apiErr.Error()))
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to download configuration: %w", apiErr))
 		}
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to download configuration: %w", err))
 	}
@@ -576,7 +576,7 @@ func (c *CVArchiveCmd) Run(cli *CLI) error {
 	if err != nil {
 		apiErr, _ := tfcapi.ParseAPIError(err)
 		if apiErr != nil {
-			return internalcmd.NewRuntimeError(fmt.Errorf("failed to archive configuration version: %s", apiErr.Error()))
+			return internalcmd.NewRuntimeError(fmt.Errorf("failed to archive configuration version: %w", apiErr))
 		}
 		return internalcmd.NewRuntimeError(fmt.Errorf("failed to archive configuration version: %w", err))
 	}
