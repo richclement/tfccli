@@ -683,7 +683,7 @@ func TestWorkspacesUpdate_FailsWhenNoFields(t *testing.T) {
 	}
 
 	// Verify error message
-	if !strings.Contains(err.Error(), "at least one of --name or --description is required") {
+	if !strings.Contains(err.Error(), "at least one of --name, --description, or --clear-description is required") {
 		t.Errorf("expected 'at least one of' error message, got: %v", err)
 	}
 
@@ -1086,5 +1086,85 @@ func TestWorkspacesCreate_Table(t *testing.T) {
 
 	if !strings.Contains(out.String(), "new-workspace") || !strings.Contains(out.String(), "created") {
 		t.Errorf("expected success message, got: %s", out.String())
+	}
+}
+
+// TestWorkspacesUpdate_ClearDescription tests that --clear-description sends empty string to API.
+func TestWorkspacesUpdate_ClearDescription(t *testing.T) {
+	tmpDir, resolver := setupWorkspacesTestSettings(t, "acme")
+	out := &bytes.Buffer{}
+
+	fakeClient := &fakeWorkspacesClient{
+		workspace: &tfe.Workspace{
+			ID:            "ws-123",
+			Name:          "test-workspace",
+			Description:   "", // Cleared
+			ExecutionMode: "remote",
+		},
+	}
+
+	cmd := &WorkspacesUpdateCmd{
+		ID:               "ws-123",
+		ClearDescription: true,
+		baseDir:          tmpDir,
+		tokenResolver:    resolver,
+		ttyDetector:      &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:           out,
+		clientFactory: func(_ tfcapi.ClientConfig) (workspacesClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Verify the update was called with empty description
+	if len(fakeClient.updateCalls) != 1 {
+		t.Errorf("expected 1 update call, got %d", len(fakeClient.updateCalls))
+	}
+	if fakeClient.updateCalls[0].opts.Description == nil {
+		t.Fatal("expected Description to be set in update options")
+	}
+	if *fakeClient.updateCalls[0].opts.Description != "" {
+		t.Errorf("expected empty description, got %q", *fakeClient.updateCalls[0].opts.Description)
+	}
+}
+
+// TestWorkspacesUpdate_ClearDescriptionConflict tests that --description and --clear-description are mutually exclusive.
+func TestWorkspacesUpdate_ClearDescriptionConflict(t *testing.T) {
+	tmpDir, resolver := setupWorkspacesTestSettings(t, "acme")
+	out := &bytes.Buffer{}
+
+	cmd := &WorkspacesUpdateCmd{
+		ID:               "ws-123",
+		Description:      "new description",
+		ClearDescription: true, // Conflict!
+		baseDir:          tmpDir,
+		tokenResolver:    resolver,
+		ttyDetector:      &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:           out,
+		clientFactory: func(_ tfcapi.ClientConfig) (workspacesClient, error) {
+			return &fakeWorkspacesClient{}, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error when both --description and --clear-description provided, got nil")
+	}
+
+	// Verify it's a RuntimeError for exit code 2
+	var runtimeErr internalcmd.RuntimeError
+	if !errors.As(err, &runtimeErr) {
+		t.Errorf("expected RuntimeError, got %T", err)
+	}
+
+	// Verify error message mentions mutual exclusivity
+	if !strings.Contains(err.Error(), "mutually exclusive") {
+		t.Errorf("expected 'mutually exclusive' error message, got: %v", err)
 	}
 }

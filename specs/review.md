@@ -8,6 +8,8 @@ Review of `cmd/tfc/workspaces.go` and `cmd/tfc/workspaces_test.go`.
 
 ### 1. Description Cannot Be Cleared
 
+**Status:** DONE
+
 **File:** `cmd/tfc/workspaces.go:341-343` (create) and `417-419` (update)
 
 **Problem:** The empty string check `if c.Description != ""` means users cannot clear a workspace description by passing `--description ""`. Once set, a description cannot be removed.
@@ -27,6 +29,50 @@ if c.Description != "" {
 3. Accept a sentinel value like `"-"` to mean "clear"
 
 **Note:** This same pattern exists in other commands. Decide on a consistent approach across the codebase before fixing.
+
+#### Plan (2026-01-21)
+
+**Acceptance criteria (from PRD Section 12):**
+- Users can clear a workspace description using `tfc workspaces update <id> --clear-description`
+- The flag is mutually exclusive with `--description` (error if both provided)
+- Test verifies clearing description sends empty string to API
+- Test verifies error when both `--description` and `--clear-description` provided
+
+**Verification approach:**
+- `make test` passes
+- New tests cover the --clear-description flag behavior
+- Existing tests still pass
+
+**Implementation steps:**
+1. Add `ClearDescription bool` field to `WorkspacesUpdateCmd` with Kong tag
+2. Update validation: error if both `--description` and `--clear-description` provided
+3. Update logic: if `--clear-description` set, pass empty string to API
+4. Add test: `TestWorkspacesUpdate_ClearDescription`
+5. Add test: `TestWorkspacesUpdate_ClearDescriptionConflict`
+6. Run feedback loops
+
+#### Progress Note (2026-01-21)
+
+**Files changed:**
+- `cmd/tfc/workspaces.go`:
+  - Added `ClearDescription bool` field to `WorkspacesUpdateCmd` struct (line 359)
+  - Added validation for mutual exclusivity of `--description` and `--clear-description` (lines 384-386)
+  - Updated validation error message to include `--clear-description` (line 389)
+  - Added logic to pass empty string to API when `--clear-description` is set (lines 406-408)
+- `cmd/tfc/workspaces_test.go`:
+  - Updated `TestWorkspacesUpdate_FailsWhenNoFields` error message assertion (line 686)
+  - Added `TestWorkspacesUpdate_ClearDescription` - verifies empty string sent to API
+  - Added `TestWorkspacesUpdate_ClearDescriptionConflict` - verifies mutual exclusivity error
+
+**Commands run:**
+- `make fmt` - passed
+- `make lint` - passed
+- `make build` - passed
+- `make test` - passed (all tests green)
+
+**What remains:**
+- Task #1 is DONE
+- Users can now clear workspace descriptions using `tfc workspaces update <id> --clear-description`
 
 ---
 

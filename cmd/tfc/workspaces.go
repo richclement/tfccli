@@ -353,9 +353,10 @@ func (c *WorkspacesCreateCmd) Run(cli *CLI) error {
 
 // WorkspacesUpdateCmd updates a workspace.
 type WorkspacesUpdateCmd struct {
-	ID          string `arg:"" help:"ID of the workspace to update."`
-	Name        string `help:"New name for the workspace."`
-	Description string `help:"New description for the workspace."`
+	ID               string `arg:"" help:"ID of the workspace to update."`
+	Name             string `help:"New name for the workspace."`
+	Description      string `help:"New description for the workspace."`
+	ClearDescription bool   `name:"clear-description" help:"Clear the workspace description."`
 
 	// Dependencies for testing
 	baseDir       string
@@ -377,9 +378,14 @@ func (c *WorkspacesUpdateCmd) Run(cli *CLI) error {
 		c.clientFactory = defaultWorkspacesClientFactory
 	}
 
+	// Validate --description and --clear-description are mutually exclusive
+	if c.Description != "" && c.ClearDescription {
+		return internalcmd.NewRuntimeError(fmt.Errorf("--description and --clear-description are mutually exclusive"))
+	}
+
 	// Validate at least one field is being updated
-	if c.Name == "" && c.Description == "" {
-		return internalcmd.NewRuntimeError(fmt.Errorf("at least one of --name or --description is required"))
+	if c.Name == "" && c.Description == "" && !c.ClearDescription {
+		return internalcmd.NewRuntimeError(fmt.Errorf("at least one of --name, --description, or --clear-description is required"))
 	}
 
 	cfg, _, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
@@ -399,6 +405,8 @@ func (c *WorkspacesUpdateCmd) Run(cli *CLI) error {
 	}
 	if c.Description != "" {
 		opts.Description = tfe.String(c.Description)
+	} else if c.ClearDescription {
+		opts.Description = tfe.String("")
 	}
 
 	ws, err := client.UpdateByID(ctx, c.ID, opts)
