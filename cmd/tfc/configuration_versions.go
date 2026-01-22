@@ -56,7 +56,6 @@ type cvClient interface {
 	List(ctx context.Context, workspaceID string, opts *tfe.ConfigurationVersionListOptions) ([]*tfe.ConfigurationVersion, error)
 	Read(ctx context.Context, cvID string) (*tfe.ConfigurationVersion, error)
 	Create(ctx context.Context, workspaceID string, opts tfe.ConfigurationVersionCreateOptions) (*tfe.ConfigurationVersion, error)
-	Upload(ctx context.Context, uploadURL string, reader io.Reader) error
 	Download(ctx context.Context, cvID string) ([]byte, error)
 	Archive(ctx context.Context, cvID string) error
 }
@@ -79,10 +78,6 @@ func (c *realCVClient) Read(ctx context.Context, cvID string) (*tfe.Configuratio
 
 func (c *realCVClient) Create(ctx context.Context, workspaceID string, opts tfe.ConfigurationVersionCreateOptions) (*tfe.ConfigurationVersion, error) {
 	return c.client.ConfigurationVersions.Create(ctx, workspaceID, opts)
-}
-
-func (c *realCVClient) Upload(ctx context.Context, uploadURL string, reader io.Reader) error {
-	return c.client.ConfigurationVersions.Upload(ctx, uploadURL, "")
 }
 
 func (c *realCVClient) Download(ctx context.Context, cvID string) ([]byte, error) {

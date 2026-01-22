@@ -1225,7 +1225,9 @@ func TestDefaultDownloadClient(t *testing.T) {
 
 ## Issues Found
 
-### 34. [ ] `realCVClient.Upload` ignores the `reader` parameter (BUG)
+### 34. [x] `realCVClient.Upload` ignores the `reader` parameter (BUG)
+
+**Status:** DONE
 
 **File:** `cmd/tfc/configuration_versions.go`
 **Lines:** 84-86
@@ -1263,6 +1265,22 @@ func (c *realCVClient) Upload(ctx context.Context, uploadURL string, reader io.R
     return c.client.ConfigurationVersions.Upload(ctx, uploadURL, tmpFile.Name())
 }
 ```
+
+#### Plan
+- **Acceptance criteria:** The `Upload` method is removed from the `cvClient` interface and `realCVClient` struct since it's unused dead code. This eliminates the misleading broken implementation.
+- **Verification:** `make fmt && make lint && make build && make test` all pass; no compilation errors from removing unused method.
+- **Implementation steps:**
+  1. Remove `Upload` method signature from `cvClient` interface (line 59)
+  2. Remove `Upload` method implementation from `realCVClient` (lines 84-86)
+  3. Run feedback loops to verify
+
+#### Progress Notes
+
+**2026-01-22:** Completed.
+- Changed: `cmd/tfc/configuration_versions.go` - removed `Upload(ctx context.Context, uploadURL string, reader io.Reader) error` from `cvClient` interface; removed broken `realCVClient.Upload` implementation
+- Changed: `cmd/tfc/configuration_versions_test.go` - removed `UploadFunc` field and `Upload` method from `fakeCVClient` mock; `io` import automatically removed by formatter
+- Commands: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Result: Dead code removed. The `CVUploadCmd` correctly uses `uploadClient` function (not the interface method) which performs proper HTTP PUT uploads.
 
 ---
 

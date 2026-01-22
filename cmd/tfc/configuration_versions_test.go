@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -25,7 +24,6 @@ type fakeCVClient struct {
 	ListFunc     func(ctx context.Context, workspaceID string, opts *tfe.ConfigurationVersionListOptions) ([]*tfe.ConfigurationVersion, error)
 	ReadFunc     func(ctx context.Context, cvID string) (*tfe.ConfigurationVersion, error)
 	CreateFunc   func(ctx context.Context, workspaceID string, opts tfe.ConfigurationVersionCreateOptions) (*tfe.ConfigurationVersion, error)
-	UploadFunc   func(ctx context.Context, uploadURL string, reader io.Reader) error
 	DownloadFunc func(ctx context.Context, cvID string) ([]byte, error)
 	ArchiveFunc  func(ctx context.Context, cvID string) error
 }
@@ -49,13 +47,6 @@ func (f *fakeCVClient) Create(ctx context.Context, workspaceID string, opts tfe.
 		return f.CreateFunc(ctx, workspaceID, opts)
 	}
 	return nil, errors.New("not implemented")
-}
-
-func (f *fakeCVClient) Upload(ctx context.Context, uploadURL string, reader io.Reader) error {
-	if f.UploadFunc != nil {
-		return f.UploadFunc(ctx, uploadURL, reader)
-	}
-	return errors.New("not implemented")
 }
 
 func (f *fakeCVClient) Download(ctx context.Context, cvID string) ([]byte, error) {
