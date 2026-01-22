@@ -174,6 +174,21 @@ func (p *runsFailingPrompter) PromptSelect(_ string, _ []string, _ string) (stri
 	return "", errors.New("should not be called with --force")
 }
 
+// runsErrorPrompter returns an error to verify error handling when prompter fails.
+type runsErrorPrompter struct{}
+
+func (p *runsErrorPrompter) PromptString(_, _ string) (string, error) {
+	return "", errors.New("stdin closed")
+}
+
+func (p *runsErrorPrompter) Confirm(_ string, _ bool) (bool, error) {
+	return false, errors.New("stdin closed")
+}
+
+func (p *runsErrorPrompter) PromptSelect(_ string, _ []string, _ string) (string, error) {
+	return "", errors.New("stdin closed")
+}
+
 func setupRunsTest(t *testing.T) (string, *auth.TokenResolver) {
 	t.Helper()
 	tmpDir := t.TempDir()
@@ -1298,5 +1313,129 @@ func TestRuns_AddressOverride(t *testing.T) {
 	err := cmd.Run(cli)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestRunsApply_PrompterError(t *testing.T) {
+	tmpDir, resolver := setupRunsTest(t)
+
+	fakeClient := &fakeRunsClient{}
+
+	var stdout bytes.Buffer
+	cmd := &RunsApplyCmd{
+		ID:            "run-1",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &stdout,
+		clientFactory: func(_ tfcapi.ClientConfig) (runsClient, error) {
+			return fakeClient, nil
+		},
+		prompter: &runsErrorPrompter{},
+	}
+
+	cli := &CLI{Force: false}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error for prompter failure")
+	}
+	if !strings.Contains(err.Error(), "failed to prompt") {
+		t.Errorf("expected prompt error, got: %v", err)
+	}
+	if fakeClient.applyCalled {
+		t.Error("apply should not be called when prompt fails")
+	}
+}
+
+func TestRunsDiscard_PrompterError(t *testing.T) {
+	tmpDir, resolver := setupRunsTest(t)
+
+	fakeClient := &fakeRunsClient{}
+
+	var stdout bytes.Buffer
+	cmd := &RunsDiscardCmd{
+		ID:            "run-1",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &stdout,
+		clientFactory: func(_ tfcapi.ClientConfig) (runsClient, error) {
+			return fakeClient, nil
+		},
+		prompter: &runsErrorPrompter{},
+	}
+
+	cli := &CLI{Force: false}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error for prompter failure")
+	}
+	if !strings.Contains(err.Error(), "failed to prompt") {
+		t.Errorf("expected prompt error, got: %v", err)
+	}
+	if fakeClient.discardCalled {
+		t.Error("discard should not be called when prompt fails")
+	}
+}
+
+func TestRunsCancel_PrompterError(t *testing.T) {
+	tmpDir, resolver := setupRunsTest(t)
+
+	fakeClient := &fakeRunsClient{}
+
+	var stdout bytes.Buffer
+	cmd := &RunsCancelCmd{
+		ID:            "run-1",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &stdout,
+		clientFactory: func(_ tfcapi.ClientConfig) (runsClient, error) {
+			return fakeClient, nil
+		},
+		prompter: &runsErrorPrompter{},
+	}
+
+	cli := &CLI{Force: false}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error for prompter failure")
+	}
+	if !strings.Contains(err.Error(), "failed to prompt") {
+		t.Errorf("expected prompt error, got: %v", err)
+	}
+	if fakeClient.cancelCalled {
+		t.Error("cancel should not be called when prompt fails")
+	}
+}
+
+func TestRunsForceCancel_PrompterError(t *testing.T) {
+	tmpDir, resolver := setupRunsTest(t)
+
+	fakeClient := &fakeRunsClient{}
+
+	var stdout bytes.Buffer
+	cmd := &RunsForceCancelCmd{
+		ID:            "run-1",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &stdout,
+		clientFactory: func(_ tfcapi.ClientConfig) (runsClient, error) {
+			return fakeClient, nil
+		},
+		prompter: &runsErrorPrompter{},
+	}
+
+	cli := &CLI{Force: false}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error for prompter failure")
+	}
+	if !strings.Contains(err.Error(), "failed to prompt") {
+		t.Errorf("expected prompt error, got: %v", err)
+	}
+	if fakeClient.forceCancelCalled {
+		t.Error("force-cancel should not be called when prompt fails")
 	}
 }

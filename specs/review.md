@@ -579,11 +579,39 @@ func TestRunsList_InvalidContext(t *testing.T) {
 
 ---
 
-### 11. [ ] Missing test: prompter error handling
+### 11. [x] Missing test: prompter error handling
+
+**Status:** DONE
 
 **File:** `cmd/tfc/runs_test.go`
 
 **Problem:** While `runsFailingPrompter` verifies prompts are bypassed with `--force`, there's no test that verifies error handling when `prompter.Confirm` fails and returns an error during normal (non-force) flow.
+
+#### Plan
+- **Acceptance criteria:** A new `runsErrorPrompter` struct is added that returns errors from all methods. Four tests exist (`TestRunsApply_PrompterError`, `TestRunsDiscard_PrompterError`, `TestRunsCancel_PrompterError`, `TestRunsForceCancel_PrompterError`) that verify:
+  1. Error is returned when prompter fails
+  2. Error message contains "failed to prompt"
+  3. The API method is NOT called when prompt fails
+- **Verification:** `make fmt && make lint && make build && make test` all pass
+- **Implementation steps:**
+  1. Add `runsErrorPrompter` struct after existing `runsFailingPrompter`
+  2. Add `TestRunsApply_PrompterError` test
+  3. Add `TestRunsDiscard_PrompterError` test
+  4. Add `TestRunsCancel_PrompterError` test
+  5. Add `TestRunsForceCancel_PrompterError` test
+  6. Run feedback loops
+
+#### Progress Notes
+
+**2026-01-22:** Completed.
+- Changed: `cmd/tfc/runs_test.go` - added `runsErrorPrompter` struct that returns `errors.New("stdin closed")` from all methods (lines 177-189)
+- Changed: `cmd/tfc/runs_test.go` - added 4 new tests:
+  - `TestRunsApply_PrompterError` - verifies error returned and `applyCalled` is false
+  - `TestRunsDiscard_PrompterError` - verifies error returned and `discardCalled` is false
+  - `TestRunsCancel_PrompterError` - verifies error returned and `cancelCalled` is false
+  - `TestRunsForceCancel_PrompterError` - verifies error returned and `forceCancelCalled` is false
+- Commands: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Result: Prompter error handling branches in all 4 destructive run commands are now tested
 
 **Fix:** Add a prompter that returns an error:
 ```go
