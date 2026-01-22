@@ -561,6 +561,36 @@ func TestPlansJSONOutput_APIError(t *testing.T) {
 	}
 }
 
+func TestPlansJSONOutput_FileWriteError(t *testing.T) {
+	tmpDir, resolver := setupPlansTest(t)
+
+	fakeClient := &fakePlansClient{
+		jsonOutput: []byte(`{"test":"data"}`),
+	}
+
+	var stdout bytes.Buffer
+	cmd := &PlansJSONOutputCmd{
+		ID:            "plan-123",
+		Out:           "/nonexistent/directory/out.json", // Invalid path
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &stdout,
+		clientFactory: func(_ tfcapi.ClientConfig) (plansClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error for invalid file path")
+	}
+	if !strings.Contains(err.Error(), "failed to write file") {
+		t.Errorf("expected file write error, got: %v", err)
+	}
+}
+
 func TestPlansSanitizedPlan_WritesToStdout(t *testing.T) {
 	tmpDir, resolver := setupPlansTest(t)
 

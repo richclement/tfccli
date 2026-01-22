@@ -1355,11 +1355,31 @@ func TestPlansGet_WithLogReadURL(t *testing.T) {
 
 ---
 
-### 26. [ ] Missing test: file write error (permission denied, directory doesn't exist)
+### 26. [x] Missing test: file write error (permission denied, directory doesn't exist)
+
+**Status:** DONE
 
 **File:** `cmd/tfc/plans_test.go`
 
 **Problem:** No test verifies error handling when `os.WriteFile` fails (e.g., writing to a non-existent directory or read-only location).
+
+#### Plan
+- **Acceptance criteria:** A test `TestPlansJSONOutput_FileWriteError` exists that verifies the command returns an error when writing to an invalid file path (non-existent directory). The error message should contain "failed to write file".
+- **Verification:** `make fmt && make lint && make build && make test` all pass; new test passes.
+- **Implementation steps:**
+  1. Add `TestPlansJSONOutput_FileWriteError` test function after `TestPlansJSONOutput_APIError`
+  2. Test uses `Out: "/nonexistent/directory/out.json"` to trigger file write error
+  3. Verify error is returned and contains "failed to write file"
+  4. Run feedback loops to verify
+
+#### Progress Notes
+
+**2026-01-22:** Completed.
+- Changed: `cmd/tfc/plans_test.go` - added `TestPlansJSONOutput_FileWriteError` test function after `TestPlansJSONOutput_APIError`
+- Test uses `Out: "/nonexistent/directory/out.json"` to trigger file write failure
+- Verifies error is returned and contains "failed to write file"
+- Commands: `make fmt`, `make lint`, `make build`, `make test` - all pass
+- Result: File write error handling branch in `PlansJSONOutputCmd.Run` is now tested
 
 **Fix:** Add test:
 ```go
