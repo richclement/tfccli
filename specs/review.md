@@ -1183,9 +1183,30 @@ func TestWorkspaceResourcesList_ContextNotFound(t *testing.T) {
 
 ### 27. Missing Test: Token Resolution Error
 
+**Status:** DONE
+
 **File:** `cmd/tfc/workspace_resources_test.go`
 
 **Problem:** No test verifies error handling when token resolution fails (e.g., no token available for the address).
+
+#### Plan (2026-01-21)
+
+**Acceptance criteria (from PRD Section 8):**
+- Test exists that triggers token resolution error in `WorkspaceResourcesListCmd.Run()`
+- Test verifies error message indicates no token found
+- Test uses same pattern as other error tests in the file (e.g., `TestWorkspaceResourcesList_FailsWhenSettingsMissing`)
+
+**Verification approach:**
+- `make test` passes
+- New test specifically tests line 104-107 in workspace_resources.go (token resolution failure)
+
+**Implementation steps:**
+1. Add `TestWorkspaceResourcesList_TokenResolutionError` test following pattern from review.md
+2. Create settings with valid context
+3. Create resolver with no tokens available (empty env vars and no credentials file)
+4. Verify error message indicates token discovery failure
+5. Run feedback loops
+6. Update review.md with results
 
 **Test to add:**
 ```go
@@ -1238,6 +1259,25 @@ func TestWorkspaceResourcesList_TokenResolutionError(t *testing.T) {
     }
 }
 ```
+
+#### Progress Note (2026-01-21)
+
+**Files changed:**
+- `cmd/tfc/workspace_resources_test.go`: Added `TestWorkspaceResourcesList_TokenResolutionError` test (lines 479-522)
+  - Creates test settings with valid "default" context
+  - Creates resolver with empty environment variables and no credentials files
+  - Verifies error message contains "token" indicating token discovery failure
+
+**Commands run:**
+- `make fmt` - passed
+- `make lint` - passed
+- `make build` - passed
+- `make test` - passed (all tests green)
+- `go test -v -run TestWorkspaceResourcesList_TokenResolutionError ./cmd/tfc/...` - passed
+
+**What remains:**
+- Task #27 is complete
+- Test coverage now includes token resolution failure path (workspace_resources.go:104-107)
 
 ---
 

@@ -474,3 +474,52 @@ func TestWorkspaceResourcesList_ContextNotFound(t *testing.T) {
 		t.Errorf("expected 'context not found' error, got: %v", err)
 	}
 }
+
+// TestWorkspaceResourcesList_TokenResolutionError tests error when no token is available.
+func TestWorkspaceResourcesList_TokenResolutionError(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	settings := &config.Settings{
+		CurrentContext: "default",
+		Contexts: map[string]config.Context{
+			"default": {
+				Address:  "app.terraform.io",
+				LogLevel: "info",
+			},
+		},
+	}
+	if err := config.Save(settings, tmpDir); err != nil {
+		t.Fatalf("failed to save test settings: %v", err)
+	}
+
+	// Create resolver with no tokens available
+	fakeEnv := &wsrTestEnv{
+		vars: map[string]string{}, // No tokens
+	}
+	fakeFS := &wsrTestFS{
+		homeDir: tmpDir,
+		files:   make(map[string][]byte), // No credentials file
+	}
+	resolver := &auth.TokenResolver{Env: fakeEnv, FS: fakeFS}
+
+	var buf bytes.Buffer
+	cmd := &WorkspaceResourcesListCmd{
+		WorkspaceID:   "ws-123",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &buf,
+		clientFactory: func(_ tfcapi.ClientConfig) (workspaceResourcesClient, error) {
+			return &fakeWorkspaceResourcesClient{}, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error when no token available, got nil")
+	}
+	if !strings.Contains(err.Error(), "token") {
+		t.Errorf("expected token-related error, got: %v", err)
+	}
+}
