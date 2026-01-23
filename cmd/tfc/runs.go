@@ -171,6 +171,10 @@ func (c *RunsListCmd) Run(cli *CLI) error {
 			return internalcmd.NewRuntimeError(fmt.Errorf("failed to write output: %w", err))
 		}
 	} else {
+		if len(runs) == 0 {
+			fmt.Fprintln(c.stdout, "No runs found.")
+			return nil
+		}
 		tw := output.NewTableWriter(c.stdout, []string{"ID", "STATUS", "MESSAGE", "CREATED-AT"}, isTTY)
 		for _, run := range runs {
 			tw.AddRow(run.ID, string(run.Status), run.Message, run.CreatedAt.Format(time.RFC3339))

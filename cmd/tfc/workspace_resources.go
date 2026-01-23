@@ -133,6 +133,10 @@ func (c *WorkspaceResourcesListCmd) Run(cli *CLI) error {
 			return internalcmd.NewRuntimeError(fmt.Errorf("failed to write output: %w", err))
 		}
 	} else {
+		if len(resources) == 0 {
+			fmt.Fprintln(c.stdout, "No resources found.")
+			return nil
+		}
 		tw := output.NewTableWriter(c.stdout, []string{"ID", "RESOURCE-TYPE", "NAME", "PROVIDER"}, isTTY)
 		for _, r := range resources {
 			tw.AddRow(r.ID, r.ProviderType, r.Name, r.Provider)

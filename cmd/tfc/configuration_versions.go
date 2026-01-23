@@ -153,6 +153,10 @@ func (c *CVListCmd) Run(cli *CLI) error {
 			return internalcmd.NewRuntimeError(fmt.Errorf("failed to write output: %w", err))
 		}
 	} else {
+		if len(cvs) == 0 {
+			fmt.Fprintln(c.stdout, "No configuration versions found.")
+			return nil
+		}
 		tw := output.NewTableWriter(c.stdout, []string{"ID", "STATUS", "SOURCE", "AUTO-QUEUE-RUNS", "SPECULATIVE"}, isTTY)
 		for _, cv := range cvs {
 			tw.AddRow(cv.ID, string(cv.Status), string(cv.Source), fmt.Sprintf("%t", cv.AutoQueueRuns), fmt.Sprintf("%t", cv.Speculative))

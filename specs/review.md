@@ -462,7 +462,7 @@ For balance, the codebase has several strong architectural qualities:
 | #9 Verbose DI pattern | TODO | P3 | Consider CmdContext struct |
 | #10 Org-required abstraction | DONE | P3 | Add helper for required org |
 | #12 forceFlag pattern | TODO | P3 | Use cli.Force directly in tests |
-| #14 Empty list handling | TODO | P3 | Standardize empty result messages |
+| #14 Empty list handling | DONE | P3 | Standardize empty result messages |
 | #15 JSON output inconsistency | TODO | P3 | Document JSON output contract |
 
 ---
@@ -535,3 +535,68 @@ Projects and workspaces commands were incorrectly returning exit code 2 (Runtime
 - `make test` - all tests pass
 
 **Result:** Task complete. All 6 org-required validations now use the shared helper with correct exit code 1 behavior.
+
+---
+
+### Task #14: Inconsistent Empty List Handling
+
+**Status:** DONE
+
+**Analysis:**
+Currently only `organizations list` prints "No organizations found." when results are empty. All other list commands show an empty table with just headers.
+
+| Command | Current Behavior |
+|---------|-----------------|
+| `organizations list` | ✓ "No organizations found." |
+| `workspaces list` | Empty table |
+| `projects list` | Empty table |
+| `runs list` | Empty table |
+| `workspace-variables list` | Empty table |
+| `workspace-resources list` | Empty table |
+| `configuration-versions list` | Empty table |
+| `invoices list` | Empty table |
+| `contexts list` | Empty table |
+
+**Acceptance Criteria:**
+- All list commands show "No X found." message when results are empty (table output only)
+- JSON output continues to return empty data array (for machine parsing)
+- Consistent message format: "No {resource}s found." (lowercase plural)
+
+**Verification:**
+- `make test` passes
+- Manual verification of empty list behavior in table mode
+
+**Implementation Plan:**
+1. Add empty list check with message to `workspaces list`
+2. Add empty list check with message to `projects list`
+3. Add empty list check with message to `runs list`
+4. Add empty list check with message to `workspace-variables list`
+5. Add empty list check with message to `workspace-resources list`
+6. Add empty list check with message to `configuration-versions list`
+7. Add empty list check with message to `invoices list`
+8. Add empty list check with message to `contexts list`
+9. Add tests for empty list behavior
+
+**Progress Notes (2026-01-23):**
+
+Completed implementation of consistent empty list handling across all list commands.
+
+**Files Changed:**
+- `cmd/tfc/workspaces.go` - Added "No workspaces found." message for empty table output
+- `cmd/tfc/projects.go` - Added "No projects found." message for empty table output
+- `cmd/tfc/runs.go` - Added "No runs found." message for empty table output
+- `cmd/tfc/workspace_variables.go` - Added "No variables found." message for empty table output
+- `cmd/tfc/workspace_resources.go` - Added "No resources found." message for empty table output
+- `cmd/tfc/configuration_versions.go` - Added "No configuration versions found." message for empty table output
+- `cmd/tfc/invoices.go` - Added "No invoices found." message for empty table output
+- `cmd/tfc/contexts.go` - Added "No contexts found." message for empty table output
+- `cmd/tfc/configuration_versions_test.go` - Updated test to expect new message
+- `cmd/tfc/runs_test.go` - Updated test to expect new message
+
+**Commands Run:**
+- `make fmt` - success
+- `make lint` - success
+- `make build` - success
+- `make test` - all tests pass
+
+**Result:** Task complete. All 9 list commands now show consistent "No X found." messages for empty results in table output mode. JSON output continues to return empty data arrays for machine parsing.

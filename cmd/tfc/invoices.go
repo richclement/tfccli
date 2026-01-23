@@ -279,6 +279,10 @@ func (c *InvoicesListCmd) Run(cli *CLI) error {
 		}
 	} else {
 		// Table output
+		if len(invoices.Data) == 0 {
+			fmt.Fprintln(c.stdout, "No invoices found.")
+			return nil
+		}
 		tw := output.NewTableWriter(c.stdout, []string{"ID", "STATUS", "NUMBER", "TOTAL", "PAID", "CREATED"}, isTTY)
 		for _, inv := range invoices.Data {
 			totalDollars := fmt.Sprintf("$%.2f", float64(inv.Attributes.Total)/100)

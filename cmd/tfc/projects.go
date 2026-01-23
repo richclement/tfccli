@@ -152,6 +152,10 @@ func (c *ProjectsListCmd) Run(cli *CLI) error {
 			return internalcmd.NewRuntimeError(fmt.Errorf("failed to write output: %w", err))
 		}
 	} else {
+		if len(projects) == 0 {
+			fmt.Fprintln(c.stdout, "No projects found.")
+			return nil
+		}
 		tw := output.NewTableWriter(c.stdout, []string{"ID", "NAME", "DESCRIPTION"}, isTTY)
 		for _, proj := range projects {
 			tw.AddRow(proj.ID, proj.Name, proj.Description)

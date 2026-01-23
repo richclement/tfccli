@@ -74,6 +74,10 @@ func (c *ContextsListCmd) Run(cli *CLI) error {
 	}
 
 	// Table output
+	if len(names) == 0 {
+		fmt.Fprintln(c.stdout, "No contexts found.")
+		return nil
+	}
 	tw := output.NewTableWriter(c.stdout, []string{"", "NAME"}, isTTY)
 	for _, name := range names {
 		marker := ""

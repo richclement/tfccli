@@ -175,6 +175,10 @@ func (c *WorkspacesListCmd) Run(cli *CLI) error {
 			return internalcmd.NewRuntimeError(fmt.Errorf("failed to write output: %w", err))
 		}
 	} else {
+		if len(workspaces) == 0 {
+			fmt.Fprintln(c.stdout, "No workspaces found.")
+			return nil
+		}
 		tw := output.NewTableWriter(c.stdout, []string{"ID", "NAME", "EXECUTION-MODE", "PROJECT-ID"}, isTTY)
 		for _, ws := range workspaces {
 			projectID := ""

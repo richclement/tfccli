@@ -997,9 +997,10 @@ func TestCVList_EmptyList(t *testing.T) {
 		}
 
 		out := stdout.String()
-		// Table output should include headers even with no data
-		if !strings.Contains(out, "ID") || !strings.Contains(out, "STATUS") {
-			t.Errorf("expected table headers ID, STATUS in output, got: %s", out)
+		// Empty table output should show friendly message
+		expected := "No configuration versions found."
+		if !strings.Contains(out, expected) {
+			t.Errorf("expected %q in output, got: %s", expected, out)
 		}
 	})
 }

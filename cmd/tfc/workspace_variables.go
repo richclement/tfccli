@@ -160,6 +160,10 @@ func (c *WorkspaceVariablesListCmd) Run(cli *CLI) error {
 			return internalcmd.NewRuntimeError(fmt.Errorf("failed to write output: %w", err))
 		}
 	} else {
+		if len(variables) == 0 {
+			fmt.Fprintln(c.stdout, "No variables found.")
+			return nil
+		}
 		tw := output.NewTableWriter(c.stdout, []string{"ID", "KEY", "CATEGORY", "SENSITIVE", "HCL"}, isTTY)
 		for _, v := range variables {
 			tw.AddRow(v.ID, v.Key, string(v.Category), fmt.Sprintf("%t", v.Sensitive), fmt.Sprintf("%t", v.HCL))
