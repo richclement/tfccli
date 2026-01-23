@@ -352,6 +352,55 @@ tfc organizations list
 # other-org   other@example.com   ext-456
 ```
 
+### JSON Output Contract
+
+JSON output follows three patterns depending on the command type:
+
+#### 1. Data Envelope (API Resources)
+
+Commands that fetch or modify API resources wrap results in a `data` key:
+
+```json
+// Single resource (get/create/update)
+{"data": {"id": "org-abc123", "type": "organizations", "attributes": {...}}}
+
+// List of resources
+{"data": [{"id": "ws-abc123", "type": "workspaces", ...}, ...]}
+
+// Empty list
+{"data": []}
+```
+
+Applies to: `organizations`, `projects`, `workspaces`, `runs`, `plans get`, `applies get`, `configuration-versions`, `workspace-variables`, `workspace-resources`
+
+#### 2. Meta Envelope (File Operations)
+
+Commands that write to files (using `--out`) emit metadata about the operation:
+
+```json
+// After writing a file
+{"meta": {"written_to": "/path/to/file.json", "bytes": 12345}}
+
+// After uploading
+{"meta": {"status": "uploaded", "cv_id": "cv-abc123", "bytes": 5678}}
+```
+
+Applies to: `plans json-output --out`, `plans sanitized-plan --out`, `applies errored-state --out`, `configuration-versions download --out`, `configuration-versions upload`
+
+#### 3. Raw JSON:API (Pass-through)
+
+Some commands pass through the raw JSON:API response from the TFC API:
+
+```json
+// users get
+{"data": {"id": "user-abc", "type": "users", "attributes": {...}}}
+
+// invoices list (includes pagination)
+{"data": [...], "links": {"self": "...", "next": "..."}}
+```
+
+Applies to: `users get`, `invoices list`, `invoices next`
+
 ## Exit Codes
 
 | Code | Meaning |

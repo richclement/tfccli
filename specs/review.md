@@ -463,7 +463,70 @@ For balance, the codebase has several strong architectural qualities:
 | #10 Org-required abstraction | DONE | P3 | Add helper for required org |
 | #12 forceFlag pattern | DONE | P3 | Use cli.Force directly in tests |
 | #14 Empty list handling | DONE | P3 | Standardize empty result messages |
-| #15 JSON output inconsistency | TODO | P3 | Document JSON output contract |
+| #15 JSON output inconsistency | DONE | P3 | Document JSON output contract |
+
+---
+
+### Task #15: JSON Output Inconsistency
+
+**Status:** DONE
+
+**Analysis:**
+The codebase has three distinct JSON output patterns:
+
+1. **Data envelope** - Most commands wrap API data in `{"data": ...}`
+   - Used by: organizations, projects, workspaces, runs, plans (get), applies (get), configuration-versions (list/get/create), workspace-variables, workspace-resources
+
+2. **Meta envelope** - File operations emit `{"meta": {...}}` with operation details
+   - Used by: configuration-versions upload (`{"meta": {"status": "uploaded", "cv_id": "...", "bytes": N}}`)
+   - Used by: plans json-output/sanitized-plan with --out (`{"meta": {"written_to": "...", "bytes": N}}`)
+   - Used by: applies errored-state with --out (`{"meta": {"written_to": "...", "bytes": N}}`)
+   - Used by: configuration-versions download with --out (`{"meta": {"written_to": "...", "bytes": N}}`)
+
+3. **Raw JSON:API** - Commands that return original API response
+   - Used by: users get, invoices list/next (returns full JSON:API response with `{"data": ...}`)
+
+**PRD Alignment (Section 6):**
+> `--output-format=json`: Emit **raw JSON:API** documents when API returns JSON:API.
+> For 204/empty success responses: emit a small JSON object like `{"meta":{"status":204}}`
+
+The current patterns are intentional:
+- Pattern 1: Wrapping in `{"data": ...}` mimics JSON:API format
+- Pattern 2: `{"meta": ...}` for file operations follows PRD guidance for non-API responses
+- Pattern 3: Raw JSON:API is correct per PRD for API responses
+
+**Acceptance Criteria:**
+- Document the JSON output contract in README.md
+- Explain the three output patterns with examples
+- Help API consumers understand what to expect from each command type
+
+**Verification:**
+- README.md contains clear JSON output documentation
+- Documentation is accurate and matches actual behavior
+
+**Implementation Plan:**
+1. Add "JSON Output Contract" section to README.md after "Output Formats"
+2. Document the three patterns with examples
+3. Run feedback loops to verify no regressions
+
+**Progress Notes (2026-01-23):**
+
+Completed documentation of JSON output contract.
+
+**Files Changed:**
+- `README.md` - Added "JSON Output Contract" section under "Output Formats" documenting:
+  - Data Envelope pattern for API resource commands
+  - Meta Envelope pattern for file operations
+  - Raw JSON:API pattern for pass-through responses
+  - Each pattern includes JSON examples and lists which commands use it
+
+**Commands Run:**
+- `make fmt` - success
+- `make lint` - success
+- `make build` - success
+- `make test` - all tests pass
+
+**Result:** Task complete. API consumers now have clear documentation of the three JSON output patterns and which commands use each pattern.
 
 ---
 
