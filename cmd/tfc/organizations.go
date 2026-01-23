@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	tfe "github.com/hashicorp/go-tfe"
 
@@ -14,6 +15,32 @@ import (
 	"github.com/richclement/tfccli/internal/tfcapi"
 	"github.com/richclement/tfccli/internal/ui"
 )
+
+// organizationJSON is a JSON-serializable representation of tfe.Organization.
+// The tfe.Organization struct contains NullableAttr fields that encoding/json cannot serialize.
+type organizationJSON struct {
+	Name       string `json:"name"`
+	Email      string `json:"email"`
+	ExternalID string `json:"external_id"`
+	CreatedAt  string `json:"created_at"`
+}
+
+func toOrganizationJSON(o *tfe.Organization) *organizationJSON {
+	return &organizationJSON{
+		Name:       o.Name,
+		Email:      o.Email,
+		ExternalID: o.ExternalID,
+		CreatedAt:  o.CreatedAt.Format(time.RFC3339),
+	}
+}
+
+func toOrganizationJSONList(orgs []*tfe.Organization) []*organizationJSON {
+	result := make([]*organizationJSON, len(orgs))
+	for i, o := range orgs {
+		result[i] = toOrganizationJSON(o)
+	}
+	return result
+}
 
 // OrganizationsCmd groups all organizations subcommands.
 type OrganizationsCmd struct {
@@ -116,7 +143,7 @@ func (c *OrganizationsListCmd) Run(cli *CLI) error {
 
 	if format == output.FormatJSON {
 		// Wrap in data array for JSON:API-like output
-		result := map[string]any{"data": orgs}
+		result := map[string]any{"data": toOrganizationJSONList(orgs)}
 		if err := output.WriteJSON(c.stdout, result); err != nil {
 			return internalcmd.NewRuntimeError(fmt.Errorf("failed to write output: %w", err))
 		}
@@ -186,7 +213,7 @@ func (c *OrganizationsGetCmd) Run(cli *CLI) error {
 
 	if format == output.FormatJSON {
 		// Wrap in data for JSON:API-like output
-		result := map[string]any{"data": org}
+		result := map[string]any{"data": toOrganizationJSON(org)}
 		if err := output.WriteJSON(c.stdout, result); err != nil {
 			return internalcmd.NewRuntimeError(fmt.Errorf("failed to write output: %w", err))
 		}
@@ -256,7 +283,7 @@ func (c *OrganizationsCreateCmd) Run(cli *CLI) error {
 	format, _ := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
 
 	if format == output.FormatJSON {
-		result := map[string]any{"data": org}
+		result := map[string]any{"data": toOrganizationJSON(org)}
 		if err := output.WriteJSON(c.stdout, result); err != nil {
 			return internalcmd.NewRuntimeError(fmt.Errorf("failed to write output: %w", err))
 		}
@@ -324,7 +351,7 @@ func (c *OrganizationsUpdateCmd) Run(cli *CLI) error {
 	format, _ := resolveFormat(c.stdout, c.ttyDetector, cli.OutputFormat)
 
 	if format == output.FormatJSON {
-		result := map[string]any{"data": org}
+		result := map[string]any{"data": toOrganizationJSON(org)}
 		if err := output.WriteJSON(c.stdout, result); err != nil {
 			return internalcmd.NewRuntimeError(fmt.Errorf("failed to write output: %w", err))
 		}
