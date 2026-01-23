@@ -45,21 +45,29 @@ type CLI struct {
 	Debug        bool   `help:"Enable debug logging for this invocation."`
 	Force        bool   `help:"Bypass confirmation prompts for destructive operations."`
 
-	Version               kong.VersionFlag         `name:"version" short:"v" help:"Print version and exit."`
-	Doctor                DoctorCmd                `cmd:"" help:"Validate settings, token discovery, and connectivity."`
-	Init                  InitCmd                  `cmd:"" help:"Initialize CLI settings."`
-	Contexts              ContextsCmd              `cmd:"" help:"Manage named contexts."`
-	Organizations         OrganizationsCmd         `cmd:"" help:"Manage organizations."`
-	Projects              ProjectsCmd              `cmd:"" help:"Manage projects."`
-	Workspaces            WorkspacesCmd            `cmd:"" help:"Manage workspaces."`
-	WorkspaceVariables    WorkspaceVariablesCmd    `cmd:"" name:"workspace-variables" help:"Manage workspace variables."`
-	WorkspaceResources    WorkspaceResourcesCmd    `cmd:"" name:"workspace-resources" help:"List workspace resources."`
-	Runs                  RunsCmd                  `cmd:"" help:"Manage runs."`
-	Plans                 PlansCmd                 `cmd:"" help:"Manage plans."`
-	Applies               AppliesCmd               `cmd:"" help:"Manage applies."`
-	ConfigurationVersions ConfigurationVersionsCmd `cmd:"" name:"configuration-versions" help:"Manage configuration versions."`
-	Users                 UsersCmd                 `cmd:"" help:"Manage users."`
-	Invoices              InvoicesCmd              `cmd:"" help:"Manage invoices (HCP Terraform Cloud only)."`
+	Version kong.VersionFlag `name:"version" short:"v" help:"Print version and exit."`
+
+	// Setup commands
+	Doctor   DoctorCmd   `cmd:"" help:"Validate settings, token discovery, and connectivity." group:"setup"`
+	Init     InitCmd     `cmd:"" help:"Initialize CLI settings." group:"setup"`
+	Contexts ContextsCmd `cmd:"" help:"Manage named contexts." group:"setup"`
+
+	// Resource commands
+	Organizations      OrganizationsCmd      `cmd:"" help:"Manage organizations." group:"resources"`
+	Projects           ProjectsCmd           `cmd:"" help:"Manage projects." group:"resources"`
+	Workspaces         WorkspacesCmd         `cmd:"" help:"Manage workspaces." group:"resources"`
+	WorkspaceVariables WorkspaceVariablesCmd `cmd:"" name:"workspace-variables" help:"Manage workspace variables." group:"resources"`
+	WorkspaceResources WorkspaceResourcesCmd `cmd:"" name:"workspace-resources" help:"List workspace resources." group:"resources"`
+
+	// Operations commands
+	Runs                  RunsCmd                  `cmd:"" help:"Manage runs." group:"operations"`
+	Plans                 PlansCmd                 `cmd:"" help:"View and download plans." group:"operations"`
+	Applies               AppliesCmd               `cmd:"" help:"View applies and download errored state." group:"operations"`
+	ConfigurationVersions ConfigurationVersionsCmd `cmd:"" name:"configuration-versions" help:"Manage configuration versions." group:"operations"`
+
+	// Account commands
+	Users    UsersCmd    `cmd:"" help:"Manage users." group:"account"`
+	Invoices InvoicesCmd `cmd:"" help:"Manage invoices (HCP Terraform Cloud only)." group:"account"`
 
 	// Logger is the logr.Logger used for debug output. Set by run() based on --debug flag and settings.
 	Logger logr.Logger `kong:"-"`
@@ -90,6 +98,15 @@ func run() (exitCode int) {
 		kong.Name("tfc"),
 		kong.Description("Terraform Cloud API CLI"),
 		kong.Vars{"version": versionString()},
+		kong.ConfigureHelp(kong.HelpOptions{
+			NoExpandSubcommands: true,
+		}),
+		kong.Groups{
+			"setup":      "Setup:",
+			"resources":  "Resources:",
+			"operations": "Operations:",
+			"account":    "Account:",
+		},
 		kong.Exit(func(code int) {
 			panic(exitError{code: code})
 		}),
