@@ -459,7 +459,7 @@ For balance, the codebase has several strong architectural qualities:
 | Task | Status | Priority | Notes |
 |------|--------|----------|-------|
 | #4 Client interface boilerplate | DONE | P3 | Documented as intentional testability pattern |
-| #9 Verbose DI pattern | TODO | P3 | Consider CmdContext struct |
+| #9 Verbose DI pattern | DONE | P3 | Documented as intentional testability pattern |
 | #10 Org-required abstraction | DONE | P3 | Add helper for required org |
 | #12 forceFlag pattern | DONE | P3 | Use cli.Force directly in tests |
 | #14 Empty list handling | DONE | P3 | Standardize empty result messages |
@@ -820,3 +820,93 @@ After analysis, determined this is an intentional testability pattern, not techn
 - `make test` - all tests pass
 
 **Result:** Task complete. The client interface boilerplate is documented as an intentional pattern for testability. No code changes needed - the pattern serves its purpose well and alternatives (generics, code generation) would add complexity without proportional benefit.
+
+---
+
+### Task #9: Verbose DI Pattern
+
+**Status:** DONE
+
+**Analysis:**
+
+Every command struct in `cmd/tfc/` has 4-6 injectable dependency fields and every `Run()` method begins with nil-check boilerplate:
+
+```go
+type XxxCmd struct {
+    // CLI args...
+    baseDir       string
+    tokenResolver *auth.TokenResolver
+    ttyDetector   output.TTYDetector
+    stdout        io.Writer
+    clientFactory xxxClientFactory
+    prompter      ui.Prompter  // some commands
+}
+
+func (c *XxxCmd) Run(cli *CLI) error {
+    if c.ttyDetector == nil {
+        c.ttyDetector = &output.RealTTYDetector{}
+    }
+    if c.stdout == nil {
+        c.stdout = os.Stdout
+    }
+    if c.clientFactory == nil {
+        c.clientFactory = defaultXxxClientFactory
+    }
+    // ...
+}
+```
+
+This pattern appears in all 12 resource command files across ~50 command structs.
+
+**Why a CmdContext struct would NOT help:**
+
+1. **clientFactory types vary** - Each command has a different client interface (orgsClient, workspacesClient, runsClient, etc.). Can't bundle a generic factory.
+
+2. **Tests inject dependencies directly** - The test pattern sets struct fields:
+   ```go
+   cmd := &OrganizationsListCmd{
+       baseDir:       tmpDir,
+       tokenResolver: resolver,
+       ttyDetector:   &output.FakeTTYDetector{IsTTYResult: false},
+       stdout:        out,
+       clientFactory: func(cfg tfcapi.ClientConfig) (orgsClient, error) {
+           return fakeClient, nil
+       },
+   }
+   ```
+   This is clear and explicit. A CmdContext would add indirection without benefit.
+
+3. **Defaults are command-specific** - Some commands need `prompter`, others don't. The default prompter differs (stdin/stdout vs test mocks).
+
+4. **Pattern is explicit** - Every dependency and default is visible at the top of Run(). No hidden magic.
+
+5. **High risk, medium benefit** - Changing ~50 structs and ~150+ tests risks regressions with minimal payoff.
+
+**Conclusion:**
+
+The verbose DI pattern is **intentional and serves testability**. Like Task #4 (Client interface boilerplate), this is a deliberate architectural choice, not technical debt. The explicitness aids understanding and the per-field injection enables precise test control.
+
+**Acceptance Criteria:**
+- Document the pattern as intentional in review.md ✓
+- Explain why CmdContext would not improve the codebase ✓
+- Mark as DONE with no code changes ✓
+
+**Verification:**
+- Pattern is consistent across all command files ✓
+- Tests successfully inject dependencies ✓
+- All feedback loops pass ✓
+
+**Progress Notes (2026-01-23):**
+
+After analysis, determined this is an intentional testability pattern, not technical debt to eliminate. The nil-check boilerplate enables tests to inject only the dependencies they need while production code gets sensible defaults.
+
+**Files Changed:**
+- `specs/review.md` - Added this documentation section
+
+**Commands Run:**
+- `make fmt` - success
+- `make lint` - success
+- `make build` - success
+- `make test` - all tests pass
+
+**Result:** Task complete. The verbose DI pattern is documented as an intentional testability pattern. No code changes needed - the pattern enables precise test control and explicit defaults.
