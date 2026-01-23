@@ -770,7 +770,6 @@ func TestWorkspacesDelete_WithForce(t *testing.T) {
 	out := &bytes.Buffer{}
 
 	fakeClient := &fakeWorkspacesClient{}
-	forceFlag := true
 
 	cmd := &WorkspacesDeleteCmd{
 		ID:            "ws-123",
@@ -781,8 +780,7 @@ func TestWorkspacesDelete_WithForce(t *testing.T) {
 		clientFactory: func(_ tfcapi.ClientConfig) (workspacesClient, error) {
 			return fakeClient, nil
 		},
-		prompter:  &failingPrompter{}, // Would fail if called
-		forceFlag: &forceFlag,
+		prompter: &failingPrompter{}, // Would fail if called
 	}
 
 	cli := &CLI{Force: true}
@@ -803,7 +801,6 @@ func TestWorkspacesDelete_JSON(t *testing.T) {
 	out := &bytes.Buffer{}
 
 	fakeClient := &fakeWorkspacesClient{}
-	forceFlag := true
 
 	cmd := &WorkspacesDeleteCmd{
 		ID:            "ws-123",
@@ -814,8 +811,7 @@ func TestWorkspacesDelete_JSON(t *testing.T) {
 		clientFactory: func(_ tfcapi.ClientConfig) (workspacesClient, error) {
 			return fakeClient, nil
 		},
-		prompter:  &failingPrompter{},
-		forceFlag: &forceFlag,
+		prompter: &failingPrompter{},
 	}
 
 	cli := &CLI{OutputFormat: "json", Force: true}
@@ -1024,7 +1020,6 @@ func TestWorkspacesDelete_APIError(t *testing.T) {
 	fakeClient := &fakeWorkspacesClient{
 		deleteErr: errors.New("workspace has active runs"),
 	}
-	forceFlag := true
 
 	cmd := &WorkspacesDeleteCmd{
 		ID:            "ws-123",
@@ -1035,8 +1030,7 @@ func TestWorkspacesDelete_APIError(t *testing.T) {
 		clientFactory: func(_ tfcapi.ClientConfig) (workspacesClient, error) {
 			return fakeClient, nil
 		},
-		prompter:  &failingPrompter{},
-		forceFlag: &forceFlag,
+		prompter: &failingPrompter{},
 	}
 
 	cli := &CLI{Force: true}

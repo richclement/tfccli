@@ -799,7 +799,6 @@ func TestRunsApply_WithForce(t *testing.T) {
 	fakeClient := &fakeRunsClient{}
 
 	var stdout bytes.Buffer
-	forceFlag := true
 	cmd := &RunsApplyCmd{
 		ID:            "run-1",
 		baseDir:       tmpDir,
@@ -809,11 +808,10 @@ func TestRunsApply_WithForce(t *testing.T) {
 		clientFactory: func(_ tfcapi.ClientConfig) (runsClient, error) {
 			return fakeClient, nil
 		},
-		forceFlag: &forceFlag,
-		prompter:  &runsFailingPrompter{}, // Should not be called
+		prompter: &runsFailingPrompter{}, // Should not be called
 	}
 
-	cli := &CLI{OutputFormat: "json"}
+	cli := &CLI{OutputFormat: "json", Force: true}
 	err := cmd.Run(cli)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -881,7 +879,6 @@ func TestRunsApply_WithComment(t *testing.T) {
 	fakeClient := &fakeRunsClient{}
 
 	var stdout bytes.Buffer
-	forceFlag := true
 	cmd := &RunsApplyCmd{
 		ID:            "run-1",
 		Comment:       "LGTM, applying",
@@ -892,10 +889,9 @@ func TestRunsApply_WithComment(t *testing.T) {
 		clientFactory: func(_ tfcapi.ClientConfig) (runsClient, error) {
 			return fakeClient, nil
 		},
-		forceFlag: &forceFlag,
 	}
 
-	cli := &CLI{OutputFormat: "json"}
+	cli := &CLI{OutputFormat: "json", Force: true}
 	err := cmd.Run(cli)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -944,7 +940,6 @@ func TestRunsDiscard_WithForce(t *testing.T) {
 	fakeClient := &fakeRunsClient{}
 
 	var stdout bytes.Buffer
-	forceFlag := true
 	cmd := &RunsDiscardCmd{
 		ID:            "run-1",
 		baseDir:       tmpDir,
@@ -954,10 +949,9 @@ func TestRunsDiscard_WithForce(t *testing.T) {
 		clientFactory: func(_ tfcapi.ClientConfig) (runsClient, error) {
 			return fakeClient, nil
 		},
-		forceFlag: &forceFlag,
 	}
 
-	cli := &CLI{OutputFormat: "json"}
+	cli := &CLI{OutputFormat: "json", Force: true}
 	err := cmd.Run(cli)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -979,7 +973,6 @@ func TestRunsDiscard_WithComment(t *testing.T) {
 	fakeClient := &fakeRunsClient{}
 
 	var stdout bytes.Buffer
-	forceFlag := true
 	cmd := &RunsDiscardCmd{
 		ID:            "run-1",
 		Comment:       "Discarding due to failed review",
@@ -990,10 +983,9 @@ func TestRunsDiscard_WithComment(t *testing.T) {
 		clientFactory: func(_ tfcapi.ClientConfig) (runsClient, error) {
 			return fakeClient, nil
 		},
-		forceFlag: &forceFlag,
 	}
 
-	cli := &CLI{OutputFormat: "json"}
+	cli := &CLI{OutputFormat: "json", Force: true}
 	err := cmd.Run(cli)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -1042,7 +1034,6 @@ func TestRunsCancel_WithForce(t *testing.T) {
 	fakeClient := &fakeRunsClient{}
 
 	var stdout bytes.Buffer
-	forceFlag := true
 	cmd := &RunsCancelCmd{
 		ID:            "run-1",
 		baseDir:       tmpDir,
@@ -1052,10 +1043,9 @@ func TestRunsCancel_WithForce(t *testing.T) {
 		clientFactory: func(_ tfcapi.ClientConfig) (runsClient, error) {
 			return fakeClient, nil
 		},
-		forceFlag: &forceFlag,
 	}
 
-	cli := &CLI{OutputFormat: "json"}
+	cli := &CLI{OutputFormat: "json", Force: true}
 	err := cmd.Run(cli)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -1077,7 +1067,6 @@ func TestRunsCancel_WithComment(t *testing.T) {
 	fakeClient := &fakeRunsClient{}
 
 	var stdout bytes.Buffer
-	forceFlag := true
 	cmd := &RunsCancelCmd{
 		ID:            "run-1",
 		Comment:       "Cancelling to update configuration",
@@ -1088,10 +1077,9 @@ func TestRunsCancel_WithComment(t *testing.T) {
 		clientFactory: func(_ tfcapi.ClientConfig) (runsClient, error) {
 			return fakeClient, nil
 		},
-		forceFlag: &forceFlag,
 	}
 
-	cli := &CLI{OutputFormat: "json"}
+	cli := &CLI{OutputFormat: "json", Force: true}
 	err := cmd.Run(cli)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -1140,7 +1128,6 @@ func TestRunsForceCancel_WithForce(t *testing.T) {
 	fakeClient := &fakeRunsClient{}
 
 	var stdout bytes.Buffer
-	forceFlag := true
 	cmd := &RunsForceCancelCmd{
 		ID:            "run-1",
 		baseDir:       tmpDir,
@@ -1150,10 +1137,9 @@ func TestRunsForceCancel_WithForce(t *testing.T) {
 		clientFactory: func(_ tfcapi.ClientConfig) (runsClient, error) {
 			return fakeClient, nil
 		},
-		forceFlag: &forceFlag,
 	}
 
-	cli := &CLI{OutputFormat: "json"}
+	cli := &CLI{OutputFormat: "json", Force: true}
 	err := cmd.Run(cli)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -1175,7 +1161,6 @@ func TestRunsForceCancel_WithComment(t *testing.T) {
 	fakeClient := &fakeRunsClient{}
 
 	var stdout bytes.Buffer
-	forceFlag := true
 	cmd := &RunsForceCancelCmd{
 		ID:            "run-1",
 		Comment:       "Emergency force-cancel required",
@@ -1186,10 +1171,9 @@ func TestRunsForceCancel_WithComment(t *testing.T) {
 		clientFactory: func(_ tfcapi.ClientConfig) (runsClient, error) {
 			return fakeClient, nil
 		},
-		forceFlag: &forceFlag,
 	}
 
-	cli := &CLI{OutputFormat: "json"}
+	cli := &CLI{OutputFormat: "json", Force: true}
 	err := cmd.Run(cli)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

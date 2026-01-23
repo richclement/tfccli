@@ -346,7 +346,6 @@ type OrganizationsDeleteCmd struct {
 	stdout        io.Writer
 	clientFactory orgsClientFactory
 	prompter      ui.Prompter
-	forceFlag     *bool
 }
 
 func (c *OrganizationsDeleteCmd) Run(cli *CLI) error {
@@ -364,16 +363,8 @@ func (c *OrganizationsDeleteCmd) Run(cli *CLI) error {
 		c.prompter = ui.NewStdPrompter(os.Stdin, os.Stdout)
 	}
 
-	// Get force flag from CLI or injected test value.
-	// Test injection (forceFlag) takes precedence over CLI flag to enable
-	// deterministic testing without relying on CLI parsing.
-	force := cli.Force
-	if c.forceFlag != nil {
-		force = *c.forceFlag
-	}
-
 	// Confirm deletion unless --force
-	if !force {
+	if !cli.Force {
 		confirmed, err := c.prompter.Confirm(fmt.Sprintf("Delete organization %q? This cannot be undone.", c.Name), false)
 		if err != nil {
 			return internalcmd.NewRuntimeError(fmt.Errorf("failed to prompt for confirmation: %w", err))

@@ -174,10 +174,9 @@ func (c *ContextsUseCmd) Run(cli *CLI) error {
 type ContextsRemoveCmd struct {
 	Name string `arg:"" help:"Name of the context to remove."`
 
-	baseDir   string
-	prompter  ui.Prompter
-	stdout    io.Writer
-	forceFlag *bool // Pointer to allow injection from parent CLI
+	baseDir  string
+	prompter ui.Prompter
+	stdout   io.Writer
 }
 
 func (c *ContextsRemoveCmd) Run(cli *CLI) error {
@@ -199,14 +198,8 @@ func (c *ContextsRemoveCmd) Run(cli *CLI) error {
 		return internalcmd.NewRuntimeError(errors.New("cannot remove current context; switch to another context first"))
 	}
 
-	// Get force flag from CLI or injected value
-	force := cli.Force
-	if c.forceFlag != nil {
-		force = *c.forceFlag
-	}
-
 	// Confirm removal unless --force
-	if !force {
+	if !cli.Force {
 		if c.prompter == nil {
 			c.prompter = ui.NewStdPrompter(os.Stdin, os.Stdout)
 		}

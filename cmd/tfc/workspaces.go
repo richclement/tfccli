@@ -428,7 +428,6 @@ type WorkspacesDeleteCmd struct {
 	stdout        io.Writer
 	clientFactory workspacesClientFactory
 	prompter      ui.Prompter
-	forceFlag     *bool
 }
 
 func (c *WorkspacesDeleteCmd) Run(cli *CLI) error {
@@ -446,14 +445,8 @@ func (c *WorkspacesDeleteCmd) Run(cli *CLI) error {
 		c.prompter = ui.NewStdPrompter(os.Stdin, os.Stdout)
 	}
 
-	// Get force flag from CLI or injected value
-	force := cli.Force
-	if c.forceFlag != nil {
-		force = *c.forceFlag
-	}
-
 	// Confirm deletion unless --force
-	if !force {
+	if !cli.Force {
 		confirmed, err := c.prompter.Confirm(fmt.Sprintf("Delete workspace %q? This cannot be undone.", c.ID), false)
 		if err != nil {
 			return internalcmd.NewRuntimeError(fmt.Errorf("failed to prompt for confirmation: %w", err))

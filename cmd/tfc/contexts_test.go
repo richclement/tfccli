@@ -312,13 +312,11 @@ func TestContextsRemoveCmd_RemovesContext(t *testing.T) {
 	}
 	createTestSettings(t, tmpHome, settings)
 
-	forceVal := true
 	cmd := &ContextsRemoveCmd{
-		Name:      "prod",
-		baseDir:   tmpHome,
-		forceFlag: &forceVal,
+		Name:    "prod",
+		baseDir: tmpHome,
 	}
-	cli := &CLI{}
+	cli := &CLI{Force: true}
 
 	err := cmd.Run(cli)
 	if err != nil {
@@ -347,13 +345,11 @@ func TestContextsRemoveCmd_ErrorsWhenRemovingCurrentContext(t *testing.T) {
 	}
 	createTestSettings(t, tmpHome, settings)
 
-	forceVal := true
 	cmd := &ContextsRemoveCmd{
-		Name:      "default",
-		baseDir:   tmpHome,
-		forceFlag: &forceVal,
+		Name:    "default",
+		baseDir: tmpHome,
 	}
-	cli := &CLI{}
+	cli := &CLI{Force: true}
 
 	err := cmd.Run(cli)
 	if err == nil {
@@ -447,13 +443,11 @@ func TestContextsRemoveCmd_NoSettings(t *testing.T) {
 	tmpHome := t.TempDir()
 	// Don't create settings file
 
-	forceVal := true
 	cmd := &ContextsRemoveCmd{
-		Name:      "some-context",
-		baseDir:   tmpHome,
-		forceFlag: &forceVal,
+		Name:    "some-context",
+		baseDir: tmpHome,
 	}
-	cli := &CLI{}
+	cli := &CLI{Force: true}
 
 	err := cmd.Run(cli)
 	if err == nil {
@@ -626,13 +620,11 @@ func TestContextsRemoveCmd_ContextNotFound(t *testing.T) {
 	}
 	createTestSettings(t, tmpHome, settings)
 
-	forceVal := true
 	cmd := &ContextsRemoveCmd{
-		Name:      "nonexistent",
-		baseDir:   tmpHome,
-		forceFlag: &forceVal,
+		Name:    "nonexistent",
+		baseDir: tmpHome,
 	}
-	cli := &CLI{}
+	cli := &CLI{Force: true}
 
 	err := cmd.Run(cli)
 	if err == nil {
@@ -732,13 +724,11 @@ func TestContextsRemoveCmd_SaveError(t *testing.T) {
 		os.Chmod(settingsPath, 0o600) // Restore so cleanup can delete
 	})
 
-	forceVal := true
 	cmd := &ContextsRemoveCmd{
-		Name:      "prod",
-		baseDir:   tmpHome,
-		forceFlag: &forceVal,
+		Name:    "prod",
+		baseDir: tmpHome,
 	}
-	cli := &CLI{}
+	cli := &CLI{Force: true}
 
 	err := cmd.Run(cli)
 	if err == nil {

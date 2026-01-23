@@ -340,7 +340,6 @@ type RunsApplyCmd struct {
 	stdout        io.Writer
 	clientFactory runsClientFactory
 	prompter      ui.Prompter
-	forceFlag     *bool
 }
 
 func (c *RunsApplyCmd) Run(cli *CLI) error {
@@ -358,14 +357,8 @@ func (c *RunsApplyCmd) Run(cli *CLI) error {
 		c.prompter = ui.NewStdPrompter(os.Stdin, os.Stdout)
 	}
 
-	// Get force flag from CLI or injected value
-	force := cli.Force
-	if c.forceFlag != nil {
-		force = *c.forceFlag
-	}
-
 	// Confirm action unless --force
-	if !force {
+	if !cli.Force {
 		confirmed, err := c.prompter.Confirm(fmt.Sprintf("Apply run %q? This will make changes to your infrastructure.", c.ID), false)
 		if err != nil {
 			return internalcmd.NewRuntimeError(fmt.Errorf("failed to prompt for confirmation: %w", err))
@@ -427,7 +420,6 @@ type RunsDiscardCmd struct {
 	stdout        io.Writer
 	clientFactory runsClientFactory
 	prompter      ui.Prompter
-	forceFlag     *bool
 }
 
 func (c *RunsDiscardCmd) Run(cli *CLI) error {
@@ -445,14 +437,8 @@ func (c *RunsDiscardCmd) Run(cli *CLI) error {
 		c.prompter = ui.NewStdPrompter(os.Stdin, os.Stdout)
 	}
 
-	// Get force flag from CLI or injected value
-	force := cli.Force
-	if c.forceFlag != nil {
-		force = *c.forceFlag
-	}
-
 	// Confirm action unless --force
-	if !force {
+	if !cli.Force {
 		confirmed, err := c.prompter.Confirm(fmt.Sprintf("Discard run %q?", c.ID), false)
 		if err != nil {
 			return internalcmd.NewRuntimeError(fmt.Errorf("failed to prompt for confirmation: %w", err))
@@ -514,7 +500,6 @@ type RunsCancelCmd struct {
 	stdout        io.Writer
 	clientFactory runsClientFactory
 	prompter      ui.Prompter
-	forceFlag     *bool
 }
 
 func (c *RunsCancelCmd) Run(cli *CLI) error {
@@ -532,14 +517,8 @@ func (c *RunsCancelCmd) Run(cli *CLI) error {
 		c.prompter = ui.NewStdPrompter(os.Stdin, os.Stdout)
 	}
 
-	// Get force flag from CLI or injected value
-	force := cli.Force
-	if c.forceFlag != nil {
-		force = *c.forceFlag
-	}
-
 	// Confirm action unless --force
-	if !force {
+	if !cli.Force {
 		confirmed, err := c.prompter.Confirm(fmt.Sprintf("Cancel run %q?", c.ID), false)
 		if err != nil {
 			return internalcmd.NewRuntimeError(fmt.Errorf("failed to prompt for confirmation: %w", err))
@@ -601,7 +580,6 @@ type RunsForceCancelCmd struct {
 	stdout        io.Writer
 	clientFactory runsClientFactory
 	prompter      ui.Prompter
-	forceFlag     *bool
 }
 
 func (c *RunsForceCancelCmd) Run(cli *CLI) error {
@@ -619,14 +597,8 @@ func (c *RunsForceCancelCmd) Run(cli *CLI) error {
 		c.prompter = ui.NewStdPrompter(os.Stdin, os.Stdout)
 	}
 
-	// Get force flag from CLI or injected value
-	force := cli.Force
-	if c.forceFlag != nil {
-		force = *c.forceFlag
-	}
-
 	// Confirm action unless --force
-	if !force {
+	if !cli.Force {
 		confirmed, err := c.prompter.Confirm(fmt.Sprintf("Force-cancel run %q? This may leave infrastructure in an inconsistent state.", c.ID), false)
 		if err != nil {
 			return internalcmd.NewRuntimeError(fmt.Errorf("failed to prompt for confirmation: %w", err))

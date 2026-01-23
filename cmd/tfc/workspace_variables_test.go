@@ -591,7 +591,6 @@ func TestWorkspaceVariablesDelete_WithForce(t *testing.T) {
 	fakeClient := &fakeVariablesClient{}
 
 	var buf bytes.Buffer
-	forceTrue := true
 	cmd := &WorkspaceVariablesDeleteCmd{
 		VariableID:    "var-1",
 		WorkspaceID:   "ws-123",
@@ -602,7 +601,6 @@ func TestWorkspaceVariablesDelete_WithForce(t *testing.T) {
 		clientFactory: func(_ tfcapi.ClientConfig) (variablesClient, error) {
 			return fakeClient, nil
 		},
-		forceFlag: &forceTrue,
 	}
 
 	cli := &CLI{Force: true}
@@ -622,7 +620,6 @@ func TestWorkspaceVariablesDelete_JSON(t *testing.T) {
 	fakeClient := &fakeVariablesClient{}
 
 	var buf bytes.Buffer
-	forceTrue := true
 	cmd := &WorkspaceVariablesDeleteCmd{
 		VariableID:    "var-1",
 		WorkspaceID:   "ws-123",
@@ -633,7 +630,6 @@ func TestWorkspaceVariablesDelete_JSON(t *testing.T) {
 		clientFactory: func(_ tfcapi.ClientConfig) (variablesClient, error) {
 			return fakeClient, nil
 		},
-		forceFlag: &forceTrue,
 	}
 
 	cli := &CLI{OutputFormat: "json", Force: true}

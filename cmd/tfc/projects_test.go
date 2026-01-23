@@ -530,7 +530,6 @@ func TestProjectsDelete_WithForce(t *testing.T) {
 	out := &bytes.Buffer{}
 
 	fakeClient := &fakeProjectsClient{}
-	forceFlag := true
 
 	cmd := &ProjectsDeleteCmd{
 		ID:            "prj-123",
@@ -541,8 +540,7 @@ func TestProjectsDelete_WithForce(t *testing.T) {
 		clientFactory: func(_ tfcapi.ClientConfig) (projectsClient, error) {
 			return fakeClient, nil
 		},
-		prompter:  &failingPrompter{}, // Would fail if called
-		forceFlag: &forceFlag,
+		prompter: &failingPrompter{}, // Would fail if called
 	}
 
 	cli := &CLI{Force: true}
@@ -563,7 +561,6 @@ func TestProjectsDelete_JSON(t *testing.T) {
 	out := &bytes.Buffer{}
 
 	fakeClient := &fakeProjectsClient{}
-	forceFlag := true
 
 	cmd := &ProjectsDeleteCmd{
 		ID:            "prj-123",
@@ -574,8 +571,7 @@ func TestProjectsDelete_JSON(t *testing.T) {
 		clientFactory: func(_ tfcapi.ClientConfig) (projectsClient, error) {
 			return fakeClient, nil
 		},
-		prompter:  &failingPrompter{},
-		forceFlag: &forceFlag,
+		prompter: &failingPrompter{},
 	}
 
 	cli := &CLI{OutputFormat: "json", Force: true}
@@ -822,7 +818,6 @@ func TestProjectsDelete_Table(t *testing.T) {
 	out := &bytes.Buffer{}
 
 	fakeClient := &fakeProjectsClient{}
-	forceFlag := true
 
 	cmd := &ProjectsDeleteCmd{
 		ID:            "prj-123",
@@ -833,8 +828,7 @@ func TestProjectsDelete_Table(t *testing.T) {
 		clientFactory: func(_ tfcapi.ClientConfig) (projectsClient, error) {
 			return fakeClient, nil
 		},
-		prompter:  &failingPrompter{},
-		forceFlag: &forceFlag,
+		prompter: &failingPrompter{},
 	}
 
 	cli := &CLI{OutputFormat: "table", Force: true}
@@ -952,7 +946,6 @@ func TestProjectsDelete_APIError(t *testing.T) {
 	fakeClient := &fakeProjectsClient{
 		deleteErr: errors.New("cannot delete project with workspaces"),
 	}
-	forceFlag := true
 
 	cmd := &ProjectsDeleteCmd{
 		ID:            "prj-123",
@@ -963,8 +956,7 @@ func TestProjectsDelete_APIError(t *testing.T) {
 		clientFactory: func(_ tfcapi.ClientConfig) (projectsClient, error) {
 			return fakeClient, nil
 		},
-		prompter:  &failingPrompter{},
-		forceFlag: &forceFlag,
+		prompter: &failingPrompter{},
 	}
 
 	cli := &CLI{OutputFormat: "json", Force: true}

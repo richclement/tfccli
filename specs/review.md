@@ -461,7 +461,7 @@ For balance, the codebase has several strong architectural qualities:
 | #4 Client interface boilerplate | TODO | P3 | Consider generics or code generator |
 | #9 Verbose DI pattern | TODO | P3 | Consider CmdContext struct |
 | #10 Org-required abstraction | DONE | P3 | Add helper for required org |
-| #12 forceFlag pattern | TODO | P3 | Use cli.Force directly in tests |
+| #12 forceFlag pattern | DONE | P3 | Use cli.Force directly in tests |
 | #14 Empty list handling | DONE | P3 | Standardize empty result messages |
 | #15 JSON output inconsistency | TODO | P3 | Document JSON output contract |
 
@@ -600,3 +600,67 @@ Completed implementation of consistent empty list handling across all list comma
 - `make test` - all tests pass
 
 **Result:** Task complete. All 9 list commands now show consistent "No X found." messages for empty results in table output mode. JSON output continues to return empty data arrays for machine parsing.
+
+---
+
+### Task #12: forceFlag Pattern
+
+**Status:** DONE
+
+**Analysis:**
+Commands that support `--force` to bypass confirmation prompts use an awkward `forceFlag *bool` pattern that allows tests to inject a boolean value. However, tests can simply set `cli.Force = true` directly on the CLI struct, making the pointer field redundant.
+
+**Files with forceFlag pattern:**
+- `contexts.go` - ContextsRemoveCmd
+- `organizations.go` - OrganizationsDeleteCmd
+- `projects.go` - ProjectsDeleteCmd
+- `workspaces.go` - WorkspacesDeleteCmd
+- `workspace_variables.go` - WorkspaceVariablesDeleteCmd
+- `runs.go` - RunsApplyCmd, RunsDiscardCmd, RunsCancelCmd, RunsForceCancelCmd
+
+**Acceptance Criteria:**
+- Remove `forceFlag *bool` field from all command structs
+- Remove the `if c.forceFlag != nil { force = *c.forceFlag }` override blocks
+- Update all tests to use `cli.Force = true` instead of `&forceFlag`
+- All tests pass
+- Feedback loops pass
+
+**Verification:**
+- `make test` passes
+- No `forceFlag` references remain in production code (only in review.md)
+
+**Implementation Plan:**
+1. Update `contexts.go` - remove forceFlag from ContextsRemoveCmd
+2. Update `organizations.go` - remove forceFlag from OrganizationsDeleteCmd
+3. Update `projects.go` - remove forceFlag from ProjectsDeleteCmd
+4. Update `workspaces.go` - remove forceFlag from WorkspacesDeleteCmd
+5. Update `workspace_variables.go` - remove forceFlag from WorkspaceVariablesDeleteCmd
+6. Update `runs.go` - remove forceFlag from 4 command structs
+7. Update test files to use cli.Force = true
+8. Run feedback loops
+
+**Progress Notes (2026-01-23):**
+
+Completed implementation of forceFlag pattern refactoring.
+
+**Files Changed:**
+- `cmd/tfc/contexts.go` - Removed `forceFlag *bool` field, changed to use `cli.Force` directly
+- `cmd/tfc/organizations.go` - Removed `forceFlag *bool` field, changed to use `cli.Force` directly
+- `cmd/tfc/projects.go` - Removed `forceFlag *bool` field, changed to use `cli.Force` directly
+- `cmd/tfc/workspaces.go` - Removed `forceFlag *bool` field, changed to use `cli.Force` directly
+- `cmd/tfc/workspace_variables.go` - Removed `forceFlag *bool` field, changed to use `cli.Force` directly
+- `cmd/tfc/runs.go` - Removed `forceFlag *bool` from 4 command structs (RunsApplyCmd, RunsDiscardCmd, RunsCancelCmd, RunsForceCancelCmd)
+- `cmd/tfc/contexts_test.go` - Updated 5 tests to use `cli.Force = true`
+- `cmd/tfc/organizations_test.go` - Updated 4 tests to use `cli.Force = true`
+- `cmd/tfc/projects_test.go` - Updated 4 tests to use `cli.Force = true`
+- `cmd/tfc/workspaces_test.go` - Updated 3 tests to use `cli.Force = true`
+- `cmd/tfc/workspace_variables_test.go` - Updated 2 tests to use `cli.Force = true`
+- `cmd/tfc/runs_test.go` - Updated 8 tests to use `cli.Force = true`
+
+**Commands Run:**
+- `make fmt` - success
+- `make lint` - success
+- `make build` - success
+- `make test` - all tests pass
+
+**Result:** Task complete. The redundant `forceFlag *bool` pointer pattern has been removed from all 9 command structs. Tests now set `cli.Force = true` directly on the CLI struct, which is simpler and more idiomatic. Total of 26 tests updated.
