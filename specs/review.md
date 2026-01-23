@@ -458,7 +458,7 @@ For balance, the codebase has several strong architectural qualities:
 
 | Task | Status | Priority | Notes |
 |------|--------|----------|-------|
-| #4 Client interface boilerplate | TODO | P3 | Consider generics or code generator |
+| #4 Client interface boilerplate | DONE | P3 | Documented as intentional testability pattern |
 | #9 Verbose DI pattern | TODO | P3 | Consider CmdContext struct |
 | #10 Org-required abstraction | DONE | P3 | Add helper for required org |
 | #12 forceFlag pattern | DONE | P3 | Use cli.Force directly in tests |
@@ -727,3 +727,96 @@ Completed implementation of forceFlag pattern refactoring.
 - `make test` - all tests pass
 
 **Result:** Task complete. The redundant `forceFlag *bool` pointer pattern has been removed from all 9 command structs. Tests now set `cli.Force = true` directly on the CLI struct, which is simpler and more idiomatic. Total of 26 tests updated.
+
+---
+
+### Task #4: Client Interface Boilerplate
+
+**Status:** DONE
+
+**Analysis:**
+
+The codebase uses a consistent pattern across 11 resource command files:
+
+```go
+// 1. Interface defining required operations
+type xxxClient interface {
+    List(ctx context.Context, ...) ([]*tfe.Resource, error)
+    Read(ctx context.Context, id string) (*tfe.Resource, error)
+    // ... other methods
+}
+
+// 2. Factory type for dependency injection
+type xxxClientFactory func(cfg tfcapi.ClientConfig) (xxxClient, error)
+
+// 3. Real implementation wrapping tfe.Client
+type realXxxClient struct {
+    client *tfe.Client
+}
+
+// 4. Method implementations (delegate to tfe.Client)
+func (c *realXxxClient) List(...) { return c.client.Xxx.List(...) }
+
+// 5. Default factory creating real client
+func defaultXxxClientFactory(cfg tfcapi.ClientConfig) (xxxClient, error) {
+    client, err := tfcapi.NewClient(cfg)
+    return &realXxxClient{client: client}, nil
+}
+```
+
+This pattern appears in:
+- `organizations.go` - orgsClient
+- `workspaces.go` - workspacesClient
+- `projects.go` - projectsClient
+- `runs.go` - runsClient
+- `plans.go` - plansClient
+- `applies.go` - appliesClient
+- `configuration_versions.go` - configVersionsClient
+- `workspace_variables.go` - workspaceVarsClient
+- `workspace_resources.go` - workspaceResourcesClient
+- `users.go` - usersClient (uses HTTP client wrapper)
+- `invoices.go` - invoicesClient (uses HTTP client wrapper)
+
+**Purpose (Intentional Design):**
+
+This pattern is **intentional and serves critical testability goals**:
+
+1. **Unit test isolation** - Tests inject mock clients without HTTP traffic
+2. **Behavior verification** - Tests assert exact API calls made
+3. **Error simulation** - Tests trigger specific API errors
+4. **Pagination testing** - Mock clients return multi-page responses
+5. **No external dependencies** - Tests run offline and deterministically
+
+**Why not generics?**
+
+Go generics (1.18+) could theoretically reduce some boilerplate, but:
+- Each interface has different method signatures
+- Return types vary (single resource, slice, error-only)
+- Pagination handling differs per resource type
+- Code generation adds build complexity
+- Current pattern is explicit and easy to understand
+
+**Acceptance Criteria:**
+- Document the pattern as intentional in review.md (this section)
+- Explain why it exists and why alternatives were not chosen
+- Mark as DONE (no code changes needed)
+
+**Verification:**
+- Pattern is consistent across all 11 files ✓
+- Tests successfully use mock clients ✓
+- No circular dependencies ✓
+
+**Progress Notes (2026-01-23):**
+
+After analysis, determined this is an intentional testability pattern, not technical debt to eliminate. The ~60-80 lines of boilerplate per resource file enable comprehensive unit testing without HTTP mocking complexity.
+
+**Files Changed:**
+- `specs/review.md` - Added this documentation section
+
+**Commands Run:**
+- `make fmt` - success
+- `make lint` - success
+- `make build` - success
+- `make test` - all tests pass
+
+**Result:** Task complete. The client interface boilerplate is documented as an intentional pattern for testability. No code changes needed - the pattern serves its purpose well and alternatives (generics, code generation) would add complexity without proportional benefit.
