@@ -244,10 +244,10 @@ func TestProjectsList_FailsWhenNoOrg(t *testing.T) {
 	if !strings.Contains(err.Error(), "organization is required") {
 		t.Errorf("expected 'organization is required' error, got: %v", err)
 	}
-	// Verify it's a RuntimeError for exit code 2
+	// Verify it's NOT a RuntimeError - should be exit code 1 (usage error per PRD)
 	var runtimeErr internalcmd.RuntimeError
-	if !errors.As(err, &runtimeErr) {
-		t.Errorf("expected RuntimeError, got %T", err)
+	if errors.As(err, &runtimeErr) {
+		t.Errorf("expected plain error (exit code 1), got RuntimeError (exit code 2)")
 	}
 }
 
@@ -439,10 +439,10 @@ func TestProjectsCreate_FailsWhenNoOrg(t *testing.T) {
 	if !strings.Contains(err.Error(), "organization is required") {
 		t.Errorf("expected 'organization is required' error, got: %v", err)
 	}
-	// Verify it's a RuntimeError for exit code 2
+	// Verify it's NOT a RuntimeError - should be exit code 1 (usage error per PRD)
 	var runtimeErr internalcmd.RuntimeError
-	if !errors.As(err, &runtimeErr) {
-		t.Errorf("expected RuntimeError, got %T", err)
+	if errors.As(err, &runtimeErr) {
+		t.Errorf("expected plain error (exit code 1), got RuntimeError (exit code 2)")
 	}
 }
 

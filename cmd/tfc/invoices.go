@@ -243,14 +243,12 @@ func (c *InvoicesListCmd) Run(cli *CLI) error {
 		c.clientFactory = defaultInvoicesClientFactory
 	}
 
-	cfg, org, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
+	cfg, org, err := resolveClientConfigWithRequiredOrg(cli, c.baseDir, c.tokenResolver)
 	if err != nil {
+		if err == errOrgRequired {
+			return err // exit code 1 (usage error)
+		}
 		return internalcmd.NewRuntimeError(err)
-	}
-
-	if org == "" {
-		// Exit code 1 for usage error (missing required parameter)
-		return fmt.Errorf("organization is required: use --org flag or set default_org in context")
 	}
 
 	client, err := c.clientFactory(cfg)
@@ -327,14 +325,12 @@ func (c *InvoicesNextCmd) Run(cli *CLI) error {
 		c.clientFactory = defaultInvoicesClientFactory
 	}
 
-	cfg, org, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
+	cfg, org, err := resolveClientConfigWithRequiredOrg(cli, c.baseDir, c.tokenResolver)
 	if err != nil {
+		if err == errOrgRequired {
+			return err // exit code 1 (usage error)
+		}
 		return internalcmd.NewRuntimeError(err)
-	}
-
-	if org == "" {
-		// Exit code 1 for usage error (missing required parameter)
-		return fmt.Errorf("organization is required: use --org flag or set default_org in context")
 	}
 
 	client, err := c.clientFactory(cfg)

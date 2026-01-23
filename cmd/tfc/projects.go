@@ -119,14 +119,12 @@ func (c *ProjectsListCmd) Run(cli *CLI) error {
 		c.clientFactory = defaultProjectsClientFactory
 	}
 
-	cfg, org, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
+	cfg, org, err := resolveClientConfigWithRequiredOrg(cli, c.baseDir, c.tokenResolver)
 	if err != nil {
+		if err == errOrgRequired {
+			return err // exit code 1 (usage error)
+		}
 		return internalcmd.NewRuntimeError(err)
-	}
-
-	// Validate org is available
-	if org == "" {
-		return internalcmd.NewRuntimeError(fmt.Errorf("organization is required; use --org flag or set default_org in context"))
 	}
 
 	client, err := c.clientFactory(cfg)
@@ -257,14 +255,12 @@ func (c *ProjectsCreateCmd) Run(cli *CLI) error {
 		c.clientFactory = defaultProjectsClientFactory
 	}
 
-	cfg, org, err := resolveClientConfig(cli, c.baseDir, c.tokenResolver)
+	cfg, org, err := resolveClientConfigWithRequiredOrg(cli, c.baseDir, c.tokenResolver)
 	if err != nil {
+		if err == errOrgRequired {
+			return err // exit code 1 (usage error)
+		}
 		return internalcmd.NewRuntimeError(err)
-	}
-
-	// Validate org is available
-	if org == "" {
-		return internalcmd.NewRuntimeError(fmt.Errorf("organization is required; use --org flag or set default_org in context"))
 	}
 
 	client, err := c.clientFactory(cfg)

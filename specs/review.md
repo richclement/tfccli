@@ -460,7 +460,7 @@ For balance, the codebase has several strong architectural qualities:
 |------|--------|----------|-------|
 | #4 Client interface boilerplate | TODO | P3 | Consider generics or code generator |
 | #9 Verbose DI pattern | TODO | P3 | Consider CmdContext struct |
-| #10 Org-required abstraction | TODO | P3 | Add helper for required org |
+| #10 Org-required abstraction | DONE | P3 | Add helper for required org |
 | #12 forceFlag pattern | TODO | P3 | Use cli.Force directly in tests |
 | #14 Empty list handling | TODO | P3 | Standardize empty result messages |
 | #15 JSON output inconsistency | TODO | P3 | Document JSON output contract |
@@ -488,3 +488,50 @@ The remaining `http.Client{}` usages serve security-compliant operations:
 | `invoices.go:220` | client init | Cursor-based pagination + special error handling; uses `tfcapi.ParseJSONAPIErrorResponse` |
 
 **Conclusion:** Not duplication - these are correct implementations of PRD security requirements. Blob storage operations MUST NOT include Authorization headers.
+
+---
+
+### Task #10: Org-Required Abstraction
+
+**Status:** DONE
+
+**Acceptance Criteria:**
+- Add `resolveClientConfigWithRequiredOrg()` helper in `common.go` that returns an error if org is empty after resolution
+- Error should use plain `fmt.Errorf` (exit code 1 per PRD: "CLI usage / validation errors")
+- Consistent error message format across all commands
+- Replace duplicated validation in projects.go, workspaces.go, invoices.go
+
+**Verification:**
+- `make test` passes
+- Commands that require org return exit code 1 (not 2) when org missing
+
+**Implementation Plan:**
+1. Add `resolveClientConfigWithRequiredOrg()` in `common.go`
+2. Update projects.go to use the new helper (list, create)
+3. Update workspaces.go to use the new helper (list, create)
+4. Update invoices.go to use the new helper (list, next)
+5. Verify tests pass
+6. Run feedback loops
+
+**Progress Notes (2026-01-23):**
+
+Completed implementation of org-required abstraction helper.
+
+**Files Changed:**
+- `cmd/tfc/common.go` - Added `errOrgRequired` sentinel error and `resolveClientConfigWithRequiredOrg()` helper
+- `cmd/tfc/projects.go` - Updated `ProjectsListCmd.Run()` and `ProjectsCreateCmd.Run()` to use new helper
+- `cmd/tfc/workspaces.go` - Updated `WorkspacesListCmd.Run()` and `WorkspacesCreateCmd.Run()` to use new helper
+- `cmd/tfc/invoices.go` - Updated `InvoicesListCmd.Run()` and `InvoicesNextCmd.Run()` to use new helper
+- `cmd/tfc/projects_test.go` - Fixed tests to expect exit code 1 (not 2) per TASKS.md spec
+- `cmd/tfc/workspaces_test.go` - Fixed tests to expect exit code 1 (not 2) per TASKS.md spec
+
+**Bug Fix:**
+Projects and workspaces commands were incorrectly returning exit code 2 (RuntimeError) when org was missing, but the PRD (section 6) and TASKS.md explicitly state this should be exit code 1 (usage error). The helper now returns a plain error which maps to exit code 1.
+
+**Commands Run:**
+- `make fmt` - success
+- `make lint` - success
+- `make build` - success
+- `make test` - all tests pass
+
+**Result:** Task complete. All 6 org-required validations now use the shared helper with correct exit code 1 behavior.

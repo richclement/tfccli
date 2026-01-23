@@ -85,3 +85,20 @@ func cmdContext(cli *CLI) context.Context {
 	}
 	return context.Background()
 }
+
+// errOrgRequired is returned when an organization is required but not provided.
+// Returns exit code 1 (usage error) per PRD section 6.
+var errOrgRequired = fmt.Errorf("organization is required: use --org flag or set default_org in context")
+
+// resolveClientConfigWithRequiredOrg resolves settings and token for API calls, validating that org is present.
+// Returns exit code 1 (usage error) if org is empty after resolution.
+func resolveClientConfigWithRequiredOrg(cli *CLI, baseDir string, tokenResolver *auth.TokenResolver) (tfcapi.ClientConfig, string, error) {
+	cfg, org, err := resolveClientConfig(cli, baseDir, tokenResolver)
+	if err != nil {
+		return cfg, org, err
+	}
+	if org == "" {
+		return cfg, org, errOrgRequired
+	}
+	return cfg, org, nil
+}
