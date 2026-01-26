@@ -585,6 +585,112 @@ func TestRunsGet_JSON_WithWorkspace(t *testing.T) {
 	}
 }
 
+func TestRunsGet_JSON_WithPlanAndApply(t *testing.T) {
+	tmpDir, resolver := setupRunsTest(t)
+
+	createdAt := time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC)
+	fakeClient := &fakeRunsClient{
+		run: &tfe.Run{
+			ID:        "run-abc123",
+			Status:    tfe.RunApplied,
+			Message:   "Test run with plan and apply",
+			CreatedAt: createdAt,
+			Source:    tfe.RunSourceAPI,
+			Plan:      &tfe.Plan{ID: "plan-xyz789"},
+			Apply:     &tfe.Apply{ID: "apply-def456"},
+		},
+	}
+
+	var stdout bytes.Buffer
+	cmd := &RunsGetCmd{
+		ID:            "run-abc123",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &stdout,
+		clientFactory: func(_ tfcapi.ClientConfig) (runsClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var result map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+		t.Fatalf("failed to parse JSON: %v", err)
+	}
+
+	data, ok := result["data"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected data object, got %T", result["data"])
+	}
+	if data["id"] != "run-abc123" {
+		t.Errorf("expected id run-abc123, got %v", data["id"])
+	}
+	if data["plan_id"] != "plan-xyz789" {
+		t.Errorf("expected plan_id plan-xyz789, got %v", data["plan_id"])
+	}
+	if data["apply_id"] != "apply-def456" {
+		t.Errorf("expected apply_id apply-def456, got %v", data["apply_id"])
+	}
+}
+
+func TestRunsGet_JSON_NilPlanAndApply(t *testing.T) {
+	tmpDir, resolver := setupRunsTest(t)
+
+	createdAt := time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC)
+	fakeClient := &fakeRunsClient{
+		run: &tfe.Run{
+			ID:        "run-pending",
+			Status:    tfe.RunPending,
+			Message:   "Test run without plan/apply",
+			CreatedAt: createdAt,
+			Source:    tfe.RunSourceAPI,
+			Plan:      nil,
+			Apply:     nil,
+		},
+	}
+
+	var stdout bytes.Buffer
+	cmd := &RunsGetCmd{
+		ID:            "run-pending",
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &stdout,
+		clientFactory: func(_ tfcapi.ClientConfig) (runsClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var result map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+		t.Fatalf("failed to parse JSON: %v", err)
+	}
+
+	data, ok := result["data"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected data object, got %T", result["data"])
+	}
+	// plan_id and apply_id should be omitted when nil (omitempty)
+	if _, exists := data["plan_id"]; exists {
+		t.Errorf("expected plan_id to be omitted when nil, got %v", data["plan_id"])
+	}
+	if _, exists := data["apply_id"]; exists {
+		t.Errorf("expected apply_id to be omitted when nil, got %v", data["apply_id"])
+	}
+}
+
 func TestRunsGet_Table(t *testing.T) {
 	tmpDir, resolver := setupRunsTest(t)
 

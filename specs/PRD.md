@@ -305,7 +305,8 @@ Each command group must support JSON and table outputs and consistent error beha
 
 ### `tfc users`
 
-* get by ID (minimum viable)
+* get by ID
+* me (get current authenticated user via `/account/details`)
 
 ### `tfc invoices`
 

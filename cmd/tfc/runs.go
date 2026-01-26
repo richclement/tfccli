@@ -35,6 +35,8 @@ type runJSON struct {
 	CreatedAt   string `json:"created_at"`
 	Source      string `json:"source,omitempty"`
 	WorkspaceID string `json:"workspace_id,omitempty"`
+	PlanID      string `json:"plan_id,omitempty"`
+	ApplyID     string `json:"apply_id,omitempty"`
 }
 
 // toRunJSON converts a tfe.Run to a JSON-serializable form.
@@ -48,6 +50,12 @@ func toRunJSON(run *tfe.Run) *runJSON {
 	}
 	if run.Workspace != nil {
 		r.WorkspaceID = run.Workspace.ID
+	}
+	if run.Plan != nil {
+		r.PlanID = run.Plan.ID
+	}
+	if run.Apply != nil {
+		r.ApplyID = run.Apply.ID
 	}
 	return r
 }

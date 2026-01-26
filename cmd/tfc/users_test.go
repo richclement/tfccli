@@ -16,13 +16,24 @@ import (
 
 // fakeUsersClient is a mock usersClient for testing.
 type fakeUsersClient struct {
-	user *UserResponse
-	err  error
+	user        *UserResponse
+	currentUser *UserResponse
+	err         error
 }
 
 func (c *fakeUsersClient) Read(_ context.Context, _ string) (*UserResponse, error) {
 	if c.err != nil {
 		return nil, c.err
+	}
+	return c.user, nil
+}
+
+func (c *fakeUsersClient) ReadCurrentUser(_ context.Context) (*UserResponse, error) {
+	if c.err != nil {
+		return nil, c.err
+	}
+	if c.currentUser != nil {
+		return c.currentUser, nil
 	}
 	return c.user, nil
 }
@@ -402,4 +413,129 @@ type usersAPIError struct {
 
 func (e *usersAPIError) Error() string {
 	return e.message
+}
+
+func TestUsersMe_JSON(t *testing.T) {
+	tmpDir, resolver := setupUsersTestSettings(t)
+
+	fakeClient := &fakeUsersClient{
+		currentUser: &UserResponse{
+			Data: UserData{
+				ID:   "user-current",
+				Type: "users",
+				Attributes: UserAttributes{
+					Username:         "currentuser",
+					Email:            "current@example.com",
+					AvatarURL:        "https://example.com/current.png",
+					IsServiceAccount: false,
+				},
+			},
+		},
+	}
+
+	var stdout bytes.Buffer
+	cmd := &UsersMeCmd{
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &stdout,
+		clientFactory: func(_ tfcapi.ClientConfig) (usersClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var result UserResponse
+	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+		t.Fatalf("failed to parse JSON: %v", err)
+	}
+
+	if result.Data.ID != "user-current" {
+		t.Errorf("expected id user-current, got %v", result.Data.ID)
+	}
+	if result.Data.Attributes.Username != "currentuser" {
+		t.Errorf("expected username currentuser, got %v", result.Data.Attributes.Username)
+	}
+	if result.Data.Attributes.Email != "current@example.com" {
+		t.Errorf("expected email current@example.com, got %v", result.Data.Attributes.Email)
+	}
+}
+
+func TestUsersMe_Table(t *testing.T) {
+	tmpDir, resolver := setupUsersTestSettings(t)
+
+	fakeClient := &fakeUsersClient{
+		currentUser: &UserResponse{
+			Data: UserData{
+				ID:   "user-current",
+				Type: "users",
+				Attributes: UserAttributes{
+					Username:         "currentuser",
+					Email:            "current@example.com",
+					AvatarURL:        "https://example.com/current.png",
+					IsServiceAccount: false,
+				},
+			},
+		},
+	}
+
+	var stdout bytes.Buffer
+	cmd := &UsersMeCmd{
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: true},
+		stdout:        &stdout,
+		clientFactory: func(_ tfcapi.ClientConfig) (usersClient, error) {
+			return fakeClient, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "table"}
+	err := cmd.Run(cli)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	out := stdout.String()
+	if !strings.Contains(out, "user-current") {
+		t.Errorf("expected user ID in output, got: %s", out)
+	}
+	if !strings.Contains(out, "currentuser") {
+		t.Errorf("expected username in output, got: %s", out)
+	}
+	if !strings.Contains(out, "current@example.com") {
+		t.Errorf("expected email in output, got: %s", out)
+	}
+}
+
+func TestUsersMe_Error(t *testing.T) {
+	tmpDir, resolver := setupUsersTestSettings(t)
+
+	var stdout bytes.Buffer
+	cmd := &UsersMeCmd{
+		baseDir:       tmpDir,
+		tokenResolver: resolver,
+		ttyDetector:   &output.FakeTTYDetector{IsTTYValue: false},
+		stdout:        &stdout,
+		clientFactory: func(_ tfcapi.ClientConfig) (usersClient, error) {
+			return &fakeUsersClient{
+				err: &usersAPIError{message: "unauthorized: invalid token"},
+			}, nil
+		},
+	}
+
+	cli := &CLI{OutputFormat: "json"}
+	err := cmd.Run(cli)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	if !strings.Contains(strings.ToLower(err.Error()), "unauthorized") {
+		t.Errorf("expected unauthorized error, got: %v", err)
+	}
 }

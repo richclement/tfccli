@@ -309,6 +309,9 @@ tfc configuration-versions archive cv-abc123 --force
 ### Users
 
 ```bash
+# Get current authenticated user
+tfc users me
+
 # Get user by ID
 tfc users get user-abc123
 ```
@@ -369,6 +372,9 @@ Commands that fetch or modify API resources wrap results in a `data` key:
 
 // Empty list
 {"data": []}
+
+// runs get includes plan_id and apply_id for cross-referencing
+{"data": {"id": "run-abc123", "status": "applied", "plan_id": "plan-xyz", "apply_id": "apply-def", ...}}
 ```
 
 Applies to: `organizations`, `projects`, `workspaces`, `runs`, `plans get`, `applies get`, `configuration-versions`, `workspace-variables`, `workspace-resources`
@@ -392,14 +398,14 @@ Applies to: `plans json-output --out`, `plans sanitized-plan --out`, `applies er
 Some commands pass through the raw JSON:API response from the TFC API:
 
 ```json
-// users get
+// users get / users me
 {"data": {"id": "user-abc", "type": "users", "attributes": {...}}}
 
 // invoices list (includes pagination)
 {"data": [...], "links": {"self": "...", "next": "..."}}
 ```
 
-Applies to: `users get`, `invoices list`, `invoices next`
+Applies to: `users get`, `users me`, `invoices list`, `invoices next`
 
 ## Exit Codes
 
