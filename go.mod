@@ -3,7 +3,7 @@ module github.com/richclement/tfccli
 go 1.24.0
 
 require (
-	github.com/alecthomas/kong v0.8.1
+	github.com/alecthomas/kong v1.13.0
 	github.com/go-logr/logr v1.4.3
 	github.com/go-logr/stdr v1.2.2
 	github.com/hashicorp/go-tfe v1.99.0
