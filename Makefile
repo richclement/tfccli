@@ -3,10 +3,10 @@ SHELL := /bin/bash
 # `make` should build the binary by default.
 .DEFAULT_GOAL := build
 
-.PHONY: build tfc tfc-help help fmt fmt-check lint test ci tools clean install all
+.PHONY: build tfccli tfccli-help help fmt fmt-check lint test ci tools clean install all
 
 BIN_DIR := $(CURDIR)/bin
-BIN := $(BIN_DIR)/tfc
+BIN := $(BIN_DIR)/tfccli
 CMD := ./cmd/tfc
 
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
@@ -23,17 +23,17 @@ build:
 	@mkdir -p $(BIN_DIR)
 	@go build -ldflags "$(LDFLAGS)" -o $(BIN) $(CMD)
 
-tfc: build
+tfccli: build
 	@if [ -z "$(ARGS)" ]; then \
 		$(BIN) --help; \
 	else \
 		$(BIN) $(ARGS); \
 	fi
 
-tfc-help: build
+tfccli-help: build
 	@$(BIN) --help
 
-help: tfc-help
+help: tfccli-help
 
 tools:
 	@mkdir -p $(TOOLS_DIR)
@@ -59,7 +59,7 @@ test:
 ci: fmt-check lint test
 
 clean:
-	rm -f tfc
+	rm -f tfccli
 	rm -rf bin/
 	rm -rf dist/
 	rm -rf .tools/

@@ -1,16 +1,16 @@
 # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
 version: 2
 
-project_name: tfc
+project_name: tfccli
 
 before:
   hooks:
     - go mod tidy
 
 builds:
-  - id: tfc
+  - id: tfccli
     main: ./cmd/tfc
-    binary: tfc
+    binary: tfccli
     env:
       - CGO_ENABLED=0
     goos:

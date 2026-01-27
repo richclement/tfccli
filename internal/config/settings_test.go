@@ -14,8 +14,8 @@ func TestLoad_MissingFile(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
-	if !strings.Contains(err.Error(), "run 'tfc init'") {
-		t.Errorf("expected error to contain %q, got %q", "run 'tfc init'", err.Error())
+	if !strings.Contains(err.Error(), "run 'tfccli init'") {
+		t.Errorf("expected error to contain %q, got %q", "run 'tfccli init'", err.Error())
 	}
 }
 

@@ -1,4 +1,4 @@
-# tfc
+# tfccli
 
 A CLI for interacting with the Terraform Cloud / HCP Terraform API. Built with Go, designed for both human operators and AI coding agents.
 
@@ -20,14 +20,14 @@ git clone https://github.com/richclement/tfccli.git
 cd tfccli
 make build
 
-# Binary is at bin/tfc
-./bin/tfc version
+# Binary is at bin/tfccli
+./bin/tfccli version
 ```
 
 ### Go Install
 
 ```bash
-go install github.com/richclement/tfccli/cmd/tfc@latest
+go install github.com/richclement/tfccli/cmd/tfccli@latest
 ```
 
 ### Releases
@@ -40,17 +40,17 @@ Download pre-built binaries from the [releases page](https://github.com/richclem
 
 ```bash
 # Interactive setup
-tfc init
+tfccli init
 
 # Non-interactive setup (for CI/agents)
-tfc init --non-interactive --address app.terraform.io --default-org my-org --yes
+tfccli init --non-interactive --address app.terraform.io --default-org my-org --yes
 ```
 
 This creates `~/.tfccli/settings.json` with your default context.
 
 ### 2. Authenticate with Terraform Cloud
 
-`tfc` uses Terraform CLI's authentication system. Run `terraform login` to authenticate:
+`tfccli` uses Terraform CLI's authentication system. Run `terraform login` to authenticate:
 
 ```bash
 terraform login
@@ -60,14 +60,14 @@ terraform login
 ### 3. Verify Setup
 
 ```bash
-tfc doctor
+tfccli doctor
 ```
 
 This validates your settings, token discovery, and API connectivity.
 
 ## Authentication
 
-`tfc` discovers API tokens using Terraform CLI conventions. No tokens are stored in `~/.tfccli/settings.json`.
+`tfccli` discovers API tokens using Terraform CLI conventions. No tokens are stored in `~/.tfccli/settings.json`.
 
 Token discovery precedence (highest to lowest):
 
@@ -87,7 +87,7 @@ Token discovery precedence (highest to lowest):
 3. **Terraform login credentials**: `~/.terraform.d/credentials.tfrc.json`
    (Created automatically by `terraform login`)
 
-If no token is found, `tfc` suggests running `terraform login`.
+If no token is found, `tfccli` suggests running `terraform login`.
 
 ## Configuration
 
@@ -101,19 +101,19 @@ Manage multiple TFC/TFE environments with named contexts:
 
 ```bash
 # List contexts
-tfc contexts list
+tfccli contexts list
 
 # Add a new context
-tfc contexts add prod --ctx-address tfe.example.com --default-org acme
+tfccli contexts add prod --ctx-address tfe.example.com --default-org acme
 
 # Switch contexts
-tfc contexts use prod
+tfccli contexts use prod
 
 # Show current context config
-tfc contexts show
+tfccli contexts show
 
 # Remove a context (requires confirmation)
-tfc contexts remove dev
+tfccli contexts remove dev
 ```
 
 ### Global Flags
@@ -133,197 +133,197 @@ tfc contexts remove dev
 
 ```bash
 # List all organizations
-tfc organizations list
+tfccli organizations list
 
 # Get organization details
-tfc organizations get my-org
+tfccli organizations get my-org
 
 # Create an organization
-tfc organizations create --name new-org --email admin@example.com
+tfccli organizations create --name new-org --email admin@example.com
 
 # Update an organization
-tfc organizations update my-org --email new-email@example.com
+tfccli organizations update my-org --email new-email@example.com
 
 # Delete an organization (requires confirmation)
-tfc organizations delete old-org
-tfc organizations delete old-org --force  # Skip confirmation
+tfccli organizations delete old-org
+tfccli organizations delete old-org --force  # Skip confirmation
 ```
 
 ### Projects
 
 ```bash
 # List projects (uses --org or default_org)
-tfc projects list
+tfccli projects list
 
 # List projects for a specific org
-tfc projects list --org my-org
+tfccli projects list --org my-org
 
 # Get project by ID
-tfc projects get prj-abc123
+tfccli projects get prj-abc123
 
 # Create a project
-tfc projects create --name my-project
+tfccli projects create --name my-project
 
 # Update a project
-tfc projects update prj-abc123 --name new-name --description "Updated desc"
+tfccli projects update prj-abc123 --name new-name --description "Updated desc"
 
 # Delete a project
-tfc projects delete prj-abc123 --force
+tfccli projects delete prj-abc123 --force
 ```
 
 ### Workspaces
 
 ```bash
 # List workspaces
-tfc workspaces list --org my-org
+tfccli workspaces list --org my-org
 
 # Get workspace by ID
-tfc workspaces get ws-abc123
+tfccli workspaces get ws-abc123
 
 # Create a workspace
-tfc workspaces create --name my-workspace --org my-org
+tfccli workspaces create --name my-workspace --org my-org
 
 # Create workspace in a specific project
-tfc workspaces create --name my-workspace --org my-org --project-id prj-abc123
+tfccli workspaces create --name my-workspace --org my-org --project-id prj-abc123
 
 # Update a workspace
-tfc workspaces update ws-abc123 --name renamed-workspace
+tfccli workspaces update ws-abc123 --name renamed-workspace
 
 # Delete a workspace
-tfc workspaces delete ws-abc123 --force
+tfccli workspaces delete ws-abc123 --force
 ```
 
 ### Workspace Variables
 
 ```bash
 # List variables for a workspace
-tfc workspace-variables list --workspace-id ws-abc123
+tfccli workspace-variables list --workspace-id ws-abc123
 
 # Create an environment variable
-tfc workspace-variables create --workspace-id ws-abc123 \
+tfccli workspace-variables create --workspace-id ws-abc123 \
   --key AWS_REGION --value us-east-1 --category env
 
 # Create a sensitive terraform variable
-tfc workspace-variables create --workspace-id ws-abc123 \
+tfccli workspace-variables create --workspace-id ws-abc123 \
   --key db_password --value secret123 --category terraform --sensitive
 
 # Create an HCL variable
-tfc workspace-variables create --workspace-id ws-abc123 \
+tfccli workspace-variables create --workspace-id ws-abc123 \
   --key tags --value '{"env":"prod"}' --category terraform --hcl
 
 # Update a variable
-tfc workspace-variables update var-abc123 --value new-value
+tfccli workspace-variables update var-abc123 --value new-value
 
 # Delete a variable
-tfc workspace-variables delete var-abc123 --force
+tfccli workspace-variables delete var-abc123 --force
 ```
 
 ### Workspace Resources
 
 ```bash
 # List resources in a workspace (read-only)
-tfc workspace-resources list --workspace-id ws-abc123
+tfccli workspace-resources list --workspace-id ws-abc123
 ```
 
 ### Runs
 
 ```bash
 # List runs for a workspace
-tfc runs list --workspace-id ws-abc123
+tfccli runs list --workspace-id ws-abc123
 
 # Get run details
-tfc runs get run-abc123
+tfccli runs get run-abc123
 
 # Create a run
-tfc runs create --workspace-id ws-abc123 --message "Deploying new feature"
+tfccli runs create --workspace-id ws-abc123 --message "Deploying new feature"
 
 # Create a run with auto-apply
-tfc runs create --workspace-id ws-abc123 --auto-apply --message "Auto-deploy"
+tfccli runs create --workspace-id ws-abc123 --auto-apply --message "Auto-deploy"
 
 # Apply a run (requires confirmation)
-tfc runs apply run-abc123
-tfc runs apply run-abc123 --force  # Skip confirmation
+tfccli runs apply run-abc123
+tfccli runs apply run-abc123 --force  # Skip confirmation
 
 # Discard a run
-tfc runs discard run-abc123 --force
+tfccli runs discard run-abc123 --force
 
 # Cancel a run
-tfc runs cancel run-abc123 --force
+tfccli runs cancel run-abc123 --force
 
 # Force-cancel a run
-tfc runs force-cancel run-abc123 --force
+tfccli runs force-cancel run-abc123 --force
 ```
 
 ### Plans
 
 ```bash
 # Get plan details
-tfc plans get plan-abc123
+tfccli plans get plan-abc123
 
 # Download JSON plan output
-tfc plans json-output plan-abc123
-tfc plans json-output plan-abc123 --out plan.json  # Save to file
+tfccli plans json-output plan-abc123
+tfccli plans json-output plan-abc123 --out plan.json  # Save to file
 
 # Download sanitized plan (HYOK feature)
-tfc plans sanitized-plan plan-abc123
-tfc plans sanitized-plan plan-abc123 --out sanitized.json
+tfccli plans sanitized-plan plan-abc123
+tfccli plans sanitized-plan plan-abc123 --out sanitized.json
 ```
 
 ### Applies
 
 ```bash
 # Get apply details
-tfc applies get apply-abc123
+tfccli applies get apply-abc123
 
 # Download errored state (for recovery)
-tfc applies errored-state apply-abc123
-tfc applies errored-state apply-abc123 --out errored.tfstate
+tfccli applies errored-state apply-abc123
+tfccli applies errored-state apply-abc123 --out errored.tfstate
 ```
 
 ### Configuration Versions
 
 ```bash
 # List configuration versions
-tfc configuration-versions list --workspace-id ws-abc123
+tfccli configuration-versions list --workspace-id ws-abc123
 
 # Get configuration version details
-tfc configuration-versions get cv-abc123
+tfccli configuration-versions get cv-abc123
 
 # Create a new configuration version
-tfc configuration-versions create --workspace-id ws-abc123
+tfccli configuration-versions create --workspace-id ws-abc123
 
 # Create without auto-queuing runs
-tfc configuration-versions create --workspace-id ws-abc123 --auto-queue-runs=false
+tfccli configuration-versions create --workspace-id ws-abc123 --auto-queue-runs=false
 
 # Upload configuration (tar.gz)
-tfc configuration-versions upload cv-abc123 --file ./config.tar.gz
+tfccli configuration-versions upload cv-abc123 --file ./config.tar.gz
 
 # Download configuration
-tfc configuration-versions download cv-abc123
-tfc configuration-versions download cv-abc123 --out config.tar.gz
+tfccli configuration-versions download cv-abc123
+tfccli configuration-versions download cv-abc123 --out config.tar.gz
 
 # Archive a configuration version
-tfc configuration-versions archive cv-abc123 --force
+tfccli configuration-versions archive cv-abc123 --force
 ```
 
 ### Users
 
 ```bash
 # Get current authenticated user
-tfc users me
+tfccli users me
 
 # Get user by ID
-tfc users get user-abc123
+tfccli users get user-abc123
 ```
 
 ### Invoices (HCP Terraform Cloud only)
 
 ```bash
 # List invoices
-tfc invoices list --org my-org
+tfccli invoices list --org my-org
 
 # Get next/upcoming invoice
-tfc invoices next --org my-org
+tfccli invoices next --org my-org
 ```
 
 ## Output Formats
@@ -334,13 +334,13 @@ Use `--output-format=json` or pipe output (auto-detects non-TTY):
 
 ```bash
 # Explicit JSON
-tfc organizations list --output-format=json
+tfccli organizations list --output-format=json
 
 # Piped (auto-JSON)
-tfc organizations list | jq '.data[].attributes.name'
+tfccli organizations list | jq '.data[].attributes.name'
 
 # JSON for empty responses (204 status)
-tfc organizations delete old-org --force --output-format=json
+tfccli organizations delete old-org --force --output-format=json
 # Output: {"meta":{"status":204}}
 ```
 
@@ -349,7 +349,7 @@ tfc organizations delete old-org --force --output-format=json
 Default when stdout is a TTY:
 
 ```bash
-tfc organizations list
+tfccli organizations list
 # NAME        EMAIL               EXTERNAL-ID
 # my-org      admin@example.com   ext-123
 # other-org   other@example.com   ext-456
@@ -422,17 +422,17 @@ For CI/CD pipelines and AI coding agents:
 
 ```bash
 # Non-interactive initialization
-tfc init --non-interactive --address app.terraform.io --default-org my-org --yes
+tfccli init --non-interactive --address app.terraform.io --default-org my-org --yes
 
 # Always use --force for destructive operations
-tfc organizations delete old-org --force
-tfc runs apply run-abc123 --force
+tfccli organizations delete old-org --force
+tfccli runs apply run-abc123 --force
 
 # Explicit JSON output for parsing
-tfc workspaces list --output-format=json | jq '.data[].id'
+tfccli workspaces list --output-format=json | jq '.data[].id'
 
 # Check exit codes
-if tfc doctor; then
+if tfccli doctor; then
   echo "TFC connection healthy"
 else
   echo "TFC connection failed"
@@ -459,7 +459,7 @@ make fmt
 make ci
 
 # Build and run with args
-make tfc ARGS="version"
+make tfccli ARGS="version"
 ```
 
 ## License

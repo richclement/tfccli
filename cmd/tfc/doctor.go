@@ -68,7 +68,7 @@ func (d *DoctorCmd) Run(cli *CLI) error {
 		result.Checks = append(result.Checks, DoctorCheck{
 			Name:   "settings",
 			Status: string(output.StatusFail),
-			Detail: fmt.Sprintf("run 'tfc init': %v", err),
+			Detail: fmt.Sprintf("run 'tfccli init': %v", err),
 		})
 		hasFailure = true
 		return d.outputAndError(result, format, isTTY, hasFailure)
@@ -89,7 +89,7 @@ func (d *DoctorCmd) Run(cli *CLI) error {
 		result.Checks = append(result.Checks, DoctorCheck{
 			Name:   "context",
 			Status: string(output.StatusFail),
-			Detail: fmt.Sprintf("context %q not found; run 'tfc contexts list' to see available contexts", contextName),
+			Detail: fmt.Sprintf("context %q not found; run 'tfccli contexts list' to see available contexts", contextName),
 		})
 		hasFailure = true
 		return d.outputAndError(result, format, isTTY, hasFailure)

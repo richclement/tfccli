@@ -267,8 +267,8 @@ func TestUsersGet_FailsWhenSettingsMissing(t *testing.T) {
 	}
 
 	errStr := err.Error()
-	if !strings.Contains(errStr, "tfc init") {
-		t.Errorf("expected 'tfc init' suggestion in error, got: %s", errStr)
+	if !strings.Contains(errStr, "tfccli init") {
+		t.Errorf("expected 'tfccli init' suggestion in error, got: %s", errStr)
 	}
 }
 

@@ -58,18 +58,18 @@ func TestDoctor_FailsWhenSettingsMissing(t *testing.T) {
 	}
 	cli := &CLI{OutputFormat: "json"}
 
-	// When I run "tfc doctor"
+	// When I run "tfccli doctor"
 	err := cmd.Run(cli)
 
-	// Then stderr contains "tfc init" (via error message in output)
+	// Then stderr contains "tfccli init" (via error message in output)
 	// And exit code is 2 (returned as runtime error)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
 
 	out := getOutput()
-	if !strings.Contains(out, "tfc init") {
-		t.Errorf("expected output to contain 'tfc init', got: %s", out)
+	if !strings.Contains(out, "tfccli init") {
+		t.Errorf("expected output to contain 'tfccli init', got: %s", out)
 	}
 
 	// Verify it's a runtime error (exit code 2)
@@ -683,8 +683,8 @@ func TestDoctor_ContextNotFound(t *testing.T) {
 	if !strings.Contains(ctxCheck.Detail, "nonexistent") {
 		t.Errorf("expected detail to contain 'nonexistent', got: %s", ctxCheck.Detail)
 	}
-	if !strings.Contains(ctxCheck.Detail, "tfc contexts list") {
-		t.Errorf("expected detail to contain guidance 'tfc contexts list', got: %s", ctxCheck.Detail)
+	if !strings.Contains(ctxCheck.Detail, "tfccli contexts list") {
+		t.Errorf("expected detail to contain guidance 'tfccli contexts list', got: %s", ctxCheck.Detail)
 	}
 }
 

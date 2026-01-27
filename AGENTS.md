@@ -9,13 +9,13 @@ CLI for interacting with the Terraform Cloud APIs. Built with Go and Kong for co
 ## Commands
 
 ```bash
-make              # Build binary to bin/tfc
+make              # Build binary to bin/tfccli
 make test         # Run all tests
 make lint         # Run golangci-lint
 make fmt          # Format code (goimports + gofumpt)
 make ci           # fmt-check + lint + test (CI pipeline)
 make tools        # Install dev tools to .tools/
-make tfc ARGS="version"  # Build and run with args
+make tfccli ARGS="version"  # Build and run with args
 
 go test ./internal/config/...  # Run tests for specific package
 go test -run TestName ./...    # Run single test by name

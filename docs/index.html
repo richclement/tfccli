@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>tfc – Terraform Cloud CLI</title>
+  <title>tfccli – Terraform Cloud CLI</title>
   <meta name="description" content="Terraform Cloud API. One CLI. Manage workspaces, runs, state, and variables from your terminal.">
   <meta name="theme-color" content="#7B42BC">
   
@@ -27,7 +27,7 @@
   <header>
     <div class="container">
       <a href="/" class="logo">
-        tfc<span class="logo-cursor"></span>
+        tfccli<span class="logo-cursor"></span>
       </a>
       <nav>
         <a href="#install">Install</a>
@@ -47,7 +47,7 @@
           </p>
           
           <div class="install-box">
-            <code><span class="prompt">$</span> <span id="brew-cmd">brew install richclement/tap/tfc</span></code>
+            <code><span class="prompt">$</span> <span id="brew-cmd">brew install richclement/tap/tfccli</span></code>
             <button class="copy-btn" data-copy="#brew-cmd" aria-label="Copy to clipboard">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
@@ -61,15 +61,15 @@
               <span class="terminal-dot red"></span>
               <span class="terminal-dot yellow"></span>
               <span class="terminal-dot green"></span>
-              <span class="terminal-title">tfc</span>
+              <span class="terminal-title">tfccli</span>
             </div>
             <div class="terminal-body">
-              <div class="line"><span class="prompt">$</span> <span class="cmd">tfc workspace list</span></div>
+              <div class="line"><span class="prompt">$</span> <span class="cmd">tfccli workspace list</span></div>
               <div class="line"><span class="output">NAME              STATUS    LAST RUN</span></div>
               <div class="line"><span class="output">production        </span><span class="highlight">applied</span><span class="output">   2h ago</span></div>
               <div class="line"><span class="output">staging           </span><span class="highlight">applied</span><span class="output">   4h ago</span></div>
               <div class="line">&nbsp;</div>
-              <div class="line"><span class="prompt">$</span> <span class="cmd">tfc run create --workspace production</span></div>
+              <div class="line"><span class="prompt">$</span> <span class="cmd">tfccli run create --workspace production</span></div>
               <div class="line"><span class="output">Run </span><span class="highlight">RUN-abc123</span><span class="output"> queued. Watching...</span></div>
             </div>
           </div>
@@ -103,7 +103,7 @@
           
           <div class="sidebar-card">
             <h3>Plus many more</h3>
-            <p>Run <code>tfc --help</code> to see all commands.</p>
+            <p>Run <code>tfccli --help</code> to see all commands.</p>
           </div>
         </div>
       </div>
@@ -117,17 +117,17 @@
         <div class="install-grid">
           <div class="install-card">
             <h3>Homebrew <span class="badge">Recommended</span></h3>
-            <pre><code>brew install richclement/tap/tfc</code></pre>
+            <pre><code>brew install richclement/tap/tfccli</code></pre>
           </div>
           
           <div class="install-card">
             <h3>Go Install</h3>
-            <pre><code>go install github.com/richclement/tfccli/cmd/tfc@latest</code></pre>
+            <pre><code>go install github.com/richclement/tfccli/cmd/tfccli@latest</code></pre>
           </div>
           
           <div class="install-card">
             <h3>Binary Download</h3>
-            <pre><code>curl -sSL https://github.com/richclement/tfccli/releases/latest/download/tfc_$(uname -s)_$(uname -m).tar.gz | tar xz</code></pre>
+            <pre><code>curl -sSL https://github.com/richclement/tfccli/releases/latest/download/tfccli_$(uname -s)_$(uname -m).tar.gz | tar xz</code></pre>
           </div>
         </div>
       </div>
