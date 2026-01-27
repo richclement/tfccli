@@ -6,7 +6,7 @@ description: |
 
 # tfc CLI
 
-CLI for Terraform Cloud / HCP Terraform. Binary: `tfccli` (built from `~/code/tfccli`).
+CLI for Terraform Cloud / HCP Terraform. Binary: `tfccli`.
 
 ## Setup
 
@@ -15,7 +15,10 @@ tfccli init                     # Initialize ~/.tfccli/settings.json
 tfccli doctor                   # Validate settings, token, connectivity
 ```
 
-Token discovery: `TF_TOKEN_<hostname>` env var or `~/.terraform.d/credentials.tfrc.json`.
+Token discovery (checked in order):
+1. **Environment variable**: `TF_TOKEN_<sanitized_hostname>` (e.g., `TF_TOKEN_app_terraform_io`)
+2. **CLI config file**: `TF_CLI_CONFIG_FILE` env var, or `~/.terraformrc` (Unix) / `%APPDATA%\terraform.rc` (Windows)
+3. **Credentials file**: `~/.terraform.d/credentials.tfrc.json` (created by `terraform login`)
 
 ## Discovering Commands
 
