@@ -100,9 +100,9 @@ brew tap richclement/tap
 brew install richclement/tap/tfccli
 brew test richclement/tap/tfccli
 
-tfc --version
+tfccli --version
 ```
 
 ## Notes
-- The `tfc --version` command displays the version string.
+- The `tfccli --version` command displays the version string.
 - Use tags + changelog as the source of truth for release history.
