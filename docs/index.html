@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>tfc – Terraform Cloud CLI</title>
+  <meta name="description" content="Terraform Cloud API. One CLI. Manage workspaces, runs, state, and variables from your terminal.">
+  <meta name="theme-color" content="#7B42BC">
+  
+  <!-- Open Graph -->
+  <meta property="og:title" content="tfc – Terraform Cloud CLI">
+  <meta property="og:description" content="Terraform Cloud API. One CLI. Manage workspaces, runs, state, and variables from your terminal.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://tfccli.dev">
+  
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="tfc – Terraform Cloud CLI">
+  <meta name="twitter:description" content="Terraform Cloud API. One CLI.">
+  
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./assets/site.css">
+</head>
+<body>
+  <div class="mesh-bg"></div>
+  
+  <header>
+    <div class="container">
+      <a href="/" class="logo">
+        tfc<span class="logo-cursor"></span>
+      </a>
+      <nav>
+        <a href="#install">Install</a>
+        <a href="https://github.com/richclement/tfccli" class="external">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  
+  <main>
+    <section class="hero">
+      <div class="container">
+        <div class="hero-content">
+          <p class="kicker">Terraform Cloud API. One CLI.</p>
+          <h1>Terraform Cloud in your terminal</h1>
+          <p class="lede">
+            Manage workspaces, trigger runs, inspect state, and configure variables—all from the command line.
+          </p>
+          
+          <div class="install-box">
+            <code><span class="prompt">$</span> <span id="brew-cmd">brew install richclement/tap/tfc</span></code>
+            <button class="copy-btn" data-copy="#brew-cmd" aria-label="Copy to clipboard">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+            </button>
+          </div>
+          
+          <div class="terminal">
+            <div class="terminal-header">
+              <span class="terminal-dot red"></span>
+              <span class="terminal-dot yellow"></span>
+              <span class="terminal-dot green"></span>
+              <span class="terminal-title">tfc</span>
+            </div>
+            <div class="terminal-body">
+              <div class="line"><span class="prompt">$</span> <span class="cmd">tfc workspace list</span></div>
+              <div class="line"><span class="output">NAME              STATUS    LAST RUN</span></div>
+              <div class="line"><span class="output">production        </span><span class="highlight">applied</span><span class="output">   2h ago</span></div>
+              <div class="line"><span class="output">staging           </span><span class="highlight">applied</span><span class="output">   4h ago</span></div>
+              <div class="line">&nbsp;</div>
+              <div class="line"><span class="prompt">$</span> <span class="cmd">tfc run create --workspace production</span></div>
+              <div class="line"><span class="output">Run </span><span class="highlight">RUN-abc123</span><span class="output"> queued. Watching...</span></div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="hero-sidebar">
+          <div class="sidebar-card">
+            <h3>Workspaces</h3>
+            <p>List, create, and manage workspaces across organizations.</p>
+          </div>
+          
+          <div class="sidebar-card">
+            <h3>Variables</h3>
+            <p>Set and manage workspace variables and variable sets.</p>
+          </div>
+          
+          <div class="sidebar-card">
+            <h3>Runs</h3>
+            <p>Trigger runs, monitor progress, and approve or discard.</p>
+          </div>
+          
+          <div class="sidebar-card">
+            <h3>Plans</h3>
+            <p>View plan output, resource changes, and cost estimates.</p>
+          </div>
+          
+          <div class="sidebar-card">
+            <h3>Apply</h3>
+            <p>Confirm and apply runs, or discard pending changes.</p>
+          </div>
+          
+          <div class="sidebar-card">
+            <h3>Plus many more</h3>
+            <p>Run <code>tfc --help</code> to see all commands.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+    
+    <section id="install">
+      <div class="container">
+        <h2>Install</h2>
+        <p class="section-lede">Homebrew tap, binary download, or build from source.</p>
+        
+        <div class="install-grid">
+          <div class="install-card">
+            <h3>Homebrew <span class="badge">Recommended</span></h3>
+            <pre><code>brew install richclement/tap/tfc</code></pre>
+          </div>
+          
+          <div class="install-card">
+            <h3>Go Install</h3>
+            <pre><code>go install github.com/richclement/tfccli/cmd/tfc@latest</code></pre>
+          </div>
+          
+          <div class="install-card">
+            <h3>Binary Download</h3>
+            <pre><code>curl -sSL https://github.com/richclement/tfccli/releases/latest/download/tfc_$(uname -s)_$(uname -m).tar.gz | tar xz</code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+  
+  <footer>
+    <div class="container">
+      <div class="footer-links">
+        <a href="https://github.com/richclement/tfccli">Source</a>
+        <a href="https://github.com/richclement/tfccli/releases">Releases</a>
+        <a href="https://github.com/richclement/tfccli/blob/main/LICENSE">MIT License</a>
+      </div>
+      <p>Built by <a href="https://github.com/richclement">Rich Clement</a></p>
+    </div>
+  </footer>
+  
+  <script src="./assets/site.js"></script>
+</body>
+</html>
