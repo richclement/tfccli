@@ -1,10 +1,10 @@
 ---
 name: tfccli
 description: |
-  Use tfc CLI for Terraform Cloud API operations: workspaces, runs, plans, applies, organizations, projects, configuration versions, variables and any other queries or commands you want to execute against Terraform Cloud. Trigger when user mentions Terraform Cloud, TFC, HCP Terraform, or needs to manage Terraform Cloud resources programmatically.
+  Use tfccli CLI for Terraform Cloud API operations: workspaces, runs, plans, applies, organizations, projects, configuration versions, variables and any other queries or commands you want to execute against Terraform Cloud. Trigger when user mentions Terraform Cloud, TFC, HCP Terraform, or needs to manage Terraform Cloud resources programmatically.
 ---
 
-# tfc CLI
+# tfccli
 
 CLI for Terraform Cloud / HCP Terraform. Binary: `tfccli`.
 
