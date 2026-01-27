@@ -448,8 +448,8 @@ func TestAppliesGet_FailsWhenSettingsMissing(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error when settings missing")
 	}
-	if !strings.Contains(err.Error(), "tfc init") {
-		t.Errorf("expected 'tfc init' suggestion in error, got: %v", err)
+	if !strings.Contains(err.Error(), "tfccli init") {
+		t.Errorf("expected 'tfccli init' suggestion in error, got: %v", err)
 	}
 }
 

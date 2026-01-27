@@ -2,7 +2,7 @@
 
 ## Purpose and scope
 
-`tfc` is a Go CLI for Terraform Cloud / HCP Terraform (and TFE via custom address). It is built for:
+`tfccli` is a Go CLI for Terraform Cloud / HCP Terraform (and TFE via custom address). It is built for:
 
 - automation-friendly, deterministic output (JSON default for non-TTY)
 - Terraform CLI token discovery conventions

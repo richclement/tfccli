@@ -95,7 +95,7 @@ func run() (exitCode int) {
 	cli := CLI{}
 	parser, err := kong.New(
 		&cli,
-		kong.Name("tfc"),
+		kong.Name("tfccli"),
 		kong.Description("Terraform Cloud API CLI"),
 		kong.Vars{"version": versionString()},
 		kong.ConfigureHelp(kong.HelpOptions{

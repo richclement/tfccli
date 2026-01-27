@@ -695,8 +695,8 @@ func TestOrganizationsList_FailsWhenSettingsMissing(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected error, got nil")
 	}
-	if !strings.Contains(err.Error(), "tfc init") {
-		t.Errorf("expected error suggesting tfc init, got: %v", err)
+	if !strings.Contains(err.Error(), "tfccli init") {
+		t.Errorf("expected error suggesting tfccli init, got: %v", err)
 	}
 }
 

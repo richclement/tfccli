@@ -1,8 +1,8 @@
-# PRD: `tfc` — Terraform Cloud API CLI (Go)
+# PRD: `tfccli` — Terraform Cloud API CLI (Go)
 
 ## 1) Summary
 
-`tfc` is a Go-based CLI tool that exposes the **Terraform Cloud / HCP Terraform API** (and Terraform Enterprise via configurable address) through a consistent command-line interface that can be used by a human and by an AI coding agent. The CLI is designed to be **automation-friendly**, **testable**, and to follow **Terraform CLI credential discovery conventions**.
+`tfccli` is a Go-based CLI tool that exposes the **Terraform Cloud / HCP Terraform API** (and Terraform Enterprise via configurable address) through a consistent command-line interface that can be used by a human and by an AI coding agent. The CLI is designed to be **automation-friendly**, **testable**, and to follow **Terraform CLI credential discovery conventions**.
 
 Repository: `richclement/tfccli` (private initially)
 
@@ -62,11 +62,11 @@ Repository: `richclement/tfccli` (private initially)
 
 1. **Initialize CLI configuration**
 
-   * As a user/agent, I can run `tfc init` to create `~/.tfccli/settings.json` with a default address and log level.
+   * As a user/agent, I can run `tfccli init` to create `~/.tfccli/settings.json` with a default address and log level.
 
 2. **Verify environment**
 
-   * As a user/agent, I can run `tfc doctor` to validate that settings exist and a Terraform API token can be discovered using Terraform conventions.
+   * As a user/agent, I can run `tfccli doctor` to validate that settings exist and a Terraform API token can be discovered using Terraform conventions.
 
 3. **Operate resources by ID**
 
@@ -82,7 +82,7 @@ Repository: `richclement/tfccli` (private initially)
 
 ### Command name
 
-* Root command: `tfc`
+* Root command: `tfccli`
 
 ### Global flags
 
@@ -142,7 +142,7 @@ Settings must support multiple named contexts and track which one is current.
 * `default_org` (string, optional): used when commands require org scope and `--org` is not provided
 * `log_level` (`debug|info|warn|error`): default `info`
 
-### `tfc init`
+### `tfccli init`
 
 * Creates the folder and settings.json.
 * Interactive:
@@ -152,7 +152,7 @@ Settings must support multiple named contexts and track which one is current.
   * prompts for `log_level` (default `info`)
 * Non-interactive mode supported (for agents/CI), e.g.:
 
-  * `tfc init --non-interactive --address ... --default-org ... --log-level ... --yes`
+  * `tfccli init --non-interactive --address ... --default-org ... --log-level ... --yes`
 * If settings already exist:
 
   * do not overwrite unless explicitly confirmed or `--yes` is set
@@ -161,17 +161,17 @@ Settings must support multiple named contexts and track which one is current.
 
 Provide commands to manage contexts:
 
-* `tfc contexts list`
-* `tfc contexts add <name> --address ... [--default-org ...] [--log-level ...]`
-* `tfc contexts use <name>`
-* `tfc contexts remove <name> [--force]`
-* `tfc contexts show [<name>]`
+* `tfccli contexts list`
+* `tfccli contexts add <name> --address ... [--default-org ...] [--log-level ...]`
+* `tfccli contexts use <name>`
+* `tfccli contexts remove <name> [--force]`
+* `tfccli contexts show [<name>]`
 
 ---
 
 ## 8) Authentication Requirements (Terraform CLI conventions)
 
-`tfc` **must not** store tokens in `settings.json`.
+`tfccli` **must not** store tokens in `settings.json`.
 
 Token discovery must follow Terraform CLI conventions, with this precedence:
 
@@ -198,7 +198,8 @@ Behavior:
   * host only: `app.terraform.io`
   * host + path: `app.terraform.io/eu`
   * full URL: `https://tfe.example.com`
-* `tfc` must derive:
+
+* `tfccli` must derive:
 
   * **API base URL**: `<address>/api/v2` (respecting any path component)
   * **hostname for token lookup**: the host portion only (ignore path)
@@ -251,64 +252,64 @@ Some download-style endpoints return redirects (e.g., plan JSON output, sanitize
 
 Each command group must support JSON and table outputs and consistent error behavior.
 
-### `tfc doctor`
+### `tfccli doctor`
 
 * Validate settings existence and parseability
 * Validate context selection
 * Validate token discovery (and report source, without printing the token)
 * Basic connectivity check (lightweight API call)
 
-### `tfc organizations`
+### `tfccli organizations`
 
 * list/get/create/update/delete (with confirmation + `--force`)
 
-### `tfc projects`
+### `tfccli projects`
 
 * Org-scoped list/create (uses `--org` or `default_org`)
 * get/update/delete by ID
 
-### `tfc workspaces`
+### `tfccli workspaces`
 
 * Org-scoped list/create (uses `--org` or `default_org`)
 * get/update/delete by ID
 * create supports optional `--project-id` flag
 
-### `tfc workspace-variables`
+### `tfccli workspace-variables`
 
 * list/create/update/delete
 * create supports categories `env|terraform`, plus `--sensitive` and `--hcl` flags
 
-### `tfc workspace-resources`
+### `tfccli workspace-resources`
 
 * list (read-only)
 
-### `tfc configuration-versions`
+### `tfccli configuration-versions`
 
 * list/get/create/upload/download/archive
 * upload uses the returned upload URL and should not attach Authorization
 
-### `tfc runs`
+### `tfccli runs`
 
 * list (at minimum workspace-scoped), get, create
 * actions: apply/discard/cancel/force-cancel (destructive confirmation + `--force`)
 
-### `tfc plans`
+### `tfccli plans`
 
 * get
 * json-output download
 * sanitized-plan download
 
-### `tfc applies`
+### `tfccli applies`
 
 * get
 * errored-state download
 
-### `tfc users`
+### `tfccli users`
 
 * get by ID
 * me (get current authenticated user via `/account/details`)
 
-### `tfc invoices`
+### `tfccli invoices`
 
 * list/get/next as supported by the API
 * org-scoped where required (uses `--org` or `default_org`)
@@ -355,7 +356,7 @@ All tasks should include Gherkin scenarios convertible to Go unit tests.
 
 ## 16) Release Requirements
 
-* Use GoReleaser to build cross-platform binaries and attach build metadata (`tfc version`).
+* Use GoReleaser to build cross-platform binaries and attach build metadata (`tfccli version`).
 * Homebrew tap wiring is out of scope (handled separately).
 
 ---

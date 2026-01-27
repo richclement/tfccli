@@ -1,7 +1,7 @@
 #!/bin/bash
 # tests/e2e/read_commands_test.sh
 #
-# End-to-end tests for all read-only tfc commands.
+# End-to-end tests for all read-only tfccli commands.
 # Tests both table and json output formats.
 #
 # Usage: ./tests/e2e/read_commands_test.sh <org-name>
@@ -36,17 +36,17 @@ echo "Organization: $ORG"
 echo -e "========================================${NC}"
 echo ""
 
-# Ensure tfc binary is available
-if ! command -v tfc &> /dev/null; then
+# Ensure tfccli binary is available
+if ! command -v tfccli &> /dev/null; then
     # Try local bin
-    if [ -f "./bin/tfc" ]; then
-        TFC="./bin/tfc"
+    if [ -f "./bin/tfccli" ]; then
+        TFC="./bin/tfccli"
     else
-        echo -e "${RED}Error: tfc binary not found. Run 'make' first.${NC}"
+        echo -e "${RED}Error: tfccli binary not found. Run 'make' first.${NC}"
         exit 1
     fi
 else
-    TFC="tfc"
+    TFC="tfccli"
 fi
 
 echo "Using: $TFC"

@@ -69,7 +69,7 @@ func Load(baseDir string) (*Settings, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return nil, fmt.Errorf("settings file not found: run 'tfc init' to create one")
+			return nil, fmt.Errorf("settings file not found: run 'tfccli init' to create one")
 		}
 		return nil, fmt.Errorf("cannot read settings file: %w", err)
 	}
