@@ -3,11 +3,11 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag to release (e.g., v0.2.0)'
+        description: "Tag to release (e.g., v0.2.0)"
         required: true
         type: string
 
@@ -15,32 +15,301 @@ permissions:
   contents: write
 
 jobs:
-  goreleaser:
+  quality:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
+      - name: Check out release tag
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: git checkout ${{ inputs.tag }}
+
+      - name: Set up Go
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
           go-version-file: go.mod
           cache: true
 
-      - name: Stash GoReleaser config
-        run: cp .goreleaser.yaml /tmp/.goreleaser.yaml
+      - name: Run Go tests
+        run: go test ./...
 
-      - name: Checkout release tag
+      - name: Run go vet
+        run: go vet ./...
+
+  verify-native-binary:
+    name: Verify native binary (${{ matrix.goos }})
+    needs: quality
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            goos: linux
+            binary_name: tfccli
+          - runner: macos-latest
+            goos: darwin
+            binary_name: tfccli
+          - runner: windows-latest
+            goos: windows
+            binary_name: tfccli.exe
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Check out release tag
         if: ${{ github.event_name == 'workflow_dispatch' }}
         run: git checkout ${{ inputs.tag }}
 
-      - name: GoReleaser
-        uses: goreleaser/goreleaser-action@v6
+      - name: Resolve release metadata
+        id: release_meta
+        shell: bash
+        run: |
+          release_tag="${GITHUB_REF_NAME}"
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            release_tag="${{ inputs.tag }}"
+          fi
+
+          echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
+          echo "release_version=${release_tag#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Go
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
-          distribution: goreleaser
-          version: latest
-          args: release --clean --config /tmp/.goreleaser.yaml
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build native binary
+        shell: bash
+        run: |
+          native_goarch="$(go env GOARCH)"
+          env GOOS="${{ matrix.goos }}" GOARCH="$native_goarch" CGO_ENABLED=0 \
+            go build -trimpath -ldflags "-s -w -X main.version=${{ steps.release_meta.outputs.release_tag }}" \
+            -o "$RUNNER_TEMP/${{ matrix.binary_name }}" ./cmd/tfc
+
+      - name: Verify native binary
+        shell: bash
+        run: |
+          go run ./tools/releaseverify \
+            --binary "$RUNNER_TEMP/${{ matrix.binary_name }}" \
+            --version "${{ steps.release_meta.outputs.release_tag }}"
+
+  build-artifacts:
+    name: Build release archive (${{ matrix.goos }}/${{ matrix.goarch }})
+    needs: quality
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            binary_name: tfccli
+            archive_ext: tar.gz
+          - goos: linux
+            goarch: arm64
+            binary_name: tfccli
+            archive_ext: tar.gz
+          - goos: darwin
+            goarch: amd64
+            binary_name: tfccli
+            archive_ext: tar.gz
+          - goos: darwin
+            goarch: arm64
+            binary_name: tfccli
+            archive_ext: tar.gz
+          - goos: windows
+            goarch: amd64
+            binary_name: tfccli.exe
+            archive_ext: zip
+          - goos: windows
+            goarch: arm64
+            binary_name: tfccli.exe
+            archive_ext: zip
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Check out release tag
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: git checkout ${{ inputs.tag }}
+
+      - name: Resolve release metadata
+        id: release_meta
+        shell: bash
+        run: |
+          release_tag="${GITHUB_REF_NAME}"
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            release_tag="${{ inputs.tag }}"
+          fi
+
+          echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
+          echo "release_version=${release_tag#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Go
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build release binary
+        shell: bash
+        run: |
+          mkdir -p dist/bin
+          env GOOS="${{ matrix.goos }}" GOARCH="${{ matrix.goarch }}" CGO_ENABLED=0 \
+            go build -trimpath -ldflags "-s -w -X main.version=${{ steps.release_meta.outputs.release_tag }}" \
+            -o "dist/bin/${{ matrix.binary_name }}" ./cmd/tfc
+
+      - name: Package release archive
+        id: package
+        shell: bash
+        run: |
+          asset_base="tfccli_${{ steps.release_meta.outputs.release_version }}_${{ matrix.goos }}_${{ matrix.goarch }}"
+          stage_dir="$RUNNER_TEMP/$asset_base"
+          mkdir -p "$stage_dir"
+
+          cp "dist/bin/${{ matrix.binary_name }}" "$stage_dir/${{ matrix.binary_name }}"
+          cp README.md LICENSE "$stage_dir/"
+
+          if [ "${{ matrix.archive_ext }}" = "zip" ]; then
+            (
+              cd "$stage_dir"
+              zip -q -r "$RUNNER_TEMP/$asset_base.zip" .
+            )
+            echo "asset_path=$RUNNER_TEMP/$asset_base.zip" >> "$GITHUB_OUTPUT"
+          else
+            tar -C "$stage_dir" -czf "$RUNNER_TEMP/$asset_base.tar.gz" .
+            echo "asset_path=$RUNNER_TEMP/$asset_base.tar.gz" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload release archive
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: release-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: ${{ steps.package.outputs.asset_path }}
+          if-no-files-found: error
+
+  publish-release:
+    name: Publish GitHub Release
+    needs:
+      - verify-native-binary
+      - build-artifacts
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Check out release tag
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: git checkout ${{ inputs.tag }}
+
+      - name: Resolve release metadata
+        id: release_meta
+        shell: bash
+        run: |
+          release_tag="${GITHUB_REF_NAME}"
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            release_tag="${{ inputs.tag }}"
+          fi
+
+          echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
+          echo "release_version=${release_tag#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Go
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Download release archives
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          path: dist/release
+          pattern: release-*
+          merge-multiple: true
+
+      - name: Generate checksums
+        shell: bash
+        run: |
+          (
+            cd dist/release
+            shasum -a 256 * > checksums.txt
+          )
+
+      - name: Publish or update GitHub Release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          mapfile -d '' files < <(find dist/release -type f -print0 | sort -z)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "no release assets found" >&2
+            exit 1
+          fi
+
+          if gh release view "${{ steps.release_meta.outputs.release_tag }}" >/dev/null 2>&1; then
+            gh release upload "${{ steps.release_meta.outputs.release_tag }}" "${files[@]}" --clobber
+          else
+            gh release create "${{ steps.release_meta.outputs.release_tag }}" "${files[@]}" --title "${{ steps.release_meta.outputs.release_tag }}" --generate-notes
+          fi
+
+      - name: Require Homebrew tap token
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        shell: bash
+        run: |
+          if [ -z "${HOMEBREW_TAP_TOKEN}" ]; then
+            echo "HOMEBREW_TAP_TOKEN secret is required to update richclement/homebrew-tap" >&2
+            exit 1
+          fi
+
+      - name: Check out Homebrew tap
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: richclement/homebrew-tap
+          ref: main
+          path: dist/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+
+      - name: Generate Homebrew formula update
+        shell: bash
+        run: |
+          go run ./tools/homebrewtap \
+            --version "${{ steps.release_meta.outputs.release_version }}" \
+            --checksums-file "dist/release/checksums.txt" \
+            --tap-dir "dist/homebrew-tap" \
+            --formula-name "tfccli" \
+            --source-repo "${GITHUB_REPOSITORY}" \
+            --pr-body-file "$RUNNER_TEMP/tfccli-homebrew-pr-body.md"
+
+      - name: Create Homebrew tap pull request
+        uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0 # v8.1.0
+        with:
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: dist/homebrew-tap
+          commit-message: "tfccli: update to ${{ steps.release_meta.outputs.release_tag }}"
+          title: "tfccli: update to ${{ steps.release_meta.outputs.release_tag }}"
+          body-path: ${{ runner.temp }}/tfccli-homebrew-pr-body.md
+          branch: tfccli-release-${{ steps.release_meta.outputs.release_tag }}
+          base: main
+          add-paths: |
+            Formula/tfccli.rb

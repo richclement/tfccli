@@ -1,0 +1,12 @@
+## Homebrew update for tfccli
+
+- Release: [v0.12.0](https://github.com/richclement/tfccli/releases/tag/v0.12.0)
+- Formula: `Formula/tfccli.rb`
+- Version bump: `0.12.0`
+
+| Platform | Asset | SHA256 |
+| --- | --- | --- |
+| macOS amd64 | `tfccli_0.12.0_darwin_amd64.tar.gz` | `1111111111111111111111111111111111111111111111111111111111111111` |
+| macOS arm64 | `tfccli_0.12.0_darwin_arm64.tar.gz` | `2222222222222222222222222222222222222222222222222222222222222222` |
+| Linux amd64 | `tfccli_0.12.0_linux_amd64.tar.gz` | `3333333333333333333333333333333333333333333333333333333333333333` |
+| Linux arm64 | `tfccli_0.12.0_linux_arm64.tar.gz` | `4444444444444444444444444444444444444444444444444444444444444444` |
