@@ -46,37 +46,37 @@ Use `--help` to discover available options when unsure about syntax.
 ### Organizations
 ```bash
 tfccli organizations list
-tfccli organizations get --id org-xxxxx
+tfccli organizations get myorg
 tfccli organizations create --name myorg --email admin@example.com
-tfccli organizations update --id org-xxxxx --name newname
-tfccli organizations delete --id org-xxxxx
+tfccli organizations update myorg --email new-admin@example.com
+tfccli organizations delete myorg
 ```
 
 ### Projects
 ```bash
 tfccli projects list
-tfccli projects get --id prj-xxxxx
+tfccli projects get prj-xxxxx
 tfccli projects create --name myproject
-tfccli projects update --id prj-xxxxx --name newname
-tfccli projects delete --id prj-xxxxx
+tfccli projects update prj-xxxxx --name newname
+tfccli projects delete prj-xxxxx
 ```
 
 ### Workspaces
 ```bash
 tfccli workspaces list [--project prj-xxxxx] [--search name] [--tags tag1,tag2]
-tfccli workspaces get --id ws-xxxxx
-tfccli workspaces create --name myworkspace [--project prj-xxxxx] [--execution-mode remote|local|agent]
-tfccli workspaces update --id ws-xxxxx [--name newname] [--description "desc"]
-tfccli workspaces delete --id ws-xxxxx
+tfccli workspaces get ws-xxxxx
+tfccli workspaces create --name myworkspace [--project-id prj-xxxxx] [--description "desc"]
+tfccli workspaces update ws-xxxxx [--name newname] [--description "desc"]
+tfccli workspaces delete ws-xxxxx
 ```
 
 ### Workspace Variables
 ```bash
 tfccli workspace-variables list --workspace-id ws-xxxxx
-tfccli workspace-variables get --id var-xxxxx
-tfccli workspace-variables create --workspace-id ws-xxxxx --key KEY --value VALUE [--category terraform|env] [--sensitive]
-tfccli workspace-variables update --id var-xxxxx [--value newvalue]
-tfccli workspace-variables delete --id var-xxxxx
+tfccli workspace-variables get --workspace-id ws-xxxxx var-xxxxx
+tfccli workspace-variables create --workspace-id ws-xxxxx --key KEY --value VALUE --category terraform|env [--sensitive] [--hcl]
+tfccli workspace-variables update --workspace-id ws-xxxxx var-xxxxx [--value newvalue]
+tfccli workspace-variables delete --workspace-id ws-xxxxx var-xxxxx
 ```
 
 ### Workspace Resources
@@ -87,41 +87,41 @@ tfccli workspace-resources list --workspace-id ws-xxxxx
 ### Runs
 ```bash
 tfccli runs list --workspace-id ws-xxxxx [--limit N]
-tfccli runs get --id run-xxxxx
-tfccli runs create --workspace-id ws-xxxxx [--message "reason"]
-tfccli runs apply --id run-xxxxx [--comment "approved"]
-tfccli runs discard --id run-xxxxx [--comment "not needed"]
-tfccli runs cancel --id run-xxxxx [--comment "stopping"]
-tfccli runs force-cancel --id run-xxxxx [--comment "emergency stop"]
+tfccli runs get run-xxxxx
+tfccli runs create --workspace-id ws-xxxxx [--message "reason"] [--auto-apply]
+tfccli runs apply run-xxxxx [--comment "approved"]
+tfccli runs discard run-xxxxx [--comment "not needed"]
+tfccli runs cancel run-xxxxx [--comment "stopping"]
+tfccli runs force-cancel run-xxxxx [--comment "emergency stop"]
 ```
 
 ### Plans
 ```bash
-tfccli plans get --id plan-xxxxx
-tfccli plans json-output --id plan-xxxxx       # Download JSON execution plan
-tfccli plans sanitized-json --id plan-xxxxx    # Download sanitized plan
+tfccli plans get plan-xxxxx
+tfccli plans json-output plan-xxxxx [--out plan.json]
+tfccli plans sanitized-plan plan-xxxxx [--out plan-sanitized.json]
 ```
 
 ### Applies
 ```bash
-tfccli applies get --id apply-xxxxx
-tfccli applies errored-state --id apply-xxxxx  # Download errored state file
+tfccli applies get apply-xxxxx
+tfccli applies errored-state apply-xxxxx [--out errored.tfstate]
 ```
 
 ### Configuration Versions
 ```bash
 tfccli configuration-versions list --workspace-id ws-xxxxx
-tfccli configuration-versions get --id cv-xxxxx
-tfccli configuration-versions create --workspace-id ws-xxxxx [--speculative]
-tfccli configuration-versions upload --id cv-xxxxx --path ./terraform-dir
-tfccli configuration-versions download --id cv-xxxxx --output ./download-dir
-tfccli configuration-versions archive --id cv-xxxxx
+tfccli configuration-versions get cv-xxxxx
+tfccli configuration-versions create --workspace-id ws-xxxxx [--speculative] [--auto-queue-runs]
+tfccli configuration-versions upload --file ./config.tar.gz cv-xxxxx
+tfccli configuration-versions download cv-xxxxx [--out ./config.tar.gz]
+tfccli configuration-versions archive cv-xxxxx
 ```
 
 ### Users
 ```bash
 tfccli users me                                # Current user info
-tfccli users get --id user-xxxxx
+tfccli users get user-xxxxx
 ```
 
 ### Invoices (HCP Terraform only)
@@ -133,10 +133,10 @@ tfccli invoices next                           # Preview next invoice
 ### Contexts
 ```bash
 tfccli contexts list
-tfccli contexts add --name prod --address app.terraform.io --org myorg
-tfccli contexts use --name prod
-tfccli contexts show
-tfccli contexts remove --name oldcontext
+tfccli contexts add --ctx-address app.terraform.io prod [--default-org myorg]
+tfccli contexts use prod
+tfccli contexts show [prod]
+tfccli contexts remove oldcontext
 ```
 
 ## Exit Codes
@@ -152,7 +152,7 @@ tfccli contexts remove --name oldcontext
 ```bash
 tfccli runs create --workspace-id ws-xxxxx --message "Deploy v1.2.3"
 # Wait for plan to complete, then:
-tfccli runs apply --id run-xxxxx --comment "Approved by automation"
+tfccli runs apply run-xxxxx --comment "Approved by automation"
 ```
 
 **Export workspace variables for backup:**
@@ -162,5 +162,5 @@ tfccli workspace-variables list --workspace-id ws-xxxxx --output-format json > v
 
 **Check run status:**
 ```bash
-tfccli runs get --id run-xxxxx --output-format json | jq '.status'
+tfccli runs get run-xxxxx --output-format json
 ```
