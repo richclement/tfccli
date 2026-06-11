@@ -104,7 +104,7 @@ Manage multiple TFC/TFE environments with named contexts:
 tfccli contexts list
 
 # Add a new context
-tfccli contexts add prod --ctx-address tfe.example.com --default-org acme
+tfccli contexts add --ctx-address tfe.example.com prod --default-org acme
 
 # Switch contexts
 tfccli contexts use prod
@@ -212,10 +212,10 @@ tfccli workspace-variables create --workspace-id ws-abc123 \
   --key tags --value '{"env":"prod"}' --category terraform --hcl
 
 # Update a variable
-tfccli workspace-variables update var-abc123 --value new-value
+tfccli workspace-variables update --workspace-id ws-abc123 var-abc123 --value new-value
 
 # Delete a variable
-tfccli workspace-variables delete var-abc123 --force
+tfccli workspace-variables delete --workspace-id ws-abc123 var-abc123 --force
 ```
 
 ### Workspace Resources
@@ -296,7 +296,7 @@ tfccli configuration-versions create --workspace-id ws-abc123
 tfccli configuration-versions create --workspace-id ws-abc123 --auto-queue-runs=false
 
 # Upload configuration (tar.gz)
-tfccli configuration-versions upload cv-abc123 --file ./config.tar.gz
+tfccli configuration-versions upload --file ./config.tar.gz cv-abc123
 
 # Download configuration
 tfccli configuration-versions download cv-abc123
